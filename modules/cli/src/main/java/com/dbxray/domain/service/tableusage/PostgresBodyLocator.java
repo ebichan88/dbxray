@@ -1,0 +1,105 @@
+package com.dbxray.domain.service.tableusage;
+
+import com.dbxray.domain.model.database.Dbms;
+import com.dbxray.domain.model.schemaobject.FunctionEntity;
+import com.dbxray.domain.model.tableusage.TableUsageStatus;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * PostgreSQLの定義から本体を切り出すクラス<br>
+ * {@code pg_get_functiondef}は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直す。 SQL標準の本体（{@code BEGIN
+ * ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、最上位の{@code BEGIN ATOMIC}・{@code
+ * RETURN}から終わりまでとする。{@code begin}・{@code return}は予約語でなく、関数名（{@code
+ * pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない
+ */
+final class PostgresBodyLocator implements FunctionBodyLocator {
+
+  /** 解析する言語 */
+  private static final List<String> SUPPORTED_LANGUAGES = List.of("sql", "plpgsql");
+
+  /** {@inheritDoc} */
+  @Override
+  public FunctionBody locate(FunctionEntity function) {
+    final String language = function.languageName();
+    if (SUPPORTED_LANGUAGES.stream()
+        .noneMatch(name -> AsciiCase.equalsIgnoreCase(name, language))) {
+      return FunctionBody.unsupportedLanguage(language);
+    }
+    final String definition = function.definition();
+    if (definition.isBlank()) {
+      return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
+    }
+    final SqlLexResult lexed = SqlLexer.lex(definition, Dbms.POSTGRESQL);
+    final List<SqlToken> all = lexed.tokens();
+    final SqlTokens tokens = new SqlTokens(all);
+    List<String> searchPath = List.of();
+    int depth = 0;
+    for (int i = 0; i < tokens.size(); i++) {
+      final SqlToken token = tokens.at(i);
+      if (token.isSymbol("(")) {
+        depth++;
+      } else if (token.isSymbol(")")) {
+        depth = Math.max(0, depth - 1);
+      } else if (depth > 0) {
+        continue;
+      } else if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
+        searchPath = readSearchPath(tokens, i + 2);
+      } else if (token.isWord("AS")
+          && tokens.at(i + 1) != null
+          && tokens.at(i + 1).kind() == SqlTokenKind.DOLLAR_STRING) {
+        final SqlToken body = tokens.at(i + 1);
+        final SqlLexResult inner =
+            SqlLexer.lex(
+                definition, body.contentStart(), body.contentEnd(), body.line(), Dbms.POSTGRESQL);
+        return FunctionBody.postgres(
+            inner.tokens(), lexed.incomplete() || inner.incomplete(), searchPath);
+      } else if (tokens.isAfterDot(i)) {
+        continue;
+      } else if ((token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC"))
+          || token.isWord("RETURN")) {
+        return FunctionBody.postgres(all.subList(i, all.size()), lexed.incomplete(), searchPath);
+      }
+    }
+    return FunctionBody.postgres(all, lexed.incomplete(), searchPath);
+  }
+
+  private static boolean isSearchPathAt(SqlTokens tokens, int i) {
+    return tokens.isNameAt(i)
+        && SqlNames.identifier(tokens.at(i), Dbms.POSTGRESQL).equals("search_path");
+  }
+
+  /**
+   * {@code SET search_path TO 'a', 'b'}のスキーマの並びを読むメソッド<br>
+   * {@code pg_get_functiondef}は各スキーマを、大文字小文字を保った文字列にして並べる。手で書いた形（{@code SET search_path = a,
+   * "B"}）も同じ規則で読む
+   *
+   * @param i {@code search_path}の次の位置（{@code TO}・{@code =}）
+   */
+  private static List<String> readSearchPath(SqlTokens tokens, int i) {
+    final List<String> schemas = new ArrayList<>();
+    int j = i + 1;
+    while (tokens.at(j) != null) {
+      final SqlToken value = tokens.at(j);
+      final String schema;
+      if (value.kind() == SqlTokenKind.STRING) {
+        schema = SqlNames.unquote(value.text(), '\'');
+      } else if (value.isName() && !value.isWord("DEFAULT")) {
+        schema = SqlNames.identifier(value, Dbms.POSTGRESQL);
+      } else {
+        break;
+      }
+      if (!schema.equals("$user")
+          && !schema.equals("pg_catalog")
+          && !schema.startsWith("pg_temp")) {
+        schemas.add(schema);
+      }
+      if (tokens.isSymbolAt(j + 1, ",")) {
+        j += 2;
+      } else {
+        break;
+      }
+    }
+    return schemas;
+  }
+}
