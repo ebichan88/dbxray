@@ -83,7 +83,7 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       final SqlToken value = tokens.at(j);
       final String schema;
       if (value.kind() == SqlTokenKind.STRING) {
-        schema = stringContent(value.text());
+        schema = SqlNames.unquote(value.text(), '\'');
       } else if (value.isName() && !value.isWord("DEFAULT")) {
         schema = SqlNames.identifier(value, Dbms.POSTGRESQL);
       } else {
@@ -101,12 +101,5 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       }
     }
     return schemas;
-  }
-
-  /** {@code 'a''b'}の中身（{@code a'b}）。閉じていない文字列は終わりまでを中身とする */
-  private static String stringContent(String text) {
-    final int open = text.indexOf('\'');
-    final boolean closed = text.length() - open >= 2 && text.endsWith("'");
-    return text.substring(open + 1, closed ? text.length() - 1 : text.length()).replace("''", "'");
   }
 }

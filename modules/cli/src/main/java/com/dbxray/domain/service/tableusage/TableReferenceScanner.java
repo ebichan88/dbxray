@@ -20,7 +20,7 @@ import java.util.Set;
  */
 final class TableReferenceScanner {
 
-  /** 直前にあると、INSERT・UPDATE・DELETEがDMLの文ではない（トリガー・権限・ポリシー・行ロックの構文）語 */
+  /** 直前にあると、INSERT・UPDATE・DELETE・TRUNCATEがDMLの文ではない（トリガー・権限・ポリシー・行ロックの構文）語 */
   private static final Set<String> NON_DML_PREDECESSORS =
       Set.of("OR", "ON", "OF", "BEFORE", "AFTER", "FOR", "KEY", "INSTEAD", "GRANT", "REVOKE");
 
@@ -263,6 +263,9 @@ final class TableReferenceScanner {
   }
 
   private void onTruncate(int i, SqlToken next) {
+    if (isNonDmlUse(i)) {
+      return;
+    }
     final int start = next != null && next.isWord("TABLE") ? i + 2 : i + 1;
     state.frame().listOperation = CrudOperation.DELETE;
     emit(targetNameAt(start), CrudOperation.DELETE);
@@ -466,7 +469,7 @@ final class TableReferenceScanner {
     references.add(new TableReference(schema, table, operation));
   }
 
-  /** 直前の語から、INSERT・UPDATE・DELETEがDMLの文でない（トリガーのイベント・権限・行ロック等）か判定する */
+  /** 直前の語から、INSERT・UPDATE・DELETE・TRUNCATEがDMLの文でない（トリガーのイベント・権限・行ロック等）か判定する */
   private boolean isNonDmlUse(int i) {
     final SqlToken previous = tokens.at(i - 1);
     return previous != null && (previous.isSymbol(",") || previous.isAnyWord(NON_DML_PREDECESSORS));

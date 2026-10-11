@@ -363,6 +363,16 @@ class TableReferenceScannerTest {
     cases.addAll(both("GRANT SELECT, INSERT, UPDATE, DELETE ON t TO u", "-"));
     cases.addAll(both("GRANT INSERT ON t TO u", "-"));
     cases.addAll(both("REVOKE DELETE ON t FROM u", "-"));
+    cases.addAll(both("GRANT TRUNCATE ON t TO u", "-"));
+    cases.addAll(both("GRANT SELECT, TRUNCATE ON a, b TO u", "-"));
+    cases.addAll(both("REVOKE TRUNCATE ON a, b FROM u", "-"));
+    cases.add(
+        pg("CREATE TRIGGER trg BEFORE TRUNCATE ON t FOR EACH STATEMENT EXECUTE FUNCTION f()", "-"));
+    cases.add(
+        pg(
+            "CREATE TRIGGER trg AFTER INSERT OR TRUNCATE ON t FOR EACH STATEMENT EXECUTE FUNCTION f()",
+            "-"));
+    cases.add(ora("CREATE TRIGGER trg BEFORE TRUNCATE ON SCHEMA BEGIN NULL; END", "-"));
     cases.addAll(
         both(
             "ALTER TABLE t ADD CONSTRAINT fk FOREIGN KEY (x) REFERENCES u (id) ON DELETE CASCADE",

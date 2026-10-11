@@ -38,6 +38,24 @@ class SqlNamesTest {
         "d\\0061t", SqlNames.identifier(only("u&\"d\\0061t\"", Dbms.POSTGRESQL), Dbms.POSTGRESQL));
   }
 
+  @ParameterizedTest(name = "{0} → {1}")
+  @CsvSource(
+      delimiter = '|',
+      quoteCharacter = '`',
+      value = {
+        "'a'|a",
+        "'a''b'|a'b",
+        "E'a''b'|a'b",
+        "''|``",
+        "'unterminated|unterminated",
+        "'|``",
+        "'\"'|\"",
+      })
+  @DisplayName("unquote: 文字列は引用符を外して2つ並びの引用符を1つにし、接頭辞は読み飛ばし、閉じていなければ終わりまでを中身とする")
+  void testUnquoteString(String text, String expected) {
+    assertEquals(expected, SqlNames.unquote(text, '\''));
+  }
+
   private static SqlToken only(String text, Dbms dbms) {
     final var tokens = SqlLexer.lex(text, dbms).tokens();
     assertEquals(1, tokens.size(), text);
