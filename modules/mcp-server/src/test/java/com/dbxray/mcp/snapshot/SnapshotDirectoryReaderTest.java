@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -137,7 +139,33 @@ class SnapshotDirectoryReaderTest {
   }
 
   @Test
-  @DisplayName("関数・シーケンス・ユーザー定義型・トリガーを読み込み、1行をそのまま保持する")
+  @DisplayName("関数の定義本体のハッシュ: 同じ定義本体が離れて現れても関数ごとに自分の定義本体のSHA-256を持ち、定義本体が無い関数は空文字")
+  void hashesEachFunctionDefinition() throws IOException {
+    write("testdb/database.json", DATABASE_JSON);
+    write(
+        "testdb/sample/functions.jsonl",
+        String.join(
+                "\n",
+                "{\"schema\":\"sample\",\"name\":\"a\",\"definition\":\"A\"}",
+                "{\"schema\":\"sample\",\"name\":\"a2\",\"definition\":\"A\"}",
+                "{\"schema\":\"sample\",\"name\":\"b\",\"definition\":\"B\"}",
+                "{\"schema\":\"sample\",\"name\":\"a3\",\"definition\":\"A\"}",
+                "{\"schema\":\"sample\",\"name\":\"none\"}")
+            + "\n");
+
+    final SchemaCatalog catalog = reader.read(snapshot);
+
+    final String hashA = "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd";
+    final String hashB = "df7e70e5021544f4834bbee64a9e3789febc4be81470df629cad6ddb03320a5c";
+    assertEquals(
+        Map.of("a", hashA, "a2", hashA, "b", hashB, "a3", hashA, "none", ""),
+        catalog.functions().all().stream()
+            .flatMap(function -> function.overloads().stream())
+            .collect(Collectors.toMap(f -> f.key().name(), FunctionEntry::definitionHash)));
+  }
+
+  @Test
+  @DisplayName("関数・シーケンス・ユーザー定義型・トリガーを読み込み、1行をそのまま保持する（関数は定義本体のハッシュも求める）")
   void readsOtherObjects() throws IOException {
     final String function =
         "{\"schema\":\"sample\",\"name\":\"calc\",\"kind\":\"FUNCTION\",\"arguments\":\"p numeric\","
@@ -163,6 +191,10 @@ class SnapshotDirectoryReaderTest {
         List.of("FUNCTION", "p numeric", "numeric", "sql"),
         List.of(calc.kind(), calc.arguments(), calc.result(), calc.language()));
     assertEquals(function, calc.json());
+    assertEquals(
+        "822ae07d4783158bc1912bb623e5107cc9002d519e1143a9c200ed6ee18b6d0f",
+        calc.definitionHash(),
+        "定義本体（select 1）のSHA-256");
     final SequenceEntry ordersId = catalog.sequences().list(SearchScope.ALL, NameFilter.ALL).get(0);
     assertEquals("orders.id", ordersId.ownedBy());
     assertEquals(sequence, ordersId.json());

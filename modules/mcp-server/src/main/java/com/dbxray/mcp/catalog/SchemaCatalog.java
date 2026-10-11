@@ -18,6 +18,7 @@ public final class SchemaCatalog {
   private final ObjectCatalog<SequenceEntry> sequences;
   private final ObjectCatalog<TypeEntry> types;
   private final ViewpointCatalog viewpoints;
+  private final FunctionTableUsages functionTableUsages;
 
   private SchemaCatalog(
       List<DatabaseEntry> databases,
@@ -26,7 +27,8 @@ public final class SchemaCatalog {
       ObjectCatalog<FunctionOverloads> functions,
       ObjectCatalog<SequenceEntry> sequences,
       ObjectCatalog<TypeEntry> types,
-      ViewpointCatalog viewpoints) {
+      ViewpointCatalog viewpoints,
+      FunctionTableUsages functionTableUsages) {
     this.databases = List.copyOf(databases);
     this.relations = relations;
     this.tables = tables;
@@ -34,6 +36,7 @@ public final class SchemaCatalog {
     this.sequences = sequences;
     this.types = types;
     this.viewpoints = viewpoints;
+    this.functionTableUsages = functionTableUsages;
   }
 
   /**
@@ -69,7 +72,8 @@ public final class SchemaCatalog {
         new ObjectCatalog<>(overloads),
         new ObjectCatalog<>(sequences),
         new ObjectCatalog<>(types),
-        new ViewpointCatalog(viewpoints));
+        new ViewpointCatalog(viewpoints),
+        new FunctionTableUsages(List.of()));
   }
 
   /**
@@ -98,7 +102,24 @@ public final class SchemaCatalog {
         functions,
         sequences,
         types,
-        new ViewpointCatalog(viewpoints));
+        new ViewpointCatalog(viewpoints),
+        functionTableUsages);
+  }
+
+  /**
+   * 関数・プロシージャが利用しているテーブルの参考情報を追加した新しいインスタンスを返すメソッド<br>
+   * 観点と同じく、スナップショットとは別の読み込み元（参考情報）の内容を、組み立て後に合成するために用いる
+   */
+  public SchemaCatalog withFunctionTableUsages(List<FunctionTableUsageEntry> entries) {
+    return new SchemaCatalog(
+        databases,
+        relations,
+        tables,
+        functions,
+        sequences,
+        types,
+        viewpoints,
+        new FunctionTableUsages(entries));
   }
 
   /** テーブル（ビューを含む）の窓口を返すメソッド */
@@ -124,6 +145,11 @@ public final class SchemaCatalog {
   /** 観点の参考情報の窓口を返すメソッド */
   public ViewpointCatalog viewpoints() {
     return viewpoints;
+  }
+
+  /** 関数・プロシージャが利用しているテーブルの参考情報の窓口を返すメソッド */
+  public FunctionTableUsages functionTableUsages() {
+    return functionTableUsages;
   }
 
   /** テーブル間の関連（外部キー・論理リレーション）のグラフを返すメソッド */

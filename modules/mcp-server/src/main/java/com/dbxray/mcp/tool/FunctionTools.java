@@ -11,9 +11,13 @@ import static com.dbxray.mcp.tool.ToolSpecifications.stringProperty;
 
 import com.dbxray.mcp.catalog.FunctionEntry;
 import com.dbxray.mcp.catalog.FunctionOverloads;
+import com.dbxray.mcp.catalog.FunctionTableUsageEntry;
+import com.dbxray.mcp.catalog.FunctionTableUsageEntry.UsedTable;
 import com.dbxray.mcp.catalog.NameFilter;
 import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.TableTrigger;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -34,6 +38,9 @@ final class FunctionTools {
 
   /** 定義本体の項目名（スナップショットの項目名） */
   private static final String DEFINITION_FIELD = "definition";
+
+  /** 利用しているテーブルの項目名 */
+  private static final String TABLE_USAGE_FIELD = "tableUsage";
 
   /** Oracleのパッケージ内サブプログラムは数千行になり得るため、AIのコンテキストを圧迫しないよう切り詰める文字数 */
   private static final int MAX_DEFINITION_LENGTH = 4_000;
@@ -66,7 +73,15 @@ final class FunctionTools {
             "関数定義取得",
             "関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）を返す。同名の関数（オーバーロード）はまとめて返す。"
                 + "定義本体は既定では返さない。includeDefinitionを指定すると返す"
-                + "（オーバーロードの本体がすべて同じ場合は1つにまとめ、長い場合は切り詰める）",
+                + "（オーバーロードの本体がすべて同じ場合は1つにまとめ、長い場合は切り詰める）。"
+                + "cliを--previewで実行した参考情報がある場合は、オーバーロードごとにtableUsage（利用しているテーブルと操作C・R・U・D、動的SQLの種類）を返す。"
+                + "tableUsageは定義本体から機械的に抽出した参考値で、cliの出力対象のテーブル（ビューを含む）と一致したものだけを返す。"
+                + "出力対象外のテーブル、呼び出している関数の中と動的SQLの中の参照は含まないため、tablesが空でもテーブルに触れないとは限らない。"
+                + "スキーマが決まらない名前はtableにスキーマを付けず、schemaResolutionに何で決まるか"
+                + "（search_path: 実行時のsearch_path、current_user: 実行者権限のため実行するユーザー、"
+                + "synonym: 所有者のスキーマに無くシノニム経由の可能性）を、"
+                + "schemaCandidatesに同じ名前のテーブルがあるスキーマを返す。候補が1つでもそのスキーマに決めつけないこと。"
+                + "解析しなかった場合はstatus（unsupported_language等）だけを返す",
             objectSchema(
                 namedObjectProperties(
                     "function",
@@ -96,7 +111,17 @@ final class FunctionTools {
         ObjectResolver.resolve(
             arguments, "function", "関数", LIST_FUNCTIONS, catalog.functions()::lookup);
     final List<ObjectNode> overloads =
-        function.overloads().stream().map(entry -> signature(entry, includeDefinition)).toList();
+        function.overloads().stream()
+            .map(
+                entry -> {
+                  final ObjectNode signature = signature(entry, includeDefinition);
+                  catalog
+                      .functionTableUsages()
+                      .find(entry)
+                      .ifPresent(usage -> signature.set(TABLE_USAGE_FIELD, tableUsage(usage)));
+                  return signature;
+                })
+            .toList();
     final Optional<String> sharedDefinition =
         includeDefinition ? sharedDefinition(overloads) : Optional.empty();
     if (sharedDefinition.isPresent()) {
@@ -123,6 +148,50 @@ final class FunctionTools {
       signature.remove(DEFINITION_FIELD);
     }
     return signature;
+  }
+
+  /**
+   * 利用しているテーブルの参考情報を、AIが読みやすい形にするメソッド<br>
+   * テーブルは{@code スキーマ名.テーブル名}、操作は{@code CRU}のように1つの文字列にまとめる。 解析した結果は、利用しているテーブルが無い場合も{@code
+   * tables}を空の配列で返す（参考情報が無い場合と区別するため）
+   *
+   * @return 解析しなかった場合は{@code status}（と{@code language}）だけ
+   */
+  private static ObjectNode tableUsage(FunctionTableUsageEntry usage) {
+    final ObjectNode node = JsonNodeFactory.instance.objectNode();
+    if (!usage.status().equals(FunctionTableUsageEntry.ANALYZED)) {
+      node.put("status", usage.status());
+      if (!usage.language().isEmpty()) {
+        node.put("language", usage.language());
+      }
+      return node;
+    }
+    final ArrayNode tables = node.putArray("tables");
+    for (final UsedTable table : usage.tables()) {
+      final ObjectNode tableNode = tables.addObject();
+      if (table.schema().isEmpty()) {
+        tableNode.put("table", table.name());
+        if (!table.schemaResolution().isEmpty()) {
+          tableNode.put("schemaResolution", table.schemaResolution());
+        }
+        final ArrayNode candidates = tableNode.putArray("schemaCandidates");
+        table.schemaCandidates().forEach(candidates::add);
+      } else {
+        tableNode.put("table", table.schema() + "." + table.name());
+      }
+      tableNode.put("operations", String.join("", table.operations()));
+    }
+    if (!usage.dynamicSql().isEmpty()) {
+      final ArrayNode dynamicSql = node.putArray("dynamicSql");
+      usage.dynamicSql().forEach(dynamicSql::add);
+    }
+    if (usage.incomplete()) {
+      node.put("incomplete", true);
+    }
+    if (usage.overloadsMerged()) {
+      node.put("overloadsMerged", true);
+    }
+    return node;
   }
 
   /**
@@ -194,7 +263,8 @@ final class FunctionTools {
    *
    * @param definition {@code includeDefinition}指定時、全オーバーロードの定義本体が同じ場合にまとめた本体。 本体が異なる場合・{@code
    *     includeDefinition}未指定の場合はnull（その場合、本体は{@code overloads}側に残る）
-   * @param overloads オーバーロードごとのシグネチャ（スナップショットの1行から名前を除いたもの。cliが項目を追加すれば、そのまま返る）
+   * @param overloads オーバーロードごとのシグネチャ（スナップショットの1行から名前を除いたもの。cliが項目を追加すれば、そのまま返る）。
+   *     参考情報がある場合は、利用しているテーブル（{@code tableUsage}）を加える
    * @param calledByTriggers この関数を実行するトリガー
    */
   record GetFunctionOutput(

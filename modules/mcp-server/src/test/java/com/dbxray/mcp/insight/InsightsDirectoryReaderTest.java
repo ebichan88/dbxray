@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.mcp.UserCorrectableException;
+import com.dbxray.mcp.catalog.FunctionTableUsageEntry;
+import com.dbxray.mcp.catalog.FunctionTableUsageEntry.UsedTable;
 import com.dbxray.mcp.catalog.ObjectKey;
 import com.dbxray.mcp.catalog.ViewpointEntry;
 import java.io.IOException;
@@ -117,5 +119,90 @@ class InsightsDirectoryReaderTest {
     final Path file = outputBaseDir.resolve(relativePath);
     Files.createDirectories(file.getParent());
     return Files.writeString(file, content);
+  }
+
+  @Test
+  @DisplayName(
+      "readFunctionTableUsages: DB・スキーマごとのfunctionTableUsages.jsonを読み、スキーマ名はファイルの中の値を使う（ファイルにDB名が無ければDBのディレクトリ名）")
+  void readsFunctionTableUsages() throws IOException {
+    write(
+        "insights/testdb/My~2FSchema/functionTableUsages.json",
+        "{\"formatVersion\":1,\"schema\":\"My/Schema\",\"functions\":["
+            + "{\"name\":\"f\",\"arguments\":\"p integer\",\"definitionHash\":\"abc\",\"status\":\"analyzed\","
+            + "\"tables\":[{\"schema\":\"sample\",\"name\":\"employee\",\"operations\":[\"R\",\"U\"]},"
+            + "{\"name\":\"project\",\"schemaResolution\":\"search_path\",\"schemaCandidates\":[\"sample\",\"other\"],\"operations\":[\"D\"]}],"
+            + "\"dynamicSql\":[\"EXECUTE\"],\"incomplete\":true,\"newField\":1},"
+            + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"plpython3u\"}]}");
+    write("insights/testdb/viewpoints.json", "{\"formatVersion\":1,\"viewpoints\":[]}");
+
+    final List<FunctionTableUsageEntry> entries =
+        reader.readFunctionTableUsages(snapshotDirectory());
+
+    assertEquals(
+        List.of(
+            new FunctionTableUsageEntry(
+                new ObjectKey("testdb", "My/Schema", "f"),
+                "p integer",
+                "abc",
+                "analyzed",
+                "",
+                List.of(
+                    new UsedTable("sample", "employee", "", List.of(), List.of("R", "U")),
+                    new UsedTable(
+                        "", "project", "search_path", List.of("sample", "other"), List.of("D"))),
+                List.of("EXECUTE"),
+                true,
+                false),
+            new FunctionTableUsageEntry(
+                new ObjectKey("testdb", "My/Schema", "py"),
+                "",
+                "",
+                "unsupported_language",
+                "plpython3u",
+                List.of(),
+                List.of(),
+                false,
+                false)),
+        entries);
+  }
+
+  @Test
+  @DisplayName("readFunctionTableUsages: DB名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなく、ファイルの中の値を使う")
+  void usesDatabaseNameInFile() throws IOException {
+    write(
+        "insights/my~3Adb/sample/functionTableUsages.json",
+        "{\"formatVersion\":1,\"database\":\"my:db\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"c\"}]}");
+
+    assertEquals(
+        List.of(new ObjectKey("my:db", "sample", "py")),
+        reader.readFunctionTableUsages(snapshotDirectory()).stream()
+            .map(FunctionTableUsageEntry::key)
+            .toList());
+  }
+
+  @Test
+  @DisplayName("readFunctionTableUsages: 参考情報のディレクトリ・ファイルが無い場合は0件とする（--previewを付けずに出力した場合）")
+  void returnsEmptyFunctionTableUsagesWhenMissing() throws IOException {
+    assertTrue(reader.readFunctionTableUsages(snapshotDirectory()).isEmpty());
+
+    Files.createDirectories(outputBaseDir.resolve("insights").resolve("testdb").resolve("sample"));
+    write("insights/testdb/viewpoints.json", "{\"formatVersion\":1,\"viewpoints\":[]}");
+
+    assertTrue(reader.readFunctionTableUsages(snapshotDirectory()).isEmpty());
+  }
+
+  @Test
+  @DisplayName("readFunctionTableUsages: 対応していない新しい形式のバージョンは、MCPサーバーの更新を促す誤りとする")
+  void rejectsNewerFunctionTableUsagesFormat() throws IOException {
+    write(
+        "insights/testdb/sample/functionTableUsages.json",
+        "{\"formatVersion\":2,\"schema\":\"sample\",\"functions\":[]}");
+
+    final UserCorrectableException e =
+        assertThrows(
+            UserCorrectableException.class,
+            () -> reader.readFunctionTableUsages(snapshotDirectory()));
+    assertTrue(e.getMessage().contains("formatVersion=2"), e.getMessage());
   }
 }

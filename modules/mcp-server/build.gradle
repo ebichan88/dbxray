@@ -42,6 +42,9 @@ test {
     systemProperty 'mcpServerJar', tasks.named('shadowJar').get().archiveFile.get().asFile.absolutePath
     // ベースライン（cliが出力したサンプルのスナップショット）を、形式の互換を確かめる契約テストの入力にする
     systemProperty 'sampleSnapshotDir', rootProject.file('docs/sample/postgres/output/snapshot').absolutePath
+    // --previewで変わる・増えるファイルだけを置いたベースライン。参考情報はスナップショットのディレクトリの親の兄弟から読むため、
+    // 実在しないsnapshotディレクトリを指定して、その親（差分のベースライン）のinsightsを読ませる
+    systemProperty 'samplePreviewSnapshotDir', rootProject.file('docs/sample/postgres/output-preview/snapshot').absolutePath
     finalizedBy jacocoTestReport
 }
 
