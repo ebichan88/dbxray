@@ -62,6 +62,30 @@ public final class ExportBaseline {
     }
   }
 
+  /**
+   * プレビューの機能を有効にした出力を、既定のベースラインに差分のベースラインを重ねたものと比べるメソッド<br>
+   * 差分のベースラインには、プレビューの機能で内容が変わる・増えるファイルだけを置く（既定の出力と重複して持たないため）
+   *
+   * @param baseline 既定（プレビューの機能を有効にしない）のベースラインのディレクトリ
+   * @param overlay プレビューの機能で変わる・増えるファイルだけを置いたディレクトリ
+   * @param outputDir 出力先のディレクトリ
+   */
+  public static void assertMatches(Path baseline, Path overlay, Path outputDir) {
+    final List<Path> expectedFiles =
+        Stream.concat(listFiles(baseline).stream(), listFiles(overlay).stream())
+            .distinct()
+            .sorted()
+            .toList();
+    assertEquals(expectedFiles, listFiles(outputDir), "出力されるファイルの一覧");
+    for (final Path file : expectedFiles) {
+      final Path expected =
+          Files.isRegularFile(overlay.resolve(file))
+              ? overlay.resolve(file)
+              : baseline.resolve(file);
+      assertEquals(read(expected), read(outputDir.resolve(file)), "ファイルの内容: " + file);
+    }
+  }
+
   private static List<Path> listFiles(Path directory) {
     try (Stream<Path> paths = Files.walk(directory)) {
       return paths.filter(Files::isRegularFile).map(directory::relativize).sorted().toList();

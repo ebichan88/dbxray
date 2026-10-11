@@ -28,6 +28,9 @@ class SampleDatabaseExportIT {
   /** ベースライン（verifyスキルの手順で出力したもの）。テストの作業ディレクトリはmodules/cli/のため、リポジトリルートのdocsは{@code ../../}で参照する */
   private static final Path BASELINE = Path.of("../../docs/sample/postgres/output");
 
+  /** {@code --preview}で変わる・増えるファイルだけを置いた差分のベースライン（verifyスキルの手順で出力したもの） */
+  private static final Path PREVIEW_BASELINE = Path.of("../../docs/sample/postgres/output-preview");
+
   /** verifyスキルの手順で指定しているサイドカーYAML */
   private static final String ANNOTATION_PATH = "../../docs/sample/postgres/annotations.sample.yml";
 
@@ -41,6 +44,17 @@ class SampleDatabaseExportIT {
     controller().execute(request);
 
     ExportBaseline.assertMatches(BASELINE, outputDir);
+  }
+
+  @Test
+  @DisplayName("--preview: 関数の定義書・参考情報が差分のベースラインと一致し、それ以外（スナップショットを含む）は既定の出力と同じ")
+  void testPreviewExportMatchesBaseline(@TempDir Path outputDir) {
+    final ExportSchemaRequest request =
+        properties(outputDir, "").toExportSchemaRequest(false, true);
+
+    controller().execute(request);
+
+    ExportBaseline.assertMatches(BASELINE, PREVIEW_BASELINE, outputDir);
   }
 
   @Test
