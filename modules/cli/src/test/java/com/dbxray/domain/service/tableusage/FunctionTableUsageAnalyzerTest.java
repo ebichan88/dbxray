@@ -190,6 +190,36 @@ class FunctionTableUsageAnalyzerTest {
             "SELECT * FROM employee;",
             "(search_path).employee:R{sample,other}"),
         pg(
+            "search_pathが空の文字列なら出力対象のスキーマが無いため載せない",
+            " SET search_path TO ''\n",
+            "SELECT * FROM employee;",
+            "-"),
+        pg(
+            "search_pathがDEFAULTなら指定が無いものとして候補を持つ",
+            " SET search_path TO DEFAULT\n",
+            "SELECT * FROM employee;",
+            "(search_path).employee:R{sample,other}"),
+        pg(
+            "本体の中のSET文は読まず、見出しの指定で決める",
+            " SET search_path TO 'sample'\n",
+            "SET LOCAL search_path TO 'other'; SELECT * FROM employee;",
+            "sample.employee:R"),
+        pg(
+            "見出しに指定が無ければ、本体の中のSET文があっても候補を持つ",
+            "",
+            "SET search_path TO 'other'; SELECT * FROM employee;",
+            "(search_path).employee:R{sample,other}"),
+        pg(
+            "set_configで変数を渡しても読まず、候補を持つ（動的SQLとしない）",
+            "",
+            "PERFORM set_config('search_path', v_schema, true); SELECT * FROM employee;",
+            "(search_path).employee:R{sample,other}"),
+        pg(
+            "EXECUTEで組み立てたSET文は読まず、候補を持つ（動的SQL）",
+            "",
+            "EXECUTE 'SET search_path TO ' || v_schema; SELECT * FROM employee;",
+            "(search_path).employee:R{sample,other} [dyn EXECUTE]"),
+        pg(
             "ビュー・マテリアライズドビュー",
             "",
             "SELECT * FROM sample.employee_view, sample.project;",
