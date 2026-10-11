@@ -21,6 +21,12 @@ import com.dbxray.domain.model.table.TableKey;
 import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.table.TriggerEntity;
 import com.dbxray.domain.model.table.ViewReferenceEntity;
+import com.dbxray.domain.model.tableusage.CrudOperation;
+import com.dbxray.domain.model.tableusage.DynamicSqlKind;
+import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
+import com.dbxray.domain.model.tableusage.TableUsage;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.OutputObjectType;
 import com.dbxray.domain.service.writer.erdiagram.ErDiagramTemplates;
 import com.dbxray.domain.service.writer.objectlist.ObjectDefinitionTemplates;
@@ -33,10 +39,12 @@ import com.dbxray.testsupport.DiagramBoxesFixtures;
 import com.dbxray.testsupport.ExportTargetsFixtures;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -164,7 +172,38 @@ public class MarkdownInjectionTest {
                 + ObjectListTemplates.typeListLine(1, type));
     documents.put(
         "objectDefinition.functionFile",
-        () -> ObjectDefinitionTemplates.functionFile(function, BASE_INFO));
+        () ->
+            ObjectDefinitionTemplates.functionFile(
+                FunctionDefinitionContent.withoutTableUsage(function), BASE_INFO));
+    final TableEntity hostileTable =
+        new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.TABLE, HOSTILE);
+    final FunctionTableUsage tableUsage =
+        FunctionTableUsage.analyzed(
+            Arrays.stream(SchemaResolution.values())
+                .map(
+                    resolution ->
+                        new TableUsage(
+                            resolution == SchemaResolution.DETERMINED
+                                ? List.of(hostileTable)
+                                : List.of(hostileTable, hostileTable),
+                            resolution,
+                            Set.of(CrudOperation.READ)))
+                .toList(),
+            List.of(DynamicSqlKind.EXECUTE),
+            true,
+            true);
+    documents.put(
+        "objectDefinition.functionFile.tableUsage",
+        () ->
+            ObjectDefinitionTemplates.functionFile(
+                new FunctionDefinitionContent(function, tableUsage), BASE_INFO));
+    documents.put(
+        "objectDefinition.functionFile.unsupportedLanguage",
+        () ->
+            ObjectDefinitionTemplates.functionFile(
+                new FunctionDefinitionContent(
+                    function, FunctionTableUsage.unsupportedLanguage(HOSTILE)),
+                BASE_INFO));
     documents.put(
         "objectDefinition.sequenceFile",
         () -> ObjectDefinitionTemplates.sequenceFile(sequence, BASE_INFO));

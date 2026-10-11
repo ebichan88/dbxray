@@ -9,6 +9,7 @@ import com.dbxray.domain.service.snapshot.SnapshotDiff;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 /**
  * DB vs ドキュメントの差分検知（{@code --check}モード）のユースケースクラス<br>
@@ -52,8 +53,12 @@ public class CheckDocumentDiffUsecase {
     try {
       final ExportTargets targets =
           schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
+      // プレビューの機能はスナップショットを変えないため、差分検知では有効にしない
       schemaExportPipeline.export(
-          targets, List.of(snapshotSinkFactory.create(generatedDir)), request.chunkSize());
+          targets,
+          List.of(snapshotSinkFactory.create(generatedDir)),
+          request.chunkSize(),
+          Set.of());
       return snapshotDiff.compare(
           outputPathResolver.resolveSnapshotDirectory(generatedDir),
           outputPathResolver.resolveSnapshotDirectory(committedDir));

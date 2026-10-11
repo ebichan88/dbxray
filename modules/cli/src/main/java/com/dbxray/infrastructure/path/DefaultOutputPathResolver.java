@@ -165,6 +165,14 @@ public class DefaultOutputPathResolver implements OutputPathResolver {
         InsightLocations.viewpointsFile(root.baseInfo().dbName()));
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public Path resolveFunctionTableUsagesInsightFile(OutputRoot root, String schemaName) {
+    return within(
+        resolveInsightsDirectory(root.baseDir()),
+        InsightLocations.functionTableUsagesFile(root.baseInfo().dbName(), schemaName));
+  }
+
   /**
    * 起点のディレクトリから相対パスを解決し、起点の外を指さないことを確かめるメソッド
    *

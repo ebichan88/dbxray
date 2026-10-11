@@ -14,6 +14,7 @@ import com.dbxray.presentation.dto.ResultDto;
 import com.dbxray.presentation.type.ExitStatus;
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -71,7 +72,8 @@ public class ExportSchemaControllerTest {
         chunkSize,
         erDiagramMaxNodes,
         1,
-        rmDist);
+        rmDist,
+        Set.of());
   }
 
   private CheckDocumentDiffRequest checkDiffRequest(

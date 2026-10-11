@@ -1,6 +1,7 @@
 package com.dbxray.application;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.DatabaseEntity;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
@@ -22,12 +23,14 @@ import com.dbxray.domain.model.table.Triggers;
 import com.dbxray.domain.model.table.ViewReferences;
 import com.dbxray.domain.model.target.ConsistencyNotice;
 import com.dbxray.domain.model.target.ExportTargets;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.OutputObjectType;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.model.target.TableScope;
 import com.dbxray.domain.repository.CatalogRepository;
 import com.dbxray.domain.repository.SidecarRepository;
 import com.dbxray.domain.service.export.ExportSink;
+import com.dbxray.domain.service.tableusage.FunctionTableUsageAnalyzer;
 import com.dbxray.domain.service.target.ExportTargetConsistency;
 import com.dbxray.domain.service.target.ExportTargetConsistency.ResolvedForeignKeys;
 import jakarta.inject.Inject;
@@ -38,6 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -85,8 +89,8 @@ final class SchemaExportPipeline {
     final Sidecar sidecar = sidecarRepository.load(sidecarPath);
     final Annotations annotations = sidecar.annotations();
 
-    final BaseInfoEntity baseInfoEntity =
-        BaseInfoEntity.of(repository.selectDatabase(), LocalDate.now(clock));
+    final DatabaseEntity database = repository.selectDatabase();
+    final BaseInfoEntity baseInfoEntity = BaseInfoEntity.of(database, LocalDate.now(clock));
     final Tables tables = fetchTables(tableScope.schemaNames(), tableScope);
     if (tables.isEmpty()) {
       // 0件でも失敗にはしない（テーブルの無いスキーマもありうる）が、パターンの書き誤りや権限不足で
@@ -250,15 +254,23 @@ final class SchemaExportPipeline {
    * テーブルの詳細情報をスキーマ・チャンク単位で取得・書き出し・破棄する。最後に、取得の途中で数えた集計を書き出す。 どの形式で書き出す場合も取得処理は共通
    *
    * @param chunkSize 1回の取得でまとめて処理するテーブル数の上限。0以下の場合は分割しない
+   * @param previewFeatures 有効にするプレビューの機能
    */
-  void export(ExportTargets targets, List<ExportSink> sinks, int chunkSize) {
+  void export(
+      ExportTargets targets,
+      List<ExportSink> sinks,
+      int chunkSize,
+      Set<PreviewFeature> previewFeatures) {
     sinks.forEach(sink -> sink.writeOverview(targets));
 
     // 関数・プロシージャの個別出力。定義本体が大きくなり得るため、スキーマ単位で本体を取得・出力・破棄する
+    final boolean analyzeTableUsage = previewFeatures.contains(PreviewFeature.FUNCTION_TABLE_USAGE);
     targets
         .functions()
         .schemaNames()
-        .forEach(schemaName -> exportSchemaFunctionDefinitions(schemaName, targets, sinks));
+        .forEach(
+            schemaName ->
+                exportSchemaFunctionDefinitions(schemaName, targets, sinks, analyzeTableUsage));
 
     // カラム・インデックス・制約は、スキーマ内でさらにchunkSize件ずつに分割して取得・出力・破棄する。
     // これにより、テーブルが1スキーマに集中していても、同時にメモリ保持する詳細情報を最大chunkSize件分に抑える
@@ -282,11 +294,25 @@ final class SchemaExportPipeline {
         triggers.asList().size());
   }
 
-  /** 定義本体はスキーマ単位で取得・出力・破棄することで、同時にメモリ保持する定義本体を抑える */
+  /**
+   * 定義本体はスキーマ単位で取得・出力・破棄することで、同時にメモリ保持する定義本体を抑える
+   *
+   * @param analyzeTableUsage 定義本体から利用しているテーブルを抽出するか（プレビューの機能）
+   */
   private void exportSchemaFunctionDefinitions(
-      String schemaName, ExportTargets targets, List<ExportSink> sinks) {
+      String schemaName, ExportTargets targets, List<ExportSink> sinks, boolean analyzeTableUsage) {
     final List<FunctionEntity> functions = repository.selectFunctionDefList(List.of(schemaName));
-    sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, functions, targets.baseInfo()));
+    final Function<FunctionEntity, FunctionDefinitionContent> contentOf;
+    if (analyzeTableUsage) {
+      // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
+      final FunctionTableUsageAnalyzer analyzer =
+          FunctionTableUsageAnalyzer.of(targets.tables(), targets.baseInfo().dbms());
+      contentOf = function -> new FunctionDefinitionContent(function, analyzer.analyze(function));
+    } else {
+      contentOf = FunctionDefinitionContent::withoutTableUsage;
+    }
+    final List<FunctionDefinitionContent> contents = functions.stream().map(contentOf).toList();
+    sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, contents, targets.baseInfo()));
   }
 
   /**

@@ -1,8 +1,8 @@
 package com.dbxray.domain.service.export;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.target.ExportTargets;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.snapshot.SchemaSnapshotWriter;
@@ -51,11 +51,17 @@ public class SnapshotExportSinkFactory {
       snapshotWriter.writeTypes(targets.types(), outputRoot);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}<br>
+     * 利用しているテーブルは定義本体から抽出した参考値のため、スナップショットには含めない
+     */
     @Override
     public void writeFunctionDefinitions(
-        String schemaName, List<FunctionEntity> functions, BaseInfoEntity baseInfo) {
-      snapshotWriter.writeFunctions(schemaName, functions, new OutputRoot(outputBaseDir, baseInfo));
+        String schemaName, List<FunctionDefinitionContent> contents, BaseInfoEntity baseInfo) {
+      snapshotWriter.writeFunctions(
+          schemaName,
+          contents.stream().map(FunctionDefinitionContent::function).toList(),
+          new OutputRoot(outputBaseDir, baseInfo));
     }
 
     /**

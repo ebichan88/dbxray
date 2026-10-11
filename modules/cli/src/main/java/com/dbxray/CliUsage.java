@@ -33,6 +33,9 @@ final class CliUsage {
           --check              Check the differences between the database and the committed snapshot
                                (exit code 1 if differences are found)
           --rm-dist            Delete the output directory before writing (ignored with --check)
+          --preview            Enable preview features (no effect with --check). Their output may change
+                               without notice. Currently: functionTableUsage (tables used by each function
+                               and procedure, extracted from its definition)
           --config=<path>      Configuration file to load (default: conf/config.yml)
           --help               Show this help and exit
           --version            Show the version and exit

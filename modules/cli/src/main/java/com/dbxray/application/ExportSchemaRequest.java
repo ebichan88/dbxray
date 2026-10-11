@@ -1,5 +1,7 @@
 package com.dbxray.application;
 
+import java.util.Set;
+
 /**
  * DBドキュメント出力（通常実行）のユースケースへの入力をまとめたrecord<br>
  * エントリーポイント→コントローラー→ユースケースの3層を、分解・再構築を繰り返さずそのまま通過する
@@ -14,6 +16,7 @@ package com.dbxray.application;
  *     erDiagramMaxNodes}を超える場合は、超えない距離まで縮める
  * @param rmDist trueの場合、書き込みを開始する前に{@code outputPath}のベースディレクトリを 再帰的に削除する（{@code
  *     --rm-dist}）。削除されたテーブル等の残骸ファイルを残さずに再生成したい場合に指定する
+ * @param previewFeatures 有効にするプレビューの機能（{@code --preview}。指定しない場合は空）
  */
 public record ExportSchemaRequest(
     TargetSelection targetSelection,
@@ -22,4 +25,11 @@ public record ExportSchemaRequest(
     int chunkSize,
     int erDiagramMaxNodes,
     int erDiagramDistance,
-    boolean rmDist) {}
+    boolean rmDist,
+    Set<PreviewFeature> previewFeatures) {
+
+  /** プレビューの機能は変更不可な複製として保持する */
+  public ExportSchemaRequest {
+    previewFeatures = Set.copyOf(previewFeatures);
+  }
+}

@@ -83,6 +83,11 @@ public class ErDiagramWriterTest {
     public void deleteDirectory(Path directory) {
       // 何もしない
     }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      // 何もしない
+    }
   }
 
   private InMemoryFileRepository fileRepository;

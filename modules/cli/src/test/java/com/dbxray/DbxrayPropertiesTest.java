@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.dbxray.DbxrayProperties.SettingOverride;
 import com.dbxray.application.CheckDocumentDiffRequest;
 import com.dbxray.application.ExportSchemaRequest;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.config.InvalidConfigurationException;
 import com.dbxray.domain.model.table.TableEntity;
@@ -32,7 +33,7 @@ public class DbxrayPropertiesTest {
   }
 
   private static ExportSchemaRequest request(String yaml) {
-    return DbxrayProperties.of(config(yaml)).toExportSchemaRequest(false);
+    return DbxrayProperties.of(config(yaml)).toExportSchemaRequest(false, false);
   }
 
   private static InvalidConfigurationException error(String yaml) {
@@ -104,7 +105,7 @@ public class DbxrayPropertiesTest {
                       erDiagramDistance: 2
                     annotations: " conf/annotations.yml "
                     """))
-            .toExportSchemaRequest(true);
+            .toExportSchemaRequest(true, false);
 
     assertEquals(List.of("sample"), request.targetSelection().tableScope().schemaNames());
     assertFalse(request.targetSelection().tableScope().matches(table("sample", "tmp_work")));
@@ -117,6 +118,17 @@ public class DbxrayPropertiesTest {
         request.targetSelection().outputObjectTypes());
     assertEquals("conf/annotations.yml", request.sidecarPath());
     assertTrue(request.rmDist());
+    assertEquals(Set.of(), request.previewFeatures());
+  }
+
+  @Test
+  @DisplayName("toExportSchemaRequest: --preview指定時は、プレビューの機能をすべて有効にする")
+  void testToExportSchemaRequestWithPreview() {
+    ExportSchemaRequest request =
+        DbxrayProperties.of(config("output:\n  path: ./docs/db\n"))
+            .toExportSchemaRequest(false, true);
+
+    assertEquals(EnumSet.allOf(PreviewFeature.class), request.previewFeatures());
   }
 
   @Test
@@ -292,7 +304,7 @@ public class DbxrayPropertiesTest {
     ExportSchemaRequest request =
         DbxrayProperties.of(
                 ConfigFile.load(Path.of("src", "main", "resources", "conf", "config.yml")))
-            .toExportSchemaRequest(false);
+            .toExportSchemaRequest(false, false);
 
     assertEquals(3000, request.chunkSize());
     assertEquals(80, request.erDiagramMaxNodes());
@@ -317,7 +329,7 @@ public class DbxrayPropertiesTest {
                 Map.of(
                     "output.path", new SettingOverride("./docs/prod", "--output-path"),
                     "target.tables", new SettingOverride("!tmp_*", "--table")))
-            .toExportSchemaRequest(false);
+            .toExportSchemaRequest(false, false);
 
     assertEquals(List.of("sample"), request.targetSelection().tableScope().schemaNames());
     assertFalse(request.targetSelection().tableScope().matches(table("sample", "tmp_work")));
@@ -333,7 +345,7 @@ public class DbxrayPropertiesTest {
                 config("target:\n  schemas: [other]\n"),
                 Map.of(
                     "target.schemas", new SettingOverride("alpha,beta, gamma ,,delta", "--schema")))
-            .toExportSchemaRequest(false);
+            .toExportSchemaRequest(false, false);
 
     assertEquals(
         List.of("alpha", "beta", "gamma", "delta"),
