@@ -1,5 +1,6 @@
 package com.dbxray.infrastructure.db.type;
 
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.repository.CatalogRepository;
 import com.dbxray.infrastructure.db.repository.OracleCatalogRepository;
 import com.dbxray.infrastructure.db.repository.PostgresCatalogRepository;
@@ -9,15 +10,17 @@ import java.util.Objects;
 /** Databaseの種別をもつ列挙型クラス */
 public enum DatabaseType {
   /** PostgreSQL */
-  POSTGRESQL("postgresql", PostgresCatalogRepository.class),
+  POSTGRESQL("postgresql", Dbms.POSTGRESQL, PostgresCatalogRepository.class),
   /** Oracle */
-  ORACLE("oracle", OracleCatalogRepository.class);
+  ORACLE("oracle", Dbms.ORACLE, OracleCatalogRepository.class);
 
   private final String name;
+  private final Dbms dbms;
   private final Class<? extends CatalogRepository> repositoryClass;
 
-  DatabaseType(String name, Class<? extends CatalogRepository> repositoryClass) {
+  DatabaseType(String name, Dbms dbms, Class<? extends CatalogRepository> repositoryClass) {
     this.name = name;
+    this.dbms = dbms;
     this.repositoryClass = repositoryClass;
   }
 
@@ -28,6 +31,15 @@ public enum DatabaseType {
    */
   public String getName() {
     return name;
+  }
+
+  /**
+   * Databaseに紐づくドメインのDBMS種別を返却する。
+   *
+   * @return DBMS種別を返却する。
+   */
+  public Dbms getDbms() {
+    return dbms;
   }
 
   /**

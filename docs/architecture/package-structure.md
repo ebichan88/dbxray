@@ -156,7 +156,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | `infrastructure.db` | `ConnectionSettings` | 検証済みのDB接続情報。設定ファイルの`database`の値を、環境変数`DBXRAY_DB_PASSWORD`のパスワード・CLI引数の値で上書きし、組み立てる時に検証する（`driver`・`url`は必須、未知のキー・設定ファイルの`password`は誤り） |
 | | `MyBatisSqlSessionFactories` | `ConnectionSettings`からMyBatisの`SqlSessionFactory`を生成する（状態を持たない。生成したものはDIコンテナで使い回す） |
 | | `DatabaseTypeDetector` | DBへ接続して接続先のDB種別を判定する。DBに接続できない場合・非対応のDBの場合は`UserCorrectableException`を投げる |
-| `infrastructure.db.type` | `DatabaseType` | DB種別（postgresql/oracle）とリポジトリ実装クラスの対応enum |
+| `infrastructure.db.type` | `DatabaseType` | DB種別（postgresql/oracle）と、ドメインのDBMS種別（`Dbms`）・リポジトリ実装クラスの対応enum |
 | `infrastructure.db.repository` | `AbstractCatalogRepository` | Oracle/Postgres共通のリポジトリ基底クラス。`SqlSessionFactory`をコンストラクタで受け取る。SQLの失敗は、どのSQLかを添えて包む（DBが返したエラーは原因として保持する） |
 | | `OracleCatalogRepository`, `PostgresCatalogRepository` | `CatalogRepository`のDB別実装。対応するSQLは`modules/cli/src/main/resources/mapper/{oracle,postgresql}/catalogMapper.xml` |
 | `infrastructure.db.repository.dto` | `DatabaseDto`, `TableDto`, `ColumnDto`, `ConstraintDto`, `ForeignKeyDto`, `IndexDto`, `TriggerDto`, `PartitionDto`, `ViewReferenceDto`, `FunctionDto`, `SequenceDto`, `TypeDto` | MyBatisのResultMap受け皿となるDTO（`toEntity()`で`domain.model`配下のエンティティへ変換される） |
