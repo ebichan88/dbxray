@@ -81,6 +81,14 @@ class TableUsageTest {
   }
 
   @Test
+  @DisplayName("FunctionTableUsage.notAnalyzable: 言語の名前を持てないUNSUPPORTED_LANGUAGEは渡せない")
+  void testNotAnalyzableRejectsUnsupportedLanguage() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FunctionTableUsage.notAnalyzable(TableUsageStatus.UNSUPPORTED_LANGUAGE));
+  }
+
+  @Test
   @DisplayName("FunctionTableUsage: 解析しなかった結果は表・動的SQLを持たず、NOT_ANALYZEDだけを抽出を行わなかったものとする")
   void testFactories() {
     assertFalse(FunctionTableUsage.notAnalyzed().isAttempted());

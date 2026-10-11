@@ -21,6 +21,7 @@ import com.dbxray.domain.model.table.TableKey;
 import com.dbxray.domain.model.table.Tables;
 import com.dbxray.domain.model.table.Triggers;
 import com.dbxray.domain.model.table.ViewReferences;
+import com.dbxray.domain.model.tableusage.FunctionTableUsage;
 import com.dbxray.domain.model.target.ConsistencyNotice;
 import com.dbxray.domain.model.target.ExportTargets;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
@@ -41,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -302,18 +304,15 @@ final class SchemaExportPipeline {
   private void exportSchemaFunctionDefinitions(
       String schemaName, ExportTargets targets, List<ExportSink> sinks, boolean analyzeTableUsage) {
     final List<FunctionEntity> functions = repository.selectFunctionDefList(List.of(schemaName));
-    final List<FunctionDefinitionContent> contents;
-    if (analyzeTableUsage) {
-      // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
-      final FunctionTableUsageAnalyzer analyzer =
-          FunctionTableUsageAnalyzer.of(targets.tables(), targets.dbms());
-      contents =
-          functions.stream()
-              .map(function -> new FunctionDefinitionContent(function, analyzer.analyze(function)))
-              .toList();
-    } else {
-      contents = functions.stream().map(FunctionDefinitionContent::withoutTableUsage).toList();
-    }
+    // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
+    final Function<FunctionEntity, FunctionTableUsage> usageOf =
+        analyzeTableUsage
+            ? FunctionTableUsageAnalyzer.of(targets.tables(), targets.dbms())::analyze
+            : function -> FunctionTableUsage.notAnalyzed();
+    final List<FunctionDefinitionContent> contents =
+        functions.stream()
+            .map(function -> new FunctionDefinitionContent(function, usageOf.apply(function)))
+            .toList();
     sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, contents, targets.baseInfo()));
   }
 

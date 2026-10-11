@@ -3,7 +3,6 @@ package com.dbxray.domain.service.tableusage;
 import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,15 +35,7 @@ record ScanCase(Dbms dbms, String sql, String expected) {
 
   /** 期待値に現れるテーブルの名前（変形テストで、コメント・文字列の中に書くDMLの対象に使う） */
   List<String> expectedNames() {
-    final String references = expected.contains("[") ? expected.split(" ?\\[")[0] : expected;
-    if (references.isBlank() || references.equals("-")) {
-      return List.of();
-    }
-    final List<String> names = new ArrayList<>();
-    for (final String item : references.split(", ")) {
-      names.add(item.substring(0, item.lastIndexOf(':')));
-    }
-    return names;
+    return ExpectedNotation.tableNames(expected);
   }
 
   @Override

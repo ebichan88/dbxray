@@ -126,8 +126,9 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `OutputRoot` | 出力先ベースディレクトリと基本情報の組を表す値オブジェクト（Writer・`OutputPathResolver`へそのまま渡す） |
 | `domain.service.tableusage` | `SqlLexer`, `SqlToken`, `SqlTokenKind` | 関数・プロシージャの定義本体を字句に分ける（DBごとのコメント・文字列・ドル引用符・`q'[...]'`の規則。正規表現を使わず1文字ずつ読み、閉じていない要素があっても例外にしない。正規表現を使わないことは`ArchitectureTest`が検査する） |
 | | `FunctionTableUsageAnalyzer` | 関数・プロシージャの定義本体から利用しているテーブルを抽出する入口（スキーマごとに生成する）。本体の切り出し・位置の判定の結果の名前を、出力対象のテーブルと照らして解決する（スキーマ修飾・`SET search_path`・Oracleの所有者／実行者権限） |
-| | `FunctionBodyLocator`, `PackageSubprograms` | 定義から解析する本体を切り出す（PostgreSQLはドル引用符の中身を字句に分け直す。Oracleはパッケージ本体の最上位のサブプログラムの範囲を`BEGIN`・`CASE`（文と式を区別する）と`END`の対応で求め、条件付きコンパイルの各分岐は分岐の前の状態から読み、オーバーロードを引数名で対応付ける。同じパッケージの字句を使い回す。仕様部の字句が閉じない場合は本体の始まりから分け直す） |
-| | `TableReferenceScanner` | 本体の字句から、テーブルを指す位置（`INSERT INTO`・`FROM`の並び・`JOIN`等）の名前と操作、動的SQLを拾う。完全な構文解析はせず、きっかけのキーワードと前後の字句で判定し、`;`で文の状態を戻す |
+| | `FunctionBodyLocator`, `PostgresBodyLocator`, `OracleBodyLocator`, `PackageSubprograms` | 定義から解析する本体を切り出す（`FunctionBodyLocator`がDBMSごとの実装を選ぶ。PostgreSQLはドル引用符の中身を字句に分け直す。Oracleはパッケージ本体の最上位のサブプログラムの範囲を`BEGIN`・`CASE`（文と式を区別する）と`END`の対応で求め、条件付きコンパイルの各分岐は分岐の前の状態から読み、オーバーロードを引数名で対応付ける。同じパッケージの字句を使い回す。仕様部の字句が閉じない場合は本体の始まりから分け直す） |
+| | `TableReferenceScanner` | 本体の字句から、テーブルを指す位置（`INSERT INTO`・`FROM`の並び・`JOIN`等）の名前と操作、動的SQLを拾う。完全な構文解析はせず、きっかけのキーワードと前後の字句で判定し、`;`で文の状態（`StatementState`）を作り直す |
+| | `SqlTokens` | 字句の列に対する、位置を指定した判定（キーワード・記号・名前）と`スキーマ.名前`の読み取り。範囲の外の位置は偽・nullにし、前後を覗く処理で位置の検査を繰り返さない |
 | | `SqlNames` | 字句からカタログでの名前を求める（引用符の無い名前はPostgreSQLは小文字・Oracleは大文字へ、ASCIIの英字だけ畳み込む） |
 | `domain.service.insight` | `InsightWriter` | 参考情報の書き込み（`snapshot`の兄弟の`insights/`へ。`--check`では使わない）。対象が無い場合はファイル自体を出力しない |
 | `domain.service.snapshot` | `SchemaSnapshotWriter` | スキーマのスナップショット（JSON Lines）の書き込み。テーブルはスキーマ単位のファイルへ1行ずつ追記する |

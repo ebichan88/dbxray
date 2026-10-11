@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** TableReferenceScanner のテーブルの位置・操作・動的SQLの判定のテスト（ケースの一覧はTableUsageMetamorphicTestでも使う） */
 class TableReferenceScannerTest {
@@ -103,6 +104,7 @@ class TableReferenceScannerTest {
     cases.add(pg("DELETE FROM a USING b WHERE a.id = b.id", "a:D, b:R"));
     cases.add(pg("DELETE FROM a USING b, c WHERE a.id = b.id", "a:D, b:R, c:R"));
     cases.add(pg("DELETE FROM a USING b JOIN c USING (id) WHERE a.id = b.id", "a:D, b:R, c:R"));
+    cases.add(pg("DELETE FROM a USING (SELECT id FROM b) s, c WHERE a.id = s.id", "a:D, b:R, c:R"));
     cases.add(pg("DELETE FROM t RETURNING id INTO v", "t:D"));
     cases.add(ora("DELETE FROM (SELECT * FROM t WHERE a = 1)", "T:D"));
     cases.add(ora("DELETE (SELECT * FROM t, u WHERE t.id = u.id)", "T:D, U:R"));
@@ -553,6 +555,48 @@ class TableReferenceScannerTest {
   @DisplayName("文の区切り: ;で状態を戻し、途中で終わる文・括弧の数が合わない文でも例外にせず次の文を読む")
   void testStatementBoundary(ScanCase scanCase) {
     assertScan(scanCase);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @ValueSource(
+      strings = {
+        "WHERE",
+        "GROUP",
+        "HAVING",
+        "WINDOW",
+        "ORDER",
+        "LIMIT",
+        "OFFSET",
+        "FETCH",
+        "FOR",
+        "UNION",
+        "INTERSECT",
+        "EXCEPT",
+        "MINUS",
+        "INTO",
+        "RETURNING",
+        "SET",
+        "DO",
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "END",
+        "LOOP",
+        "CONNECT",
+        "START",
+        "RESTART",
+        "CONTINUE",
+        "CASCADE",
+        "RESTRICT",
+        "SELECT",
+        "VALUES"
+      })
+  @DisplayName("FROMの並び: 同じ括弧の深さで句・区切りの語が現れたら、その後ろのカンマ区切りをテーブルとして読まない")
+  void testListTerminators(String word) {
+    final String sql = "SELECT * FROM a, b " + word + " x, c";
+
+    assertEquals("a:R, b:R", ScanCase.describe(ScanCase.scan(sql, Dbms.POSTGRESQL)));
+    assertEquals("A:R, B:R", ScanCase.describe(ScanCase.scan(sql, Dbms.ORACLE)));
   }
 
   @ParameterizedTest(name = "{0}")

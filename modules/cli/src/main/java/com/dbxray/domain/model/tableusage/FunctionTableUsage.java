@@ -36,10 +36,14 @@ public record FunctionTableUsage(
   /**
    * 解析しなかった結果を生成するメソッド
    *
-   * @param status 解析しなかった理由（{@link TableUsageStatus#UNSUPPORTED_LANGUAGE}は{@link
-   *     #unsupportedLanguage}を使う）
+   * @param status 解析しなかった理由
+   * @throws IllegalArgumentException {@link
+   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}の場合（言語の名前を持てる{@link #unsupportedLanguage}を使う）
    */
   public static FunctionTableUsage notAnalyzable(TableUsageStatus status) {
+    if (status == TableUsageStatus.UNSUPPORTED_LANGUAGE) {
+      throw new IllegalArgumentException("Use unsupportedLanguage for UNSUPPORTED_LANGUAGE");
+    }
     return new FunctionTableUsage(status, "", List.of(), List.of(), false, false);
   }
 

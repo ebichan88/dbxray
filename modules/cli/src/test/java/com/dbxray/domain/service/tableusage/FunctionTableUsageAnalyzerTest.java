@@ -102,14 +102,7 @@ class FunctionTableUsageAnalyzerTest {
 
     /** 期待値に現れるテーブルの名前（変形テストで、コメント・文字列の中に書くDMLの対象に使う） */
     List<String> expectedNames() {
-      final List<String> names = new ArrayList<>();
-      for (final String item : expected.split(" \\[")[0].split(", ")) {
-        if (item.contains(":")) {
-          final String name = item.substring(0, item.indexOf(':'));
-          names.add(name.startsWith("(") ? name.substring(name.indexOf(").") + 2) : name);
-        }
-      }
-      return names;
+      return ExpectedNotation.tableNames(expected);
     }
   }
 

@@ -26,11 +26,9 @@ final class TableReferenceScanner {
 
   /**
    * 同じ括弧の深さで現れると、FROM等のカンマ区切りのテーブルの並びを終える語。{@code ON}は含めない（JOINの条件の後にカンマで続くため）<br>
-   * 並びの後ろに続く句（{@code WHERE}〜{@code FETCH}・{@code FOR UPDATE}・{@code RETURNING}・{@code SET}・{@code
-   * DO}）、集合演算（{@code UNION}〜{@code MINUS}）、{@code INTO 変数}、分岐・ループ・ブロックの区切り（{@code WHEN}〜{@code
-   * LOOP}）、Oracleの階層問い合わせ（{@code CONNECT BY}・{@code START WITH}）、{@code TRUNCATE}の後ろの指定（{@code
-   * RESTART IDENTITY}・{@code CONTINUE IDENTITY}・{@code CASCADE}・{@code
-   * RESTRICT}）、次の問い合わせの始まり（{@code SELECT}・{@code VALUES}）
+   * 並びの後ろに続く句・演算子・分岐やループの区切り・{@code TRUNCATE}の指定の語を挙げている。{@code ;}を欠いた本体や制御構文の途中でも、
+   * その後ろのカンマ区切りをテーブルの並びとして読まないための歯止めで、語ごとの働きは{@code TableReferenceScannerTest}の {@code
+   * testListTerminators}で確かめている
    */
   private static final Set<String> LIST_TERMINATORS =
       Set.of(

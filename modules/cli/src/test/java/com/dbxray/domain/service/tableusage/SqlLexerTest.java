@@ -268,6 +268,17 @@ class SqlLexerTest {
   }
 
   @Test
+  @DisplayName("lineBreaks: LF・CRLF・CRのいずれも1つの改行として数え、範囲の外のLFを先読みしない")
+  void testLineBreaks() {
+    final String source = "a\nb\r\nc\rd";
+
+    assertEquals(3, SqlLexer.lineBreaks(source, 0, source.length(), source.length()));
+    assertEquals(1, SqlLexer.lineBreaks(source, 0, 3, source.length()));
+    // CRの直後のLFが上限の外なら、CRだけで1つ数える
+    assertEquals(2, SqlLexer.lineBreaks(source, 0, 4, 4));
+  }
+
+  @Test
   @DisplayName("SqlToken.isAnyWord: 引用符の無い単語だけを、ASCIIの大文字にしてキーワードの集合と比べる")
   void testIsAnyWord() {
     assertTrue(word("InSeRt").isAnyWord(Set.of("INSERT", "UPDATE")));

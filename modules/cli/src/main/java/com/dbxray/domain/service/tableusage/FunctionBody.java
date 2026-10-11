@@ -34,10 +34,14 @@ record FunctionBody(
   /**
    * 解析しない場合の結果を生成するメソッド
    *
-   * @param status 解析しない理由（{@link TableUsageStatus#UNSUPPORTED_LANGUAGE}は{@link
-   *     #unsupportedLanguage}を使う）
+   * @param status 解析しない理由
+   * @throws IllegalArgumentException {@link
+   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}の場合（言語の名前を持てる{@link #unsupportedLanguage}を使う）
    */
   static FunctionBody notAnalyzable(TableUsageStatus status) {
+    if (status == TableUsageStatus.UNSUPPORTED_LANGUAGE) {
+      throw new IllegalArgumentException("Use unsupportedLanguage for UNSUPPORTED_LANGUAGE");
+    }
     return new FunctionBody(status, "", List.of(), false, false, List.of(), false);
   }
 

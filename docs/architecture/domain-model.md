@@ -464,7 +464,7 @@ classDiagram
 | 参考情報のファイル名・配置（`snapshot`の兄弟。`--check`の対象外） | `InsightLocations` |
 | スナップショットの行をオブジェクトとして識別する名前（関数・プロシージャは引数を含む） | `SnapshotKind.identify` |
 | 関数・プロシージャの定義本体の字句の規則（DBごとのコメント・文字列・ドル引用符・`q'[...]'`。閉じていない要素は例外にせず不完全とする） | `SqlLexer` |
-| 定義から解析する本体の切り出し（PostgreSQLはドル引用符の中身・SQL標準の本体、Oracleはパッケージ本体の最上位のサブプログラムの範囲とオーバーロードの対応付け） | `FunctionBodyLocator` / `PackageSubprograms` |
+| 定義から解析する本体の切り出し（PostgreSQLはドル引用符の中身・SQL標準の本体、Oracleはパッケージ本体の最上位のサブプログラムの範囲とオーバーロードの対応付け） | `FunctionBodyLocator`（`PostgresBodyLocator` / `OracleBodyLocator`） / `PackageSubprograms` |
 | テーブルを指す位置と操作（C・R・U・D）・動的SQLの判定 | `TableReferenceScanner` |
 | 利用しているテーブルの名前の解決（スキーマが決まる条件・候補・出力対象との照合）と行の並び | `FunctionTableUsageAnalyzer` |
 
