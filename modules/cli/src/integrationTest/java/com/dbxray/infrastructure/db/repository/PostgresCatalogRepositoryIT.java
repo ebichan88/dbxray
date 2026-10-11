@@ -3,6 +3,7 @@ package com.dbxray.infrastructure.db.repository;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.DatabaseEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
@@ -47,7 +48,7 @@ class PostgresCatalogRepositoryIT {
   @DisplayName("selectDatabase: DB名・RDBMS名・メジャーバージョンを取得する")
   void testSelectDatabase() {
     assertEquals(
-        new DatabaseEntity(SampleDatabase.DATABASE_NAME, "PostgreSQL", 16),
+        new DatabaseEntity(SampleDatabase.DATABASE_NAME, Dbms.POSTGRESQL, 16),
         repository.selectDatabase());
   }
 

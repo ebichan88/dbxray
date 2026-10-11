@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.Functions;
@@ -41,7 +42,7 @@ import org.junit.jupiter.api.Test;
 class DatabaseMetricsTest {
 
   private static final BaseInfoEntity BASE_INFO =
-      new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.EPOCH);
+      new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
 
   private static final TableEntity EMPLOYEE = table("hr", "employee", "社員", TableType.TABLE, "");
   private static final TableEntity DEPT = table("hr", "dept", "", TableType.TABLE, "");

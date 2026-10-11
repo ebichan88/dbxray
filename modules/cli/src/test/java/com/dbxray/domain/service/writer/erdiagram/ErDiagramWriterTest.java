@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer.erdiagram;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.relation.NodeLimit;
@@ -98,7 +99,7 @@ public class ErDiagramWriterTest {
   }
 
   private BaseInfoEntity baseInfo() {
-    return new BaseInfoEntity("testdb", "pg", 16, LocalDate.of(2026, 9, 23));
+    return new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 23));
   }
 
   private OutputRoot outputRoot() {
