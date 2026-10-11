@@ -11,7 +11,9 @@ import java.util.List;
  * {@code pg_get_functiondef}は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直す。 SQL標準の本体（{@code BEGIN
  * ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、最上位の{@code BEGIN ATOMIC}・{@code
  * RETURN}から終わりまでとする。{@code begin}・{@code return}は予約語でなく、関数名（{@code
- * pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない
+ * pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない<br>
+ * {@code search_path}は見出しの{@code SET search_path}（関数の属性）だけを読む。本体の中の{@code SET}文・{@code
+ * set_config('search_path', …)}・{@code EXECUTE}で組み立てたSET文（変数でスキーマを渡す場合を含む）は、本体を切り出した後の字句のため読まない
  */
 final class PostgresBodyLocator implements FunctionBodyLocator {
 
@@ -72,12 +74,18 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
   /**
    * {@code SET search_path TO 'a', 'b'}のスキーマの並びを読むメソッド<br>
    * {@code pg_get_functiondef}は各スキーマを、大文字小文字を保った文字列にして並べる。手で書いた形（{@code SET search_path = a,
-   * "B"}）も同じ規則で読む
+   * "B"}）も同じ規則で読む。{@code FROM CURRENT}は作成時の値に展開されて保存されるため、{@code pg_get_functiondef}の定義には現れない。
+   * 手で書いた{@code FROM CURRENT}は値を読めないため、指定が無いものとする。空の文字列（{@code SET search_path TO
+   * ''}）は、出力対象のスキーマが無いものとして空のスキーマ名で持つ
    *
    * @param i {@code search_path}の次の位置（{@code TO}・{@code =}）
+   * @return スキーマの並び。{@code TO}・{@code =}で値を指定していない・{@code DEFAULT}の場合は空
    */
   private static List<String> readSearchPath(SqlTokens tokens, int i) {
     final List<String> schemas = new ArrayList<>();
+    if (!tokens.isWordAt(i, "TO") && !tokens.isSymbolAt(i, "=")) {
+      return schemas;
+    }
     int j = i + 1;
     while (tokens.at(j) != null) {
       final SqlToken value = tokens.at(j);

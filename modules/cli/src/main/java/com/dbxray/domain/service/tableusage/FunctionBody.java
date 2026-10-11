@@ -12,8 +12,8 @@ import java.util.List;
  *     （文の状態が本体をまたがないよう、本体ごとに走査するため）
  * @param incomplete 閉じていない文字列・コメント等があり、定義の終わりまで字句を読み取れなかったか
  * @param overloadsMerged 同名のサブプログラムの本体を区別できず、すべての本体を持つか（Oracle）
- * @param searchPath 関数の{@code SET search_path}に並ぶスキーマ（PostgreSQL。{@code $user}・{@code
- *     pg_catalog}・{@code pg_temp}を除く。指定が無ければ空）
+ * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（PostgreSQL。本体の中のSET文・{@code
+ *     set_config}は含まない。{@code $user}・{@code pg_catalog}・{@code pg_temp}を除く。指定が無ければ空）
  * @param invokerRights 実行者権限（{@code AUTHID CURRENT_USER}）か（Oracle）
  */
 record FunctionBody(

@@ -161,6 +161,51 @@ class FunctionBodyLocatorTest {
           "値の無いSET search_pathは指定が無いものとする");
     }
 
+    @Test
+    @DisplayName("locate: 空の文字列のSET search_pathは、空のスキーマ名で持つ（出力対象のスキーマが無い）")
+    void testEmptySearchPath() {
+      assertEquals(
+          List.of(""),
+          locate(
+                  "sql",
+                  "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path TO '' AS $$ SELECT 1"
+                      + " $$")
+              .searchPath());
+    }
+
+    @Test
+    @DisplayName("locate: TO・=の無いSET search_path（FROM CURRENT）は、後ろの語をスキーマとして読まない")
+    void testSearchPathFromCurrent() {
+      assertEquals(
+          List.of(),
+          locate(
+                  "sql",
+                  "CREATE FUNCTION f() RETURNS int SET search_path FROM CURRENT LANGUAGE sql AS $$"
+                      + " SELECT 1 $$")
+              .searchPath());
+    }
+
+    @Test
+    @DisplayName("locate: 本体の中のSET文・set_config・EXECUTEで組み立てたSET文は読まない")
+    void testSearchPathInBodyIsIgnored() {
+      assertEquals(
+          List.of("sample"),
+          locate(
+                  "plpgsql",
+                  "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql SET search_path TO 'sample' AS"
+                      + " $$ BEGIN SET LOCAL search_path TO 'other';"
+                      + " PERFORM set_config('search_path', v_schema, true);"
+                      + " EXECUTE 'SET search_path TO ' || v_schema; END $$")
+              .searchPath());
+      assertEquals(
+          List.of(),
+          locate(
+                  "plpgsql",
+                  "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql AS $$ BEGIN SET search_path"
+                      + " TO 'other'; END $$")
+              .searchPath());
+    }
+
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"c", "internal", "plpython3u", "plperl", "plv8", ""})
     @DisplayName("locate: 言語がsql・plpgsql以外は解析せず、言語名を返す")
