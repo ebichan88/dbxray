@@ -14,8 +14,8 @@ import java.util.Set;
 /**
  * 定義本体の字句から、テーブルを指す位置の名前と操作（C・R・U・D）、動的SQLを拾うクラス<br>
  * 完全な構文解析はせず、「この位置の名前はテーブルを指す」というきっかけのキーワード（{@code INSERT INTO}・{@code FROM}等）と、
- * その直前・直後の字句だけで判定する。{@code ;}で文の状態（括弧の深さ・MERGE/INSERTの対象・CTEの名前等）を戻すため、
- * 括弧の数が合わない文があっても次の文から読み直せる。字句を先頭から1回なめるだけで終える
+ * その直前・直後の字句だけで判定する。{@code ;}と最上位の{@code LOOP}（{@code FOR r IN 問い合わせ
+ * LOOP}）で文の状態（括弧の深さ・MERGE/INSERTの対象・CTEの名前等）を戻すため、 括弧の数が合わない文があっても次の文から読み直せる。字句を先頭から1回なめるだけで終える
  */
 final class TableReferenceScanner {
 
@@ -68,6 +68,15 @@ final class TableReferenceScanner {
   /** テーブルの名前の前に置ける語 */
   private static final Set<String> TABLE_MODIFIERS = Set.of("ONLY", "LATERAL");
 
+  /**
+   * 直前にあると、{@code EXECUTE}が動的SQLではなく権限の名前（{@code GRANT EXECUTE ON …}・{@code GRANT SELECT, EXECUTE
+   * ON …}）である語
+   */
+  private static final Set<String> PRIVILEGE_PREDECESSORS = Set.of("GRANT", "REVOKE", ",");
+
+  /** 括弧の直後にあると、括弧が副問い合わせ（括弧で囲んだJOINではない）であることを表す語 */
+  private static final Set<String> QUERY_STARTS = Set.of("SELECT", "WITH", "VALUES");
+
   /** DELETEの直後にあると、DELETEが対象を持たない（MERGEのDELETE）語 */
   private static final Set<String> MERGE_DELETE_SUCCESSORS = Set.of("WHERE", "WHEN");
 
@@ -84,6 +93,15 @@ final class TableReferenceScanner {
   private int mergeDepth;
   private int deleteDepth;
   private int multiInsertDepth;
+
+  /**
+   * 対象が副問い合わせのDML（Oracleの{@code UPDATE (SELECT … FROM t) SET …}等）の操作。その副問い合わせの最初の{@code
+   * FROM}のテーブルに付ける
+   */
+  private CrudOperation subqueryTargetOperation;
+
+  /** {@link #subqueryTargetOperation}の副問い合わせの括弧の深さ */
+  private int subqueryTargetDepth;
 
   /** {@code FROM}の後ろがテーブルでない文（カーソルを読む{@code FETCH}・{@code MOVE}、権限を外す{@code REVOKE … FROM ロール}）か */
   private boolean fromIsNotTable;
@@ -126,8 +144,10 @@ final class TableReferenceScanner {
         frames.pop();
       }
     } else if (token.isSymbol(",")) {
-      if (frame().listOperation != null) {
-        emit(nameAt(i + 1, frame().listOperation == CrudOperation.READ), frame().listOperation);
+      if (frame().listOperation == CrudOperation.READ) {
+        emit(readNameAt(i + 1), CrudOperation.READ);
+      } else if (frame().listOperation != null) {
+        emit(nameAt(i + 1, false), frame().listOperation);
       }
     } else if (token.isName()) {
       visitName(i, token);
@@ -157,8 +177,13 @@ final class TableReferenceScanner {
       case "USING" -> onUsing(i);
       case "TRUNCATE" -> onTruncate(i, next);
       case "FROM" -> onFrom(i);
-      case "JOIN", "APPLY" -> emit(nameAt(i + 1, true), CrudOperation.READ);
+      case "JOIN", "APPLY" -> emit(readNameAt(i + 1), CrudOperation.READ);
       case "FETCH", "MOVE", "REVOKE" -> fromIsNotTable |= isStatementStart(i);
+      case "LOOP" -> {
+        if (depth() == 0) {
+          resetStatement();
+        }
+      }
       default -> {}
     }
   }
@@ -171,6 +196,7 @@ final class TableReferenceScanner {
     if (next.isWord("INTO")) {
       insertTarget = nameAt(i + 2, false);
       emit(insertTarget, CrudOperation.CREATE);
+      expectSubqueryTarget(i + 2, CrudOperation.CREATE);
     } else if (next.isWord("ALL") || next.isWord("FIRST")) {
       multiInsertDepth = depth();
     } else if (next.isSymbol("(") || next.isWord("VALUES") || next.isWord("DEFAULT")) {
@@ -197,6 +223,7 @@ final class TableReferenceScanner {
       emit(mergeTarget.isEmpty() ? insertTarget : mergeTarget, CrudOperation.UPDATE);
     } else {
       emit(nameAt(i + 1, false), CrudOperation.UPDATE);
+      expectSubqueryTarget(i + 1, CrudOperation.UPDATE);
     }
   }
 
@@ -210,7 +237,10 @@ final class TableReferenceScanner {
     }
     if (next != null && next.isWord("FROM")) {
       emit(nameAt(i + 2, false), CrudOperation.DELETE);
+      expectSubqueryTarget(i + 2, CrudOperation.DELETE);
       deleteDepth = depth();
+    } else if (isSubqueryAt(i + 1)) {
+      expectSubqueryTarget(i + 1, CrudOperation.DELETE);
     } else if (next != null
         && next.isName()
         && !(next.kind() == SqlTokenKind.WORD
@@ -261,7 +291,27 @@ final class TableReferenceScanner {
       return;
     }
     frame().listOperation = CrudOperation.READ;
-    emit(nameAt(i + 1, true), CrudOperation.READ);
+    if (subqueryTargetOperation != null && depth() == subqueryTargetDepth) {
+      emit(readNameAt(i + 1), subqueryTargetOperation);
+      subqueryTargetOperation = null;
+    } else {
+      emit(readNameAt(i + 1), CrudOperation.READ);
+    }
+  }
+
+  /** DMLの対象の位置が副問い合わせなら、その最初の{@code FROM}のテーブルに操作を付けるよう覚える */
+  private void expectSubqueryTarget(int index, CrudOperation operation) {
+    if (isSubqueryAt(index)) {
+      subqueryTargetOperation = operation;
+      subqueryTargetDepth = depth() + 1;
+    }
+  }
+
+  private boolean isSubqueryAt(int index) {
+    return isSymbolAt(index, "(")
+        && at(index + 1) != null
+        && at(index + 1).kind() == SqlTokenKind.WORD
+        && QUERY_STARTS.contains(AsciiCase.toUpper(at(index + 1).text()));
   }
 
   /**
@@ -317,13 +367,16 @@ final class TableReferenceScanner {
   }
 
   /**
-   * PostgreSQLの{@code EXECUTE}（{@code EXECUTE FUNCTION/PROCEDURE}はトリガーの定義の構文のため除く）、Oracleの{@code
-   * EXECUTE IMMEDIATE}・{@code OPEN … FOR 文字列}
+   * PostgreSQLの{@code EXECUTE}（{@code EXECUTE FUNCTION/PROCEDURE}はトリガーの定義の構文、{@code GRANT
+   * EXECUTE}等は権限の名前のため除く）、Oracleの{@code EXECUTE IMMEDIATE}・{@code OPEN … FOR 文字列}
    */
   private void detectDynamicSql(int i, SqlToken token, SqlToken next) {
     if (dbms == Dbms.POSTGRESQL) {
+      final SqlToken previous = at(i - 1);
       if (token.isWord("EXECUTE")
-          && !(next != null && (next.isWord("FUNCTION") || next.isWord("PROCEDURE")))) {
+          && !(next != null && (next.isWord("FUNCTION") || next.isWord("PROCEDURE")))
+          && !(previous != null
+              && PRIVILEGE_PREDECESSORS.contains(AsciiCase.toUpper(previous.text())))) {
         dynamicSql.add(DynamicSqlKind.EXECUTE);
       }
       return;
@@ -359,6 +412,22 @@ final class TableReferenceScanner {
     return source.kind() == SqlTokenKind.STRING
         || source.kind() == SqlTokenKind.PARAMETER
         || (source.isName() && !source.isWord("SELECT") && !source.isWord("WITH"));
+  }
+
+  /**
+   * 読み取りの位置（FROM・JOIN・FROMの並びのカンマの後）から名前の部品を読むメソッド<br>
+   * 括弧で囲んだJOIN（{@code FROM (a JOIN b ON …)}・{@code JOIN (b JOIN c ON …)}）は、括弧の中の先頭のテーブルを読む。
+   * 括弧の後が{@code SELECT}等なら副問い合わせのため空（中の{@code FROM}で拾う）
+   */
+  private List<SqlToken> readNameAt(int index) {
+    int j = index;
+    while (isSymbolAt(j, "(")) {
+      j++;
+    }
+    if (j > index && isSubqueryAt(j - 1)) {
+      return List.of();
+    }
+    return nameAt(j, true);
   }
 
   /**
@@ -461,6 +530,8 @@ final class TableReferenceScanner {
     mergeDepth = -1;
     deleteDepth = -1;
     multiInsertDepth = -1;
+    subqueryTargetOperation = null;
+    subqueryTargetDepth = -1;
     fromIsNotTable = false;
   }
 

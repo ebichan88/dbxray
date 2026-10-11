@@ -92,6 +92,32 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
+    @DisplayName("locate: 関数名・型名のbegin・return（.の直後）と、ATOMICの続かないBEGINは本体の区切りとしない")
+    void testBeginAndReturnAsNames() {
+      assertEquals(
+          "DELETE FROM t ;",
+          text(
+              locate(
+                  "sql",
+                  "CREATE OR REPLACE FUNCTION sample.begin()\n RETURNS void\n LANGUAGE sql\n"
+                      + "AS $function$DELETE FROM t;$function$\n")));
+      assertEquals(
+          "DELETE FROM t ;",
+          text(
+              locate(
+                  "plpgsql",
+                  "CREATE OR REPLACE FUNCTION sample.return(a sample.begin)\n RETURNS"
+                      + " sample.return\n LANGUAGE plpgsql\nAS $function$DELETE FROM t;$function$\n")));
+      assertEquals(
+          "BEGIN ATOMIC DELETE FROM t ; END",
+          text(
+              locate(
+                  "sql",
+                  "CREATE OR REPLACE PROCEDURE sample.begin()\n LANGUAGE sql\n"
+                      + "BEGIN ATOMIC\n DELETE FROM t;\nEND\n")));
+    }
+
+    @Test
     @DisplayName("locate: SET search_pathの並びを、$user・pg_catalog・pg_tempを除いて読む（文字列は大文字小文字を保つ）")
     void testSearchPath() {
       final FunctionBody body =
@@ -452,6 +478,42 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
+    @DisplayName("locate: 仕様部に閉じていない文字列がある（INVALIDの）パッケージも、本体の始まりから字句に分け直して切り出す")
+    void testUnterminatedStringInSpecification() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AUTHID CURRENT_USER AS
+            c CONSTANT VARCHAR2(10) := 'oops;
+            PROCEDURE p;
+          END pkg;
+
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p IS BEGIN DELETE FROM t; END p;
+          END pkg;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "", definition);
+
+      assertEquals(TableUsageStatus.ANALYZED, body.status());
+      assertEquals("BEGIN DELETE FROM t ;", text(body));
+      assertTrue(body.invokerRights(), "仕様部の見出しの権限はそのまま読む");
+      assertEquals(
+          TableUsageStatus.NO_DEFINITION,
+          locate("PKG.P", "", "CREATE OR REPLACE PACKAGE pkg AS c VARCHAR2(1) := 'x; END;\n\n")
+              .status(),
+          "本体が無ければ、従来どおりNO_DEFINITION");
+      assertEquals(
+          TableUsageStatus.NO_DEFINITION,
+          locate(
+                  "PKG.P",
+                  "",
+                  "CREATE OR REPLACE PACKAGE pkg AS c VARCHAR2(1) := 'x; END;\n\n"
+                      + "CREATE OR REPLACE TYPE ty AS OBJECT (a NUMBER);")
+              .status(),
+          "つなぎ目の後ろがパッケージ本体でなければ、NO_DEFINITION");
+    }
+
+    @Test
     @DisplayName("locate: パッケージのサブプログラムの呼び出し仕様は、引数名で決まれば言語名を返し、決まらなければPL/SQLの本体だけを持つ")
     void testPackageCallSpecification() {
       final String definition =
@@ -515,6 +577,119 @@ class FunctionBodyLocatorTest {
           "BEGIN NULL ; END ;",
           text(locate("P", "", "CREATE OR REPLACE PROCEDURE p IS BEGIN NULL; END;")));
       assertEquals("BEGIN RETURN g_count ;", text(locate("PKG.F1", "", PACKAGE)));
+    }
+
+    @Test
+    @DisplayName(
+        "locate: CASE式の直後のLOOP・IF（FORの範囲・WHILEの条件）をEND LOOP・END IFと誤らず、後ろのサブプログラムの範囲をずらさない")
+    void testCaseExpressionFollowedByLoop() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p1; PROCEDURE p2; PROCEDURE p3; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p1 IS BEGIN
+              FOR i IN 1 .. CASE WHEN g_big THEN 100 ELSE 10 END LOOP NULL; END LOOP;
+              DELETE FROM a;
+            END p1;
+            PROCEDURE p2 IS BEGIN
+              WHILE CASE WHEN v > 0 THEN TRUE ELSE FALSE END LOOP v := v - 1; END LOOP;
+              DELETE FROM b;
+            END p2;
+            PROCEDURE p3 IS BEGIN
+              CASE v WHEN 1 THEN x := CASE WHEN y THEN 1 END; ELSE NULL; END CASE;
+              DELETE FROM c;
+            END p3;
+          END;
+          """;
+
+      assertTrue(text(locate("PKG.P1", "", definition)).endsWith("DELETE FROM a ;"));
+      assertTrue(text(locate("PKG.P2", "", definition)).endsWith("DELETE FROM b ;"));
+      assertTrue(text(locate("PKG.P3", "", definition)).endsWith("DELETE FROM c ;"));
+      assertFalse(text(locate("PKG.P1", "", definition)).contains("DELETE FROM b"));
+    }
+
+    @Test
+    @DisplayName("locate: 列名のfunction・procedure（別名ASを続ける形を含む）をサブプログラムの見出しと誤らない")
+    void testColumnNamedFunction() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p1; PROCEDURE p2; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            CURSOR c IS SELECT e.function AS fn FROM t e;
+            PROCEDURE p1 IS BEGIN
+              SELECT e.function AS fn, e.procedure AS pr INTO v, w FROM t e;
+              SELECT function AS fn INTO v FROM t;
+              DELETE FROM a;
+            END p1;
+            PROCEDURE p2 IS BEGIN DELETE FROM b; END p2;
+          END;
+          """;
+
+      assertTrue(text(locate("PKG.P1", "", definition)).endsWith("DELETE FROM a ;"));
+      assertEquals("BEGIN DELETE FROM b ;", text(locate("PKG.P2", "", definition)));
+    }
+
+    @Test
+    @DisplayName("locate: 条件付きコンパイルの分岐ごとにBEGIN・サブプログラムを書き分けても、全分岐を範囲に含め、後ろの範囲をずらさない")
+    void testConditionalCompilation() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p1; PROCEDURE p2; PROCEDURE p3; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p1 IS
+            $IF $$new_api $THEN
+            BEGIN
+              DELETE FROM a;
+            $ELSIF $$old_api $THEN
+            BEGIN
+              DELETE FROM b;
+            $ELSE
+            BEGIN
+              IF x THEN DELETE FROM c;
+            $END
+              DELETE FROM d;
+            $IF $$new_api $THEN END IF; $END
+            END p1;
+            $IF $$v12 $THEN
+            PROCEDURE p2 IS BEGIN DELETE FROM e; END p2;
+            $ELSE
+            PROCEDURE p2 IS BEGIN DELETE FROM f; END p2;
+            $END
+            $ERROR 'unsupported' $END
+            PROCEDURE p3 IS BEGIN DELETE FROM g; END p3;
+          END;
+          """;
+
+      final String p1 = text(locate("PKG.P1", "", definition));
+      assertTrue(
+          p1.contains("DELETE FROM a")
+              && p1.contains("DELETE FROM b")
+              && p1.contains("DELETE FROM c")
+              && p1.contains("DELETE FROM d"),
+          p1);
+      final FunctionBody p2 = locate("PKG.P2", "", definition);
+      assertEquals("BEGIN DELETE FROM e ; || BEGIN DELETE FROM f ;", text(p2));
+      assertTrue(p2.overloadsMerged());
+      assertEquals("BEGIN DELETE FROM g ;", text(locate("PKG.P3", "", definition)));
+    }
+
+    @Test
+    @DisplayName("locate: 引数の並びの後ろの括弧（RELIES_ON・PARALLEL_ENABLE・ACCESSIBLE BY）の中の名前を引数名にしない")
+    void testParenthesesAfterParameterList() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS FUNCTION f(a NUMBER) RETURN NUMBER; FUNCTION f(b NUMBER) RETURN NUMBER; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            FUNCTION f(a NUMBER) RETURN NUMBER RESULT_CACHE RELIES_ON (t1, t2)
+              PARALLEL_ENABLE (PARTITION p BY ANY) ACCESSIBLE BY (PROCEDURE other) IS
+            BEGIN DELETE FROM a; RETURN 1; END;
+            FUNCTION f(b NUMBER) RETURN NUMBER IS BEGIN DELETE FROM b; RETURN 1; END;
+          END;
+          """;
+
+      final FunctionBody first = locate("PKG.F", "A NUMBER", definition);
+      assertEquals("BEGIN DELETE FROM a ; RETURN 1 ;", text(first));
+      assertFalse(first.overloadsMerged());
     }
 
     @Test

@@ -57,6 +57,7 @@ class TableReferenceScannerTest {
     cases.add(ora("INSERT INTO t@remote VALUES (1)", "-"));
     cases.add(ora("INSERT INTO sample.t@remote.example.com VALUES (1)", "-"));
     cases.add(ora("INSERT INTO t VALUES v_rec", "T:C"));
+    cases.add(ora("INSERT INTO (SELECT a, b FROM t WHERE a > 0) VALUES (1, 2)", "T:C"));
     return cases;
   }
 
@@ -78,7 +79,12 @@ class TableReferenceScannerTest {
     cases.add(pg("SELECT * FROM t FOR NO KEY UPDATE", "t:R"));
     cases.add(pg("SELECT * FROM t FOR UPDATE SKIP LOCKED", "t:R"));
     cases.add(pg("UPDATE t SET (a, b) = (SELECT x, y FROM u) RETURNING a INTO v", "t:U, u:R"));
-    cases.add(ora("UPDATE (SELECT a FROM t) SET a = 1", "T:R"));
+    cases.add(ora("UPDATE (SELECT a FROM t) SET a = 1", "T:U"));
+    cases.add(
+        ora(
+            "UPDATE (SELECT a.x, b.y FROM a JOIN b ON a.id = b.id WHERE b.z IN (SELECT z FROM c))"
+                + " SET x = y",
+            "A:U, B:R, C:R"));
     cases.add(ora("UPDATE t SET x = 1 RETURNING id INTO v_id", "T:U"));
     cases.add(ora("UPDATE t SET ROW = v_rec WHERE id = v_rec.id", "T:U"));
     return cases;
@@ -98,6 +104,8 @@ class TableReferenceScannerTest {
     cases.add(pg("DELETE FROM a USING b, c WHERE a.id = b.id", "a:D, b:R, c:R"));
     cases.add(pg("DELETE FROM a USING b JOIN c USING (id) WHERE a.id = b.id", "a:D, b:R, c:R"));
     cases.add(pg("DELETE FROM t RETURNING id INTO v", "t:D"));
+    cases.add(ora("DELETE FROM (SELECT * FROM t WHERE a = 1)", "T:D"));
+    cases.add(ora("DELETE (SELECT * FROM t, u WHERE t.id = u.id)", "T:D, U:R"));
     cases.add(ora("DELETE employee WHERE id = 1", "EMPLOYEE:D"));
     cases.add(ora("DELETE FROM t x WHERE x.id = 1", "T:D"));
     cases.add(ora("DELETE sample.t", "SAMPLE.T:D"));
@@ -179,6 +187,16 @@ class TableReferenceScannerTest {
         both("SELECT * FROM a JOIN b ON a.id = b.id AND b.x IN (1, 2), c", "a:R, b:R, c:R"));
     cases.addAll(both("SELECT * FROM (SELECT * FROM a) x JOIN b ON 1 = 1", "a:R, b:R"));
     cases.addAll(both("SELECT * FROM (SELECT * FROM a) x, b", "a:R, b:R"));
+    cases.addAll(both("SELECT * FROM (a JOIN b ON a.id = b.id)", "a:R, b:R"));
+    cases.addAll(
+        both("SELECT * FROM x JOIN (b JOIN c ON b.id = c.id) ON x.id = b.id", "x:R, b:R, c:R"));
+    cases.addAll(both("SELECT * FROM ((a JOIN b ON 1 = 1) JOIN c ON 1 = 1)", "a:R, b:R, c:R"));
+    cases.addAll(both("SELECT * FROM x, (a JOIN b ON 1 = 1)", "x:R, a:R, b:R"));
+    cases.addAll(both("SELECT * FROM ((SELECT * FROM a) x JOIN b ON 1 = 1)", "a:R, b:R"));
+    cases.addAll(
+        both(
+            "SELECT * FROM x JOIN (WITH w AS (SELECT 1 FROM a) SELECT * FROM w) y ON 1 = 1",
+            "x:R, a:R"));
     cases.addAll(both("SELECT (SELECT count(*) FROM a) FROM b", "a:R, b:R"));
     cases.addAll(
         both(
@@ -260,6 +278,14 @@ class TableReferenceScannerTest {
     cases.addAll(
         both("WITH d AS (SELECT 1 FROM dual) SELECT * FROM d; SELECT * FROM d", "dual:R, d:R"));
     cases.addAll(both("INSERT INTO t WITH d AS (SELECT * FROM a) SELECT * FROM d", "t:C, a:R"));
+    cases.add(
+        pg(
+            "FOR r IN WITH d AS (SELECT * FROM a) SELECT * FROM d LOOP DELETE FROM d; END LOOP",
+            "a:R, d:D"));
+    cases.add(
+        ora(
+            "FOR r IN (WITH d AS (SELECT * FROM a) SELECT * FROM d) LOOP DELETE FROM d; END LOOP",
+            "A:R, D:D"));
     cases.addAll(both("WITH \"D\" AS (SELECT * FROM a) SELECT * FROM \"D\"", "a:R"));
     cases.addAll(
         both(
@@ -406,6 +432,9 @@ class TableReferenceScannerTest {
     cases.add(pg("-- EXECUTE 'x'\nSELECT 1", "-"));
     cases.add(pg("RAISE NOTICE 'EXECUTE x'", "-"));
     cases.add(pg("CREATE TRIGGER trg AFTER INSERT ON t FOR EACH ROW EXECUTE FUNCTION f()", "-"));
+    cases.add(pg("GRANT EXECUTE ON FUNCTION f(integer) TO u", "-"));
+    cases.add(pg("GRANT SELECT, EXECUTE ON ALL FUNCTIONS IN SCHEMA s TO u", "-"));
+    cases.add(pg("REVOKE EXECUTE ON PROCEDURE p() FROM PUBLIC", "-"));
     cases.add(
         pg(
             "EXECUTE 'x'; PERFORM dblink('c', 'y'); EXECUTE 'z'; INSERT INTO t VALUES (1)",
@@ -458,21 +487,21 @@ class TableReferenceScannerTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("insertCases")
-  @DisplayName("INSERT: INTO・ALL/FIRSTの対象をC、列名の並びの前の名前もテーブル、DBリンクは対象外")
+  @DisplayName("INSERT: INTO・ALL/FIRSTの対象（副問い合わせの対象は最初のFROMのテーブル）をC、列名の並びの前の名前もテーブル、DBリンクは対象外")
   void testInsert(ScanCase scanCase) {
     assertScan(scanCase);
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("updateCases")
-  @DisplayName("UPDATE: 対象をU、FROM・副問い合わせはR、FOR UPDATEの行ロックはUにしない")
+  @DisplayName("UPDATE: 対象（副問い合わせの対象は最初のFROMのテーブル）をU、FROM・副問い合わせはR、FOR UPDATEの行ロックはUにしない")
   void testUpdate(ScanCase scanCase) {
     assertScan(scanCase);
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("deleteCases")
-  @DisplayName("DELETE: FROM（OracleはFROM無しも）の対象をD、USINGの並びはR")
+  @DisplayName("DELETE: FROM（OracleはFROM無しも）の対象（副問い合わせの対象は最初のFROMのテーブル）をD、USINGの並びはR")
   void testDelete(ScanCase scanCase) {
     assertScan(scanCase);
   }
@@ -493,14 +522,14 @@ class TableReferenceScannerTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("selectCases")
-  @DisplayName("SELECT: FROMの並び・JOIN・APPLYをR、関数呼び出し・DBリンク・FROMの別の用法は対象外")
+  @DisplayName("SELECT: FROMの並び・JOIN（括弧で囲んだJOINを含む）・APPLYをR、関数呼び出し・DBリンク・FROMの別の用法は対象外")
   void testSelect(ScanCase scanCase) {
     assertScan(scanCase);
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("commonTableExpressionCases")
-  @DisplayName("CTE: 同じ文の中のスキーマ修飾の無い同名の参照はテーブルとしない")
+  @DisplayName("CTE: 同じ文の中のスキーマ修飾の無い同名の参照はテーブルとしない（FOR … LOOPの問い合わせのCTEはループの中に持ち越さない）")
   void testCommonTableExpression(ScanCase scanCase) {
     assertScan(scanCase);
   }
@@ -528,7 +557,7 @@ class TableReferenceScannerTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("dynamicSqlCases")
-  @DisplayName("動的SQL: DBごとの構文を最初に現れた順に1回ずつ拾い、format(だけ・コメント・文字列の中は数えない")
+  @DisplayName("動的SQL: DBごとの構文を最初に現れた順に1回ずつ拾い、format(だけ・コメント・文字列の中・権限の名前のEXECUTEは数えない")
   void testDynamicSql(ScanCase scanCase) {
     assertScan(scanCase);
   }

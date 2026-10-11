@@ -37,7 +37,9 @@ final class FunctionBodyLocator {
   /**
    * PostgreSQLの本体を切り出すメソッド<br>
    * {@code pg_get_functiondef}は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直す。 SQL標準の本体（{@code BEGIN
-   * ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、最上位の{@code BEGIN}・{@code RETURN}から終わりまでとする
+   * ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、最上位の{@code BEGIN ATOMIC}・{@code
+   * RETURN}から終わりまでとする。{@code begin}・{@code return}は予約語でなく、関数名（{@code
+   * pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない
    */
   private FunctionBody locatePostgres(FunctionEntity function) {
     final String language = function.languageName();
@@ -75,7 +77,12 @@ final class FunctionBodyLocator {
                 Dbms.POSTGRESQL);
         return FunctionBody.postgres(
             inner.tokens(), lexed.incomplete() || inner.incomplete(), searchPath);
-      } else if (token.isWord("BEGIN") || token.isWord("RETURN")) {
+      } else if (i > 0 && tokens.get(i - 1).isSymbol(".")) {
+        continue;
+      } else if ((token.isWord("BEGIN")
+              && i + 1 < tokens.size()
+              && tokens.get(i + 1).isWord("ATOMIC"))
+          || token.isWord("RETURN")) {
         return FunctionBody.postgres(
             tokens.subList(i, tokens.size()), lexed.incomplete(), searchPath);
       }
@@ -140,7 +147,7 @@ final class FunctionBodyLocator {
       return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
     }
     if (!definition.equals(cachedDefinition)) {
-      cachedOracleDefinition = OracleDefinition.parse(SqlLexer.lex(definition, Dbms.ORACLE));
+      cachedOracleDefinition = OracleDefinition.parse(definition);
       cachedDefinition = definition;
     }
     final OracleDefinition parsed = cachedOracleDefinition;
@@ -244,7 +251,11 @@ final class FunctionBodyLocator {
       List<Subprogram> subprograms,
       boolean invokerRights) {
 
-    private static OracleDefinition parse(SqlLexResult lexed) {
+    /** 仕様部とパッケージ本体のつなぎ目（取得時に、仕様部の後ろへ空行を挟み、{@code CREATE OR REPLACE}を補った本体を続ける） */
+    private static final String PACKAGE_BODY_SEPARATOR = "\n\nCREATE OR REPLACE ";
+
+    private static OracleDefinition parse(String definition) {
+      final SqlLexResult lexed = SqlLexer.lex(definition, Dbms.ORACLE);
       final List<SqlToken> tokens = lexed.tokens();
       int i = 0;
       while (i < tokens.size() && isCreatePrefix(tokens.get(i))) {
@@ -269,10 +280,35 @@ final class FunctionBodyLocator {
             lexed, PackageSubprograms.callSpecLanguage(tokens, is + 1), is + 1, invokerRights);
       }
       final int packageBody = findPackageBody(tokens, nameEnd);
-      if (packageBody < 0) {
-        // 本体の無いパッケージや、仕様部しか見えない権限では、パッケージ本体を取得できない
-        return notAnalyzable(lexed, TableUsageStatus.NO_DEFINITION);
+      if (packageBody >= 0) {
+        return packageBody(lexed, packageBody, invokerRights);
       }
+      if (lexed.incomplete()) {
+        // 仕様部に閉じていない文字列等がある（INVALIDの）場合は、字句が本体まで続いてしまうため、本体の始まりから字句に分け直す
+        final int bodyOffset = definition.indexOf(PACKAGE_BODY_SEPARATOR);
+        if (bodyOffset >= 0) {
+          final int from = bodyOffset + 2;
+          final SqlLexResult bodyLexed =
+              SqlLexer.lex(
+                  definition, from, definition.length(), lineAt(definition, from), Dbms.ORACLE);
+          final int bodyPackageBody = findPackageBody(bodyLexed.tokens(), 0);
+          if (bodyPackageBody >= 0) {
+            return packageBody(bodyLexed, bodyPackageBody, invokerRights);
+          }
+        }
+      }
+      // 本体の無いパッケージや、仕様部しか見えない権限では、パッケージ本体を取得できない
+      return notAnalyzable(lexed, TableUsageStatus.NO_DEFINITION);
+    }
+
+    /**
+     * パッケージ本体の見出しを読み、最上位のサブプログラムの範囲を求めるメソッド
+     *
+     * @param packageBody {@code PACKAGE BODY}の{@code PACKAGE}の位置
+     */
+    private static OracleDefinition packageBody(
+        SqlLexResult lexed, int packageBody, boolean invokerRights) {
+      final List<SqlToken> tokens = lexed.tokens();
       final int bodyNameEnd = skipName(tokens, packageBody + 2);
       if (isWordAt(tokens, bodyNameEnd, "WRAPPED")) {
         return notAnalyzable(lexed, TableUsageStatus.WRAPPED);
@@ -282,6 +318,17 @@ final class FunctionBodyLocator {
           bodyIs < 0 ? List.of() : PackageSubprograms.find(tokens, bodyIs + 1);
       return new OracleDefinition(
           lexed, TableUsageStatus.ANALYZED, "", 0, true, subprograms, invokerRights);
+    }
+
+    /** 位置の行番号（1始まり） */
+    private static int lineAt(String text, int position) {
+      int line = 1;
+      for (int i = 0; i < position; i++) {
+        if (text.charAt(i) == '\n') {
+          line++;
+        }
+      }
+      return line;
     }
 
     private static OracleDefinition standalone(

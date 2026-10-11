@@ -5,15 +5,43 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Oracleのパッケージ本体から、最上位で定義されたサブプログラムの範囲を求めるクラス<br>
  * {@code BEGIN}・{@code CASE}と{@code END}の対応をスタック（ヒープ上）で数える。{@code IF}・{@code LOOP}は{@code END
- * IF}・{@code END LOOP}で閉じるため数えない。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める
+ * IF}・{@code END LOOP}で閉じるため数えない。{@code CASE}は文と式を区別する（式は{@code END}だけで閉じ、直後に{@code LOOP}・{@code
+ * IF}が続いても{@code END LOOP}・{@code END IF}ではない）。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める。
+ * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態から読み、{@code
+ * $END}の後は最初の分岐を読み終えた状態を続ける（分岐ごとに{@code BEGIN}を書き分けても対応がずれないようにするため）。
+ * スタックは要素を共有する連結リストで持ち、分岐の時点の状態を複製せずに覚える
  */
 final class PackageSubprograms {
 
-  private PackageSubprograms() {}
+  /** 直後から宣言（サブプログラムの見出し）が始まる語。{@code WITH}はSQLの中のインラインのPL/SQL関数 */
+  private static final Set<String> DECLARATION_PREDECESSORS = Set.of("IS", "AS", "DECLARE", "WITH");
+
+  /** 直後から文が始まる語（ここに現れる{@code CASE}は{@code CASE}文） */
+  private static final Set<String> STATEMENT_PREDECESSORS =
+      Set.of("BEGIN", "THEN", "ELSE", "LOOP", "EXCEPTION");
+
+  private final List<SqlToken> tokens;
+  private final List<Subprogram> found = new ArrayList<>();
+
+  /** {@code END}で閉じるまとまりのスタック（先頭が最も内側。空はnull） */
+  private Node blocks;
+
+  private int parenDepth;
+
+  /** 宣言中のサブプログラムの見出し（{@code IS}・{@code AS}を読むまで）。無ければnull */
+  private Header header;
+
+  /** 読んでいる条件付きコンパイルのまとまり（先頭が最も内側） */
+  private final Deque<Conditional> conditionals = new ArrayDeque<>();
+
+  private PackageSubprograms(List<SqlToken> tokens) {
+    this.tokens = tokens;
+  }
 
   /**
    * パッケージ本体の最上位のサブプログラム1つ
@@ -41,94 +69,199 @@ final class PackageSubprograms {
    * @return 最上位のサブプログラム（現れた順）。{@code END}で閉じていないものは含まない
    */
   static List<Subprogram> find(List<SqlToken> tokens, int from) {
-    final List<Subprogram> found = new ArrayList<>();
-    final Deque<Block> blocks = new ArrayDeque<>();
-    Header header = null;
-    int parenDepth = 0;
+    final PackageSubprograms finder = new PackageSubprograms(tokens);
     for (int i = from; i < tokens.size(); i++) {
-      final SqlToken token = tokens.get(i);
-      if (token.isSymbol("(")) {
-        parenDepth++;
-      } else if (token.isSymbol(")")) {
-        parenDepth = Math.max(0, parenDepth - 1);
-      } else if (token.isSymbol(";")) {
-        // 括弧は文をまたがないため、数え違いを次の文へ持ち越さない
-        parenDepth = 0;
-        if (header != null && !header.language.isEmpty() && blocks.isEmpty()) {
-          found.add(header.toSubprogram(i));
-        }
+      i = finder.visit(i);
+    }
+    return finder.found;
+  }
+
+  /**
+   * 字句1つ分の状態の変化
+   *
+   * @return 次に読む字句の1つ前の位置（{@code END IF}等の後ろの語を読み飛ばす場合は{@code i + 1}）
+   */
+  private int visit(int i) {
+    final SqlToken token = tokens.get(i);
+    if (token.kind() == SqlTokenKind.DIRECTIVE) {
+      visitDirective(token);
+    } else if (token.isSymbol("(")) {
+      parenDepth++;
+      if (header != null && header.parameterListDepth < 0 && i == header.nameIndex + 1) {
+        header.parameterListDepth = parenDepth;
+      }
+    } else if (token.isSymbol(")")) {
+      if (header != null && parenDepth == header.parameterListDepth) {
+        header.parameterListClosed = true;
+      }
+      parenDepth = Math.max(0, parenDepth - 1);
+    } else if (token.isSymbol(";")) {
+      // 括弧は文をまたがないため、数え違いを次の文へ持ち越さない
+      parenDepth = 0;
+      if (header != null && !header.language.isEmpty() && blocks == null) {
+        found.add(header.toSubprogram(i));
+      }
+      header = null;
+    } else if (header != null) {
+      visitHeader(i, token);
+    } else if (token.kind() == SqlTokenKind.WORD && !isAfterDot(i)) {
+      return visitKeyword(i, token);
+    }
+    return i;
+  }
+
+  /** 見出しの中の字句（引数名と、見出しを閉じる{@code IS}・{@code AS}） */
+  private void visitHeader(int i, SqlToken token) {
+    if (!header.language.isEmpty()) {
+      return;
+    }
+    if (parenDepth == header.parameterListDepth
+        && !header.parameterListClosed
+        && token.isName()
+        && isParameterStart(i)) {
+      header.parameterNames.add(SqlNames.identifier(token, Dbms.ORACLE));
+    } else if (parenDepth == header.parenDepth && (token.isWord("IS") || token.isWord("AS"))) {
+      header.bodyStart = i + 1;
+      header.language = callSpecLanguage(tokens, i + 1);
+      if (header.language.isEmpty()) {
+        push(new Block(BlockKind.SUBPROGRAM, header, true));
         header = null;
-      } else if (header != null) {
-        if (!header.language.isEmpty()) {
-          continue;
-        }
-        if (parenDepth == header.parenDepth + 1 && token.isName() && isParameterStart(tokens, i)) {
-          header.parameterNames.add(SqlNames.identifier(token, Dbms.ORACLE));
-        } else if (parenDepth == header.parenDepth && (token.isWord("IS") || token.isWord("AS"))) {
-          header.bodyStart = i + 1;
-          header.language = callSpecLanguage(tokens, i + 1);
-          if (header.language.isEmpty()) {
-            blocks.push(new Block(header));
-            header = null;
-          }
-        }
-      } else if (token.kind() == SqlTokenKind.WORD) {
-        header = visitKeyword(tokens, i, token, blocks, found, parenDepth);
-        if (isWordAt(tokens, i, "END") && isEndOfIfOrLoopOrCase(tokens, i + 1)) {
-          // END IF・END LOOP・END CASEの後ろの語を、新しいIF・CASE等として読まない
-          i++;
-        }
       }
     }
-    return found;
   }
 
   /**
    * キーワード1つ分の状態の変化
    *
-   * @return サブプログラムの宣言が始まった場合はその見出し。それ以外はnull
+   * @return 次に読む字句の1つ前の位置
    */
-  private static Header visitKeyword(
-      List<SqlToken> tokens,
-      int i,
-      SqlToken token,
-      Deque<Block> blocks,
-      List<Subprogram> found,
-      int parenDepth) {
-    final SqlToken next = i + 1 < tokens.size() ? tokens.get(i + 1) : null;
+  private int visitKeyword(int i, SqlToken token) {
+    final SqlToken next = at(i + 1);
     switch (AsciiCase.toUpper(token.text())) {
       case "FUNCTION", "PROCEDURE" -> {
-        if (next != null && next.isName()) {
-          return new Header(SqlNames.identifier(next, Dbms.ORACLE), parenDepth);
+        if (isDeclarationStart(i)
+            && next != null
+            && next.isName()
+            && !next.isWord("IS")
+            && !next.isWord("AS")) {
+          header = new Header(SqlNames.identifier(next, Dbms.ORACLE), i + 1, parenDepth);
         }
       }
-      case "DECLARE" -> blocks.push(new Block(null));
+      case "DECLARE" -> push(new Block(BlockKind.BLOCK, null, true));
       case "BEGIN" -> {
-        if (!blocks.isEmpty() && blocks.peek().awaitingBegin) {
-          blocks.peek().awaitingBegin = false;
+        if (blocks != null && blocks.block.awaitingBegin) {
+          final Block started = blocks.block;
+          blocks = blocks.next;
+          push(new Block(started.kind, started.header, false));
         } else {
-          blocks.push(Block.started());
+          push(new Block(BlockKind.BLOCK, null, false));
         }
       }
-      case "CASE" -> blocks.push(Block.started());
+      case "CASE" ->
+          push(
+              new Block(
+                  isCaseStatement(i) ? BlockKind.CASE_STATEMENT : BlockKind.CASE_EXPRESSION,
+                  null,
+                  false));
       case "END" -> {
-        if (next != null && (next.isWord("IF") || next.isWord("LOOP"))) {
-          return null;
+        return visitEnd(i, next);
+      }
+      default -> {}
+    }
+    return i;
+  }
+
+  /**
+   * {@code END}の処理。{@code CASE}式は{@code END}だけで閉じる。それ以外は、{@code END IF}・{@code END
+   * LOOP}ならまとまりを閉じず、{@code END CASE}・{@code END}・{@code END ラベル}なら閉じる
+   *
+   * @return 次に読む字句の1つ前の位置（{@code END IF}・{@code END LOOP}・{@code END CASE}は後ろの語を読み飛ばす）
+   */
+  private int visitEnd(int i, SqlToken next) {
+    final boolean closesCaseExpression =
+        blocks != null && blocks.block.kind == BlockKind.CASE_EXPRESSION;
+    if (!closesCaseExpression && next != null && (next.isWord("IF") || next.isWord("LOOP"))) {
+      return i + 1;
+    }
+    if (blocks != null) {
+      final Block closed = blocks.block;
+      blocks = blocks.next;
+      if (closed.kind == BlockKind.SUBPROGRAM && blocks == null) {
+        found.add(closed.header.toSubprogram(i));
+      }
+    }
+    return !closesCaseExpression && next != null && next.isWord("CASE") ? i + 1 : i;
+  }
+
+  /** 条件付きコンパイルの選択指令（{@code $IF}・{@code $ELSIF}・{@code $ELSE}・{@code $END}・{@code $ERROR}） */
+  private void visitDirective(SqlToken token) {
+    switch (AsciiCase.toUpper(token.text())) {
+      case "$IF", "$ERROR" -> conditionals.push(new Conditional(blocks, parenDepth));
+      case "$ELSIF", "$ELSE" -> {
+        final Conditional conditional = conditionals.peek();
+        if (conditional != null) {
+          if (!conditional.firstBranchDone) {
+            conditional.firstBranchDone = true;
+            conditional.firstBranchBlocks = blocks;
+            conditional.firstBranchParenDepth = parenDepth;
+          }
+          blocks = conditional.startBlocks;
+          parenDepth = conditional.startParenDepth;
         }
-        final Block closed = blocks.poll();
-        if (closed != null && closed.header != null && blocks.isEmpty()) {
-          found.add(closed.header.toSubprogram(i));
+      }
+      case "$END" -> {
+        final Conditional conditional = conditionals.poll();
+        if (conditional != null && conditional.firstBranchDone) {
+          blocks = conditional.firstBranchBlocks;
+          parenDepth = conditional.firstBranchParenDepth;
         }
       }
       default -> {}
     }
-    return null;
+  }
+
+  /** サブプログラムの見出しを置ける位置（宣言部の先頭・前の宣言の後ろ）か */
+  private boolean isDeclarationStart(int i) {
+    final SqlToken previous = at(i - 1);
+    return previous == null
+        || previous.isSymbol(";")
+        || previous.kind() == SqlTokenKind.DIRECTIVE
+        || (previous.kind() == SqlTokenKind.WORD
+            && DECLARATION_PREDECESSORS.contains(AsciiCase.toUpper(previous.text())));
+  }
+
+  /** 文の始まりに現れた{@code CASE}は{@code CASE}文。{@code CASE}式の中の{@code CASE}は常に式 */
+  private boolean isCaseStatement(int i) {
+    if (parenDepth > 0 || (blocks != null && blocks.block.kind == BlockKind.CASE_EXPRESSION)) {
+      return false;
+    }
+    final SqlToken previous = at(i - 1);
+    return previous == null
+        || previous.isSymbol(";")
+        || previous.isSymbol(">>")
+        || previous.kind() == SqlTokenKind.DIRECTIVE
+        || (previous.kind() == SqlTokenKind.WORD
+            && STATEMENT_PREDECESSORS.contains(AsciiCase.toUpper(previous.text())));
   }
 
   /** 引数の並びの括弧の中で、{@code (}か{@code ,}の直後の名前は引数名 */
-  private static boolean isParameterStart(List<SqlToken> tokens, int i) {
+  private boolean isParameterStart(int i) {
     final SqlToken previous = tokens.get(i - 1);
     return previous.isSymbol("(") || previous.isSymbol(",");
+  }
+
+  private boolean isAfterDot(int i) {
+    final SqlToken previous = at(i - 1);
+    return previous != null && previous.isSymbol(".");
+  }
+
+  private void push(Block block) {
+    blocks = new Node(block, blocks);
+  }
+
+  /** 範囲の外はnull */
+  private SqlToken at(int index) {
+    return index >= 0 && index < tokens.size() ? tokens.get(index) : null;
   }
 
   /**
@@ -147,10 +280,6 @@ final class PackageSubprograms {
     return named ? SqlNames.identifier(tokens.get(i + 1), Dbms.ORACLE) : "LANGUAGE";
   }
 
-  private static boolean isEndOfIfOrLoopOrCase(List<SqlToken> tokens, int i) {
-    return isWordAt(tokens, i, "IF") || isWordAt(tokens, i, "LOOP") || isWordAt(tokens, i, "CASE");
-  }
-
   private static boolean isWordAt(List<SqlToken> tokens, int i, String keyword) {
     return i < tokens.size() && tokens.get(i).isWord(keyword);
   }
@@ -159,13 +288,25 @@ final class PackageSubprograms {
   private static final class Header {
 
     private final String name;
+
+    /** 名前の字句の位置（直後の括弧だけを引数の並びとするため） */
+    private final int nameIndex;
+
     private final int parenDepth;
     private final List<String> parameterNames = new ArrayList<>();
+
+    /** 引数の並びの括弧の深さ。引数の並びが無い（まだ読んでいない）場合は-1 */
+    private int parameterListDepth = -1;
+
+    /** 引数の並びを閉じたか（以降の{@code RELIES_ON (t)}等の括弧の中の名前を引数名にしない） */
+    private boolean parameterListClosed;
+
     private String language = "";
     private int bodyStart;
 
-    private Header(String name, int parenDepth) {
+    private Header(String name, int nameIndex, int parenDepth) {
       this.name = name;
+      this.nameIndex = nameIndex;
       this.parenDepth = parenDepth;
     }
 
@@ -174,24 +315,45 @@ final class PackageSubprograms {
     }
   }
 
-  /** {@code END}で閉じるまとまり（サブプログラム・{@code DECLARE}・{@code BEGIN}・{@code CASE}）1つ */
-  private static final class Block {
+  /** まとまりの種類 */
+  private enum BlockKind {
+    SUBPROGRAM,
+    /** {@code DECLARE}・{@code BEGIN}のブロック */
+    BLOCK,
+    CASE_STATEMENT,
+    CASE_EXPRESSION
+  }
 
-    /** サブプログラムなら見出し。それ以外はnull */
-    private final Header header;
+  /**
+   * {@code END}で閉じるまとまり1つ（分岐の時点の状態を共有するため、変更せずに置き換える）
+   *
+   * @param header サブプログラムなら見出し。それ以外はnull
+   * @param awaitingBegin 宣言部にいて、自身の{@code BEGIN}をまだ読んでいないか
+   */
+  private record Block(BlockKind kind, Header header, boolean awaitingBegin) {}
 
-    /** 宣言部にいて、自身の{@code BEGIN}をまだ読んでいないか */
-    private boolean awaitingBegin;
+  /** スタックの要素（後ろの要素を共有する連結リスト） */
+  private record Node(Block block, Node next) {}
 
-    private Block(Header header) {
-      this.header = header;
-      this.awaitingBegin = true;
-    }
+  /** 条件付きコンパイルのまとまり1つ */
+  private static final class Conditional {
 
-    private static Block started() {
-      final Block block = new Block(null);
-      block.awaitingBegin = false;
-      return block;
+    /** {@code $IF}の時点の状態（各分岐の読み始めの状態） */
+    private final Node startBlocks;
+
+    private final int startParenDepth;
+
+    /** 最初の分岐を読み終えたか */
+    private boolean firstBranchDone;
+
+    /** 最初の分岐を読み終えた時点の状態（{@code $END}の後に続ける状態） */
+    private Node firstBranchBlocks;
+
+    private int firstBranchParenDepth;
+
+    private Conditional(Node startBlocks, int startParenDepth) {
+      this.startBlocks = startBlocks;
+      this.startParenDepth = startParenDepth;
     }
   }
 }
