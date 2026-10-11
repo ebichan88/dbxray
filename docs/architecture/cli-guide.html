@@ -1836,7 +1836,7 @@ erDiagram
 <table>
   <thead><tr><th>DBMS</th><th>定義から決まる場合</th><th>決まらない場合（<code>SchemaResolution</code>）</th></tr></thead>
   <tbody>
-    <tr><td>PostgreSQL</td><td>関数に<code>SET search_path</code>が指定されていれば、その並びの先頭から、出力対象のテーブルがあるスキーマにする（<code>$user</code>・<code>pg_catalog</code>・<code>pg_temp</code>は除く）</td><td>指定が無ければ実行時の<code>search_path</code>で決まる（<code>search_path</code>）。指定がある場合に並びのどこにも無い名前は、出力対象外のものとして載せない</td></tr>
+    <tr><td>PostgreSQL</td><td>関数の属性として<code>SET search_path</code>が指定されていれば（<code>FROM CURRENT</code>は作成時の値に展開された形）、その並びの先頭から、出力対象のテーブルがあるスキーマにする（<code>$user</code>・<code>pg_catalog</code>・<code>pg_temp</code>は除く）。空（<code>''</code>）なら出力対象のスキーマが無く、<code>DEFAULT</code>は指定なしと同じ。本文中の<code>SET</code>文・<code>set_config</code>・<code>EXECUTE</code>で組み立てたSET文（変数でスキーマを渡す場合を含む）は読まない</td><td>属性の指定が無ければ（本文で変更していても）実行時の<code>search_path</code>で決まる（<code>search_path</code>）。指定がある場合に並びのどこにも無い名前は、出力対象外のものとして載せない</td></tr>
     <tr><td>Oracle</td><td>定義者権限（既定）は、所有者のスキーマにする</td><td>定義者権限で所有者のスキーマに無い名前は、シノニム経由の可能性がある（<code>synonym</code>。シノニムの参照先は照らさない）。実行者権限（<code>AUTHID CURRENT_USER</code>）は実行するユーザーで決まる（<code>current_user</code>）</td></tr>
   </tbody>
 </table>

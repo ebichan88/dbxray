@@ -424,7 +424,8 @@ classDiagram
 （`TableReferenceScanner`）→出力対象のテーブル（`Tables`）と照らす、の順に行う。
 
 - 拾った名前のうち、出力対象のテーブル（ビュー・マテリアライズドビューを含む）と一致したものだけを残す。CTEの名前・変数・DUAL等はここで落ちる。
-- スキーマ修飾の無い名前は、定義から決まる場合（PostgreSQLの関数の`SET search_path`、Oracleの定義者権限の所有者）だけスキーマを決める。
+- スキーマ修飾の無い名前は、定義から決まる場合（PostgreSQLの関数の属性の`SET search_path`、Oracleの定義者権限の所有者）だけスキーマを決める。
+  本文中の`SET`文・`set_config`・`EXECUTE`で組み立てたSET文は読まない（変数でスキーマを渡す場合も同じ。属性の指定が無ければ`search_path`の候補にする）。
   決まらない場合は同じ名前の出力対象のテーブル（候補）をすべて持ち、スキーマを決めつけない。何で決まるか（実行時の`search_path`・
   Oracleの実行者・Oracleの定義者権限で所有者のスキーマに無い名前のシノニム）を`SchemaResolution`で持つ（`TableUsage.resolution`）。
 - 解析しなかった場合は、理由を状態（`TableUsageStatus`。対象外の言語・定義が無い・wrap・サブプログラムが見つからない）で表す。
