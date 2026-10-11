@@ -2,8 +2,8 @@ package com.dbxray.domain.service.export;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
-import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.target.ExportTargets;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import java.util.List;
 
@@ -28,10 +28,10 @@ public interface ExportSink {
   /**
    * スキーマ単位で取得した関数・プロシージャ（定義本体を含む）を書き出すメソッド
    *
-   * @param functions 当該スキーマの関数・プロシージャ情報（定義本体を含む）のリスト
+   * @param contents 当該スキーマの関数・プロシージャ1つずつの出力内容（定義本体・利用しているテーブル）のリスト
    */
   void writeFunctionDefinitions(
-      String schemaName, List<FunctionEntity> functions, BaseInfoEntity baseInfo);
+      String schemaName, List<FunctionDefinitionContent> contents, BaseInfoEntity baseInfo);
 
   /**
    * スキーマ内のテーブル定義を書き出し始める前に呼ばれるメソッド<br>

@@ -124,4 +124,14 @@ public class LocalFileRepository implements FileRepository {
       throw new UncheckedIOException(e);
     }
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFile(Path filePath) {
+    try {
+      Files.deleteIfExists(filePath);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
 }

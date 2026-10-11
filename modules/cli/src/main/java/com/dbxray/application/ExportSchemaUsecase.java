@@ -11,6 +11,7 @@ import com.dbxray.domain.service.path.OutputPathResolver;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -52,6 +53,14 @@ public class ExportSchemaUsecase {
         schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
     final DiagramBoxes diagramBoxes =
         schemaExportPipeline.fetchDiagramBoxes(targets, request.chunkSize());
+    if (!request.previewFeatures().isEmpty()) {
+      logger.info(
+          "Preview features enabled. [features={}]",
+          request.previewFeatures().stream()
+              .sorted()
+              .map(PreviewFeature::id)
+              .collect(Collectors.joining(",")));
+    }
     if (request.rmDist()) {
       // 削除は一括取得（サイドカーの読み込みを含む）に成功してから行う。
       // 取得に失敗した場合に、既存の出力だけが削除されて何も残らない状態にしないため
@@ -68,7 +77,8 @@ public class ExportSchemaUsecase {
                 targets.foreignKeys()),
             snapshotSinkFactory.create(outputBaseDir),
             insightSinkFactory.create(outputBaseDir)),
-        request.chunkSize());
+        request.chunkSize(),
+        request.previewFeatures());
   }
 
   /**

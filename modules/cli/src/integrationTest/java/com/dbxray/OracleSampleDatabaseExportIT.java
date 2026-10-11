@@ -29,7 +29,7 @@ class OracleSampleDatabaseExportIT {
   @Test
   @DisplayName("通常実行: 出力がベースラインと一致する")
   void testExportMatchesBaseline(@TempDir Path outputDir) {
-    final ExportSchemaRequest request = properties(outputDir).toExportSchemaRequest(false);
+    final ExportSchemaRequest request = properties(outputDir).toExportSchemaRequest(false, false);
 
     controller().execute(request);
 

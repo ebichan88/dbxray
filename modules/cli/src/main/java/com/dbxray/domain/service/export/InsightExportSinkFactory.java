@@ -1,8 +1,8 @@
 package com.dbxray.domain.service.export;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.target.ExportTargets;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.model.viewpoint.ViewpointContent;
 import com.dbxray.domain.service.insight.InsightWriter;
@@ -56,15 +56,18 @@ public class InsightExportSinkFactory {
 
     /**
      * {@inheritDoc}<br>
-     * 観点の参考情報は{@link #writeOverview}だけで求まるため、何もしない
+     * 関数・プロシージャの利用しているテーブルの参考情報を、スキーマごとのファイルへ書き出す
      */
     @Override
     public void writeFunctionDefinitions(
-        String schemaName, List<FunctionEntity> functions, BaseInfoEntity baseInfo) {}
+        String schemaName, List<FunctionDefinitionContent> contents, BaseInfoEntity baseInfo) {
+      insightWriter.writeFunctionTableUsages(
+          schemaName, contents, new OutputRoot(outputBaseDir, baseInfo));
+    }
 
     /**
      * {@inheritDoc}<br>
-     * 観点の参考情報は{@link #writeOverview}だけで求まるため、何もしない
+     * テーブルの詳細情報を使う参考情報は無いため、何もしない
      */
     @Override
     public void writeTableDefinition(TableDefinitionContent content) {}

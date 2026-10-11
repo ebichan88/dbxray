@@ -35,7 +35,7 @@ class SampleDatabaseExportIT {
   @DisplayName("通常実行: 出力がベースラインと一致する（詳細情報の分割取得の単位を変えても出力は変わらない）")
   void testExportMatchesBaseline(String chunkSize, @TempDir Path outputDir) {
     final ExportSchemaRequest request =
-        properties(outputDir, chunkSize).toExportSchemaRequest(false);
+        properties(outputDir, chunkSize).toExportSchemaRequest(false, false);
 
     controller().execute(request);
 

@@ -6,8 +6,8 @@ import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.relation.NodeLimit;
-import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.target.ExportTargets;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.writer.erdiagram.ErDiagramWriter;
@@ -174,9 +174,9 @@ public class MarkdownExportSinkFactory {
     /** {@inheritDoc} */
     @Override
     public void writeFunctionDefinitions(
-        String schemaName, List<FunctionEntity> functions, BaseInfoEntity baseInfo) {
+        String schemaName, List<FunctionDefinitionContent> contents, BaseInfoEntity baseInfo) {
       final OutputRoot outputRoot = new OutputRoot(outputBaseDir, baseInfo);
-      functions.forEach(function -> objectListWriter.writeFunctionDefinition(function, outputRoot));
+      contents.forEach(content -> objectListWriter.writeFunctionDefinition(content, outputRoot));
     }
 
     /** {@inheritDoc} */

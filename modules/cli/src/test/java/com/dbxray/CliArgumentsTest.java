@@ -21,6 +21,15 @@ public class CliArgumentsTest {
     CliArguments args = CliArguments.parse(new String[] {});
     assertFalse(args.isCheck());
     assertFalse(args.isRmDist());
+    assertFalse(args.isPreview());
+  }
+
+  @Test
+  @DisplayName("parse: --previewが指定されている場合はisPreview=trueで、解釈できない引数としない")
+  void testParsePreview() {
+    CliArguments args = CliArguments.parse(new String[] {"--preview"});
+    assertTrue(args.isPreview());
+    assertDoesNotThrow(args::requireKnownArguments);
   }
 
   @Test

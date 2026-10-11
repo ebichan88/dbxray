@@ -143,4 +143,10 @@ public interface OutputPathResolver {
    * 例: {base}/insights/{DB名}/viewpoints.json
    */
   Path resolveViewpointsInsightFile(OutputRoot root);
+
+  /**
+   * 関数・プロシージャの利用しているテーブルの参考情報の出力ファイルパスを返す。<br>
+   * 例: {base}/insights/{DB名}/{スキーマ名}/functionTableUsages.json
+   */
+  Path resolveFunctionTableUsagesInsightFile(OutputRoot root, String schemaName);
 }
