@@ -38,8 +38,7 @@ public final class ExportTargetsFixtures {
       List<FunctionEntity> functions,
       Set<OutputObjectType> objectTypes) {
     return new ExportTargets(
-        new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.EPOCH),
-        Dbms.POSTGRESQL,
+        new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH),
         Tables.of(tables),
         ForeignKeys.of(foreignKeys),
         Triggers.of(List.of()),

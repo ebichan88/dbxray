@@ -3,6 +3,7 @@ package com.dbxray.infrastructure.path;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.snapshot.SnapshotKind;
 import com.dbxray.domain.model.table.TableEntity;
@@ -57,7 +58,7 @@ public class OutputPathContainmentTest {
       Map.of(
           OutputRoot.class,
           (base, name) ->
-              new OutputRoot(base, new BaseInfoEntity(name, "PostgreSQL", 16, LocalDate.EPOCH)),
+              new OutputRoot(base, new BaseInfoEntity(name, Dbms.POSTGRESQL, 16, LocalDate.EPOCH)),
           TableEntity.class,
           (base, name) -> new TableEntity(name, name, name, name, TableType.TABLE, ""),
           String.class,

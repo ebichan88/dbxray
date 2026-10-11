@@ -3,6 +3,7 @@ package com.dbxray.domain.model.snapshot;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.relation.RelationType;
@@ -26,7 +27,7 @@ import org.junit.jupiter.api.Test;
 public class TableSnapshotTest {
 
   private static final BaseInfoEntity BASE_INFO =
-      new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.of(2026, 9, 25));
+      new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 25));
 
   private TableDefinitionContent content(
       TableEntity table,

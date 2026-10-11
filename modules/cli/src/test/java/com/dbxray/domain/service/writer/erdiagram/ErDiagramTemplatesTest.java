@@ -4,6 +4,7 @@ import static com.dbxray.testsupport.MarkdownAssert.assertMarkdownEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.relation.ForeignKeyGroup;
@@ -26,7 +27,7 @@ import org.junit.jupiter.api.Test;
 public class ErDiagramTemplatesTest {
 
   private BaseInfoEntity baseInfo() {
-    return new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    return new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
   }
 
   private TableEntity newTable(String schema, String physical, String logical) {

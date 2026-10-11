@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeyGroup;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.table.TableEntity;
@@ -37,13 +38,14 @@ class InsightWriterTest {
   private static final Path OUT = Path.of("output");
   private static final Path INSIGHTS_DIR = OUT.resolve("insights").resolve("testdb");
   private static final BaseInfoEntity BASE_INFO =
-      new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.of(2026, 9, 25));
+      new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 25));
   private static final OutputRoot ROOT = new OutputRoot(OUT, BASE_INFO);
 
   /** 書き込み内容・ディレクトリ作成呼び出しをメモリ上に収集するFileRepositoryのスタブ */
   private static class InMemoryFileRepository implements FileRepository {
     private final Map<Path, String> files = new LinkedHashMap<>();
     private final List<Path> createdDirectories = new ArrayList<>();
+    private final List<Path> deletedFiles = new ArrayList<>();
 
     @Override
     public void writeFile(Path filePath, List<String> contents) {
@@ -88,6 +90,11 @@ class InsightWriterTest {
     @Override
     public void deleteDirectory(Path directory) {
       // 何もしない
+    }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      deletedFiles.add(filePath);
     }
   }
 
@@ -184,7 +191,7 @@ class InsightWriterTest {
         ROOT);
 
     assertEquals(
-        "{\"formatVersion\":1,\"schema\":\"sample\",\"functions\":["
+        "{\"formatVersion\":1,\"database\":\"testdb\",\"schema\":\"sample\",\"functions\":["
             + "{\"name\":\"raise_salary\",\"arguments\":\"p_id integer\","
             + "\"definitionHash\":\"a99f4c7a268ec9a9036157c2e7466dc7483aca400f7407ea3db9a1ed97784fe3\","
             + "\"status\":\"analyzed\","
@@ -199,13 +206,80 @@ class InsightWriterTest {
   }
 
   @Test
-  @DisplayName("writeFunctionTableUsages: 抽出を行わない実行では、ファイル自体を出力しない")
-  void testWriteFunctionTableUsagesNotAnalyzedWritesNothing() {
+  @DisplayName("writeFunctionTableUsages: DB名はファイルの中に実際の名前で持つ（ディレクトリ名はパスに使えない文字を置き換えたもの）")
+  void testWriteFunctionTableUsagesKeepsDatabaseName() {
+    writer.writeFunctionTableUsages(
+        "sample",
+        List.of(functionContent("py", "", "", FunctionTableUsage.unsupportedLanguage("c"))),
+        new OutputRoot(
+            OUT, new BaseInfoEntity("my:db", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 25))));
+
+    assertEquals(
+        "{\"formatVersion\":1,\"database\":\"my:db\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"c\"}]}\n",
+        fileRepository.files.get(
+            OUT.resolve("insights")
+                .resolve("my~3Adb")
+                .resolve("sample")
+                .resolve("functionTableUsages.json")));
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 同じ定義本体が離れて現れても、関数ごとに自分の定義本体のSHA-256を出力する")
+  void testWriteFunctionTableUsagesHashesEachDefinition() {
+    final FunctionTableUsage usage =
+        FunctionTableUsage.analyzed(List.of(), List.of(), false, false);
+    writer.writeFunctionTableUsages(
+        "sample",
+        List.of(
+            functionContent("a", "", "A", usage),
+            functionContent("a2", "", "A", usage),
+            functionContent("b", "", "B", usage),
+            functionContent("a3", "", "A", usage)),
+        ROOT);
+
+    final String hashA = "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd";
+    final String hashB = "df7e70e5021544f4834bbee64a9e3789febc4be81470df629cad6ddb03320a5c";
+    assertEquals(
+        "{\"formatVersion\":1,\"database\":\"testdb\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"a\",\"definitionHash\":\""
+            + hashA
+            + "\",\"status\":\"analyzed\"},"
+            + "{\"name\":\"a2\",\"definitionHash\":\""
+            + hashA
+            + "\",\"status\":\"analyzed\"},"
+            + "{\"name\":\"b\",\"definitionHash\":\""
+            + hashB
+            + "\",\"status\":\"analyzed\"},"
+            + "{\"name\":\"a3\",\"definitionHash\":\""
+            + hashA
+            + "\",\"status\":\"analyzed\"}]}\n",
+        fileRepository.files.get(
+            INSIGHTS_DIR.resolve("sample").resolve("functionTableUsages.json")));
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 抽出を行わない実行では、ファイルを出力せず、以前のプレビューの実行が出力したファイルを削除する")
+  void testWriteFunctionTableUsagesNotAnalyzedDeletesPreviousFile() {
+    final Path file = INSIGHTS_DIR.resolve("sample").resolve("functionTableUsages.json");
+
     writer.writeFunctionTableUsages(
         "sample", List.of(functionContent("f", "", "", FunctionTableUsage.notAnalyzed())), ROOT);
-    writer.writeFunctionTableUsages("sample", List.of(), ROOT);
 
     assertTrue(fileRepository.files.isEmpty());
+    assertEquals(List.of(file), fileRepository.deletedFiles);
+    assertTrue(fileRepository.createdDirectories.isEmpty());
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 抽出を行った場合は、ファイルを削除しない")
+  void testWriteFunctionTableUsagesAnalyzedKeepsFile() {
+    writer.writeFunctionTableUsages(
+        "sample",
+        List.of(functionContent("f", "", "", FunctionTableUsage.unsupportedLanguage("c"))),
+        ROOT);
+
+    assertTrue(fileRepository.deletedFiles.isEmpty());
   }
 
   private static FunctionDefinitionContent functionContent(

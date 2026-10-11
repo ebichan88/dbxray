@@ -129,6 +129,11 @@ public class ExportSchemaUsecaseTest {
     public void deleteDirectory(Path directory) {
       files.keySet().removeIf(path -> path.startsWith(directory));
     }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      files.remove(filePath);
+    }
   }
 
   /** リポジトリ呼び出し回数・引数を記録するスタブ */
@@ -1477,12 +1482,18 @@ public class ExportSchemaUsecaseTest {
 
     assertTrue(contentOf(functionFile).contains("|1|public.t1|table||||○|"));
     assertEquals(
-        "{\"formatVersion\":1,\"schema\":\"public\",\"functions\":[{\"name\":\"f1\","
+        "{\"formatVersion\":1,\"database\":\"testdb\",\"schema\":\"public\",\"functions\":["
+            + "{\"name\":\"f1\","
             + "\"definitionHash\":\"962c4ca88574a34e5f3662b7eb120154627f490fd9dcd0aef7b6a18ee840d780\","
             + "\"status\":\"analyzed\",\"tables\":[{\"schema\":\"public\",\"name\":\"t1\","
             + "\"operations\":[\"D\"]}]}]}\n",
         contentOf(insightFile));
     assertEquals(snapshotWithoutPreview, contentOf(snapshotFile("public", "functions.jsonl")));
+
+    usecase.exportSchema(request(Set.of()));
+
+    assertFalse(fileExists(insightFile), "--previewを付けない実行は、前回の参考情報を残さない");
+    assertFalse(contentOf(functionFile).contains("## 利用しているテーブル"));
   }
 
   private static ExportSchemaRequest request(Set<PreviewFeature> previewFeatures) {

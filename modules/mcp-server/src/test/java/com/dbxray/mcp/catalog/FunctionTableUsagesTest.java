@@ -36,12 +36,20 @@ class FunctionTableUsagesTest {
   }
 
   @Test
-  @DisplayName("find: ハッシュを持たない参考情報は、照らさずに返す")
-  void acceptsUsageWithoutHash() {
+  @DisplayName("find: ハッシュを持たない参考情報は、定義本体のある関数には返さない（定義本体を取得できなかった後に取得できるようになった場合）")
+  void ignoresUsageWithoutHashForFunctionWithDefinition() {
+    final FunctionTableUsages usages = new FunctionTableUsages(List.of(usage("", "")));
+
+    assertTrue(usages.find(function("", "h")).isEmpty());
+  }
+
+  @Test
+  @DisplayName("find: 定義本体が無い関数（スナップショットのハッシュが空）には、ハッシュを持たない参考情報を返す")
+  void findsUsageWithoutHashForFunctionWithoutDefinition() {
     final FunctionTableUsageEntry usage = usage("", "");
 
     assertEquals(
-        Optional.of(usage), new FunctionTableUsages(List.of(usage)).find(function("", "h")));
+        Optional.of(usage), new FunctionTableUsages(List.of(usage)).find(function("", "")));
   }
 
   private static FunctionTableUsageEntry usage(String arguments, String definitionHash) {

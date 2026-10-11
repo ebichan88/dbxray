@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
 class DatabaseMetricsTest {
 
   private static final BaseInfoEntity BASE_INFO =
-      new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.EPOCH);
+      new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
 
   private static final TableEntity EMPLOYEE = table("hr", "employee", "社員", TableType.TABLE, "");
   private static final TableEntity DEPT = table("hr", "dept", "", TableType.TABLE, "");
@@ -94,7 +94,6 @@ class DatabaseMetricsTest {
     final ExportTargets targets =
         new ExportTargets(
             BASE_INFO,
-            Dbms.POSTGRESQL,
             Tables.of(List.of()),
             ForeignKeys.of(List.of()),
             Triggers.of(List.of()),
@@ -121,7 +120,6 @@ class DatabaseMetricsTest {
   private static ExportTargets targets(Set<OutputObjectType> objectTypes) {
     return new ExportTargets(
         BASE_INFO,
-        Dbms.POSTGRESQL,
         Tables.of(List.of(EMPLOYEE, DEPT, EMPLOYEE_VIEW, SUMMARY, ORDERS, LONELY)),
         ForeignKeys.of(
             List.of(

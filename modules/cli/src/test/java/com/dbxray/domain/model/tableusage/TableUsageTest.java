@@ -31,6 +31,10 @@ class TableUsageTest {
     tables.add(OTHER_EMPLOYEE);
 
     assertEquals(List.of(CrudOperation.CREATE, CrudOperation.DELETE), usage.orderedOperations());
+    assertEquals(
+        List.of(CrudOperation.CREATE, CrudOperation.DELETE), List.copyOf(usage.operations()));
+    assertThrows(
+        UnsupportedOperationException.class, () -> usage.operations().add(CrudOperation.READ));
     assertTrue(usage.has(CrudOperation.CREATE));
     assertFalse(usage.has(CrudOperation.READ));
     assertEquals(List.of(SAMPLE_EMPLOYEE), usage.tables());

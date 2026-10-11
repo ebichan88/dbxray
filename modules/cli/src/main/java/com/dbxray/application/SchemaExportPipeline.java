@@ -21,7 +21,6 @@ import com.dbxray.domain.model.table.TableKey;
 import com.dbxray.domain.model.table.Tables;
 import com.dbxray.domain.model.table.Triggers;
 import com.dbxray.domain.model.table.ViewReferences;
-import com.dbxray.domain.model.tableusage.FunctionTableUsage;
 import com.dbxray.domain.model.target.ConsistencyNotice;
 import com.dbxray.domain.model.target.ExportTargets;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
@@ -114,7 +113,6 @@ final class SchemaExportPipeline {
 
     return new ExportTargets(
         baseInfoEntity,
-        database.dbms(),
         tables,
         foreignKeys,
         triggers,
@@ -304,15 +302,16 @@ final class SchemaExportPipeline {
   private void exportSchemaFunctionDefinitions(
       String schemaName, ExportTargets targets, List<ExportSink> sinks, boolean analyzeTableUsage) {
     final List<FunctionEntity> functions = repository.selectFunctionDefList(List.of(schemaName));
-    // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
-    final Function<FunctionEntity, FunctionTableUsage> usageOf =
-        analyzeTableUsage
-            ? FunctionTableUsageAnalyzer.of(targets.tables(), targets.dbms())::analyze
-            : function -> FunctionTableUsage.notAnalyzed();
-    final List<FunctionDefinitionContent> contents =
-        functions.stream()
-            .map(function -> new FunctionDefinitionContent(function, usageOf.apply(function)))
-            .toList();
+    final Function<FunctionEntity, FunctionDefinitionContent> contentOf;
+    if (analyzeTableUsage) {
+      // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
+      final FunctionTableUsageAnalyzer analyzer =
+          FunctionTableUsageAnalyzer.of(targets.tables(), targets.baseInfo().dbms());
+      contentOf = function -> new FunctionDefinitionContent(function, analyzer.analyze(function));
+    } else {
+      contentOf = FunctionDefinitionContent::withoutTableUsage;
+    }
+    final List<FunctionDefinitionContent> contents = functions.stream().map(contentOf).toList();
     sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, contents, targets.baseInfo()));
   }
 

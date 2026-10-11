@@ -54,18 +54,20 @@ public class InsightWriter {
 
   /**
    * 1スキーマ分の関数・プロシージャの利用しているテーブルの参考情報を書き込むメソッド<br>
-   * 抽出を行っていない実行（プレビューの機能を有効にしていない実行）では、ファイル自体を出力しない
+   * 抽出を行っていない実行（プレビューの機能を有効にしていない実行）では、ファイルを出力せず、以前のプレビューの実行が出力したファイルを削除する。
+   * 残すと、定義本体やテーブルが変わった後の抽出結果を、MCPサーバーがスナップショットの最新の内容に対するものとして返してしまうため
    *
    * @param contents 当該スキーマの関数・プロシージャの出力内容
    */
   public void writeFunctionTableUsages(
       String schemaName, List<FunctionDefinitionContent> contents, OutputRoot root) {
+    final Path filePath =
+        outputPathResolver.resolveFunctionTableUsagesInsightFile(root, schemaName);
     if (contents.stream().noneMatch(content -> content.tableUsage().isAttempted())) {
+      fileRepository.deleteFile(filePath);
       return;
     }
-    write(
-        outputPathResolver.resolveFunctionTableUsagesInsightFile(root, schemaName),
-        FunctionTableUsagesInsight.of(schemaName, contents));
+    write(filePath, FunctionTableUsagesInsight.of(root.baseInfo().dbName(), schemaName, contents));
   }
 
   private void write(Path filePath, Object insight) {

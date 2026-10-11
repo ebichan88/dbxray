@@ -105,14 +105,23 @@ public final class InsightsDirectoryReader {
     return parsed.viewpoints().stream().map(line -> line.toEntry(database)).toList();
   }
 
-  /** スキーマ名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなく、ファイルの中の値を使う */
-  private List<FunctionTableUsageEntry> readFunctionTableUsagesFile(Path file, String database) {
+  /**
+   * DB名・スキーマ名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなく、ファイルの中の値を使う
+   *
+   * @param directoryName ファイルを置いたDBのディレクトリ名。ファイルにDB名が無い場合だけ、DB名として使う
+   */
+  private List<FunctionTableUsageEntry> readFunctionTableUsagesFile(
+      Path file, String directoryName) {
     final FunctionTableUsagesFile parsed =
         parse(file, readString(file), FunctionTableUsagesFile.class);
     requireSupportedFormatVersion(parsed.formatVersion(), file);
     if (parsed.functions() == null) {
       return List.of();
     }
+    final String database =
+        parsed.database() == null || parsed.database().isEmpty()
+            ? directoryName
+            : parsed.database();
     return parsed.functions().stream()
         .map(line -> line.toEntry(database, parsed.schema()))
         .toList();
@@ -192,7 +201,10 @@ public final class InsightsDirectoryReader {
   /** {@code functionTableUsages.json}のうち、読み込みに使う項目 */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record FunctionTableUsagesFile(
-      Integer formatVersion, String schema, List<FunctionTableUsageLine> functions) {}
+      Integer formatVersion,
+      String database,
+      String schema,
+      List<FunctionTableUsageLine> functions) {}
 
   /** 関数・プロシージャ1つ分 */
   @JsonIgnoreProperties(ignoreUnknown = true)

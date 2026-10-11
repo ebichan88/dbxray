@@ -122,7 +122,8 @@ class InsightsDirectoryReaderTest {
   }
 
   @Test
-  @DisplayName("readFunctionTableUsages: DB・スキーマごとのfunctionTableUsages.jsonを読み、スキーマ名はファイルの中の値を使う")
+  @DisplayName(
+      "readFunctionTableUsages: DB・スキーマごとのfunctionTableUsages.jsonを読み、スキーマ名はファイルの中の値を使う（ファイルにDB名が無ければDBのディレクトリ名）")
   void readsFunctionTableUsages() throws IOException {
     write(
         "insights/testdb/My~2FSchema/functionTableUsages.json",
@@ -163,6 +164,21 @@ class InsightsDirectoryReaderTest {
                 false,
                 false)),
         entries);
+  }
+
+  @Test
+  @DisplayName("readFunctionTableUsages: DB名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなく、ファイルの中の値を使う")
+  void usesDatabaseNameInFile() throws IOException {
+    write(
+        "insights/my~3Adb/sample/functionTableUsages.json",
+        "{\"formatVersion\":1,\"database\":\"my:db\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"c\"}]}");
+
+    assertEquals(
+        List.of(new ObjectKey("my:db", "sample", "py")),
+        reader.readFunctionTableUsages(snapshotDirectory()).stream()
+            .map(FunctionTableUsageEntry::key)
+            .toList());
   }
 
   @Test

@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer.objectlist;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
 import com.dbxray.domain.model.schemaobject.TypeEntity;
@@ -15,7 +16,7 @@ import org.junit.jupiter.api.Test;
 public class ObjectDefinitionTemplatesTest {
 
   private final BaseInfoEntity base =
-      new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+      new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
 
   @Test
   @DisplayName("functionFile: 見出し・SQLコードブロック・一覧リンクを含む")

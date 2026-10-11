@@ -11,7 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** LocalFileRepository のファイル読み書き・一覧取得・一時ディレクトリ操作に関するテスト */
+/** LocalFileRepository のファイル読み書き・一覧取得・一時ディレクトリ操作・削除に関するテスト */
 public class LocalFileRepositoryTest {
 
   private final LocalFileRepository repository = new LocalFileRepository();
@@ -110,5 +110,25 @@ public class LocalFileRepositoryTest {
   @DisplayName("deleteDirectory: ディレクトリが存在しない場合は何もしない")
   void testDeleteDirectoryDoesNothingWhenDirectoryDoesNotExist(@TempDir Path dir) {
     assertDoesNotThrow(() -> repository.deleteDirectory(dir.resolve("not-exist")));
+  }
+
+  @Test
+  @DisplayName("deleteFile: ファイルを1つ削除し、同じディレクトリの他のファイルは残す")
+  void testDeleteFile(@TempDir Path dir) throws IOException {
+    Path target = dir.resolve("target.json");
+    Path other = dir.resolve("other.json");
+    Files.writeString(target, "x");
+    Files.writeString(other, "y");
+
+    repository.deleteFile(target);
+
+    assertFalse(Files.exists(target));
+    assertTrue(Files.exists(other));
+  }
+
+  @Test
+  @DisplayName("deleteFile: ファイルが存在しない場合は何もしない")
+  void testDeleteFileDoesNothingWhenFileDoesNotExist(@TempDir Path dir) {
+    assertDoesNotThrow(() -> repository.deleteFile(dir.resolve("not-exist.json")));
   }
 }

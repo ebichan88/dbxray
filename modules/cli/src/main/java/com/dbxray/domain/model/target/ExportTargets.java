@@ -1,7 +1,6 @@
 package com.dbxray.domain.model.target;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.schemaobject.Sequences;
@@ -18,7 +17,6 @@ import java.util.Set;
  * 出力対象のうち、一括取得する軽量な情報の組<br>
  * テーブル数に比例して重くなる詳細情報（カラム・インデックス・制約）と関数の定義本体は含まない。 それらは出力時にスキーマ・チャンク単位で取得する
  *
- * @param dbms 接続先のDBMS種別（関数の定義本体の字句の規則・名前の畳み込みに使う）
  * @param tables 出力対象のテーブル情報のリスト（テーブルの絞り込み済み）
  * @param foreignKeys 出力対象のテーブル同士の外部キー（論理リレーションを含む）
  * @param triggers 対象範囲全体のトリガー情報
@@ -32,7 +30,6 @@ import java.util.Set;
  */
 public record ExportTargets(
     BaseInfoEntity baseInfo,
-    Dbms dbms,
     Tables tables,
     ForeignKeys foreignKeys,
     Triggers triggers,

@@ -18,10 +18,11 @@ import java.util.Locale;
  * スキーマ名・名前・引数で識別する。値の無い項目（空文字・空のリスト・null）は出力しない（真偽値は真のときだけ値を持つ）
  *
  * @param formatVersion 参考情報の形式のバージョン（形式を互換性なく変更した場合に上げる）
+ * @param database DB名。ファイルを置くディレクトリ名はパスに使えない文字を置き換えたもののため、読む側がDB名を求められるよう持つ
  * @param schema スキーマ名
  */
 public record FunctionTableUsagesInsight(
-    int formatVersion, String schema, List<FunctionInsight> functions) {
+    int formatVersion, String database, String schema, List<FunctionInsight> functions) {
 
   /** 現行の参考情報の形式のバージョン */
   public static final int FORMAT_VERSION = 1;
@@ -37,13 +38,15 @@ public record FunctionTableUsagesInsight(
    * @param contents 当該スキーマの関数・プロシージャの出力内容。抽出を行っていないものは含めない
    */
   public static FunctionTableUsagesInsight of(
-      String schemaName, List<FunctionDefinitionContent> contents) {
+      String databaseName, String schemaName, List<FunctionDefinitionContent> contents) {
+    final DefinitionHasher hasher = new DefinitionHasher();
     return new FunctionTableUsagesInsight(
         FORMAT_VERSION,
+        databaseName,
         schemaName,
         contents.stream()
             .filter(content -> content.tableUsage().isAttempted())
-            .map(FunctionInsight::of)
+            .map(content -> FunctionInsight.of(content, hasher))
             .toList());
   }
 
@@ -77,12 +80,12 @@ public record FunctionTableUsagesInsight(
       dynamicSql = List.copyOf(dynamicSql);
     }
 
-    static FunctionInsight of(FunctionDefinitionContent content) {
+    static FunctionInsight of(FunctionDefinitionContent content, DefinitionHasher hasher) {
       final FunctionTableUsage usage = content.tableUsage();
       return new FunctionInsight(
           content.function().functionName(),
           content.function().functionArguments(),
-          hashOf(content.function().definition()),
+          hasher.hashOf(content.function().definition()),
           usage.status().name().toLowerCase(Locale.ROOT),
           usage.language(),
           usage.tables().stream().map(TableInsight::of).toList(),
@@ -92,19 +95,38 @@ public record FunctionTableUsagesInsight(
     }
   }
 
-  /** 定義本体（UTF-8）のSHA-256を16進数の小文字で求める。スナップショットが空白だけの定義本体を持たないのに合わせ、その場合はnull */
-  private static String hashOf(String definition) {
-    if (definition == null || definition.isBlank()) {
-      return null;
+  /**
+   * 定義本体（UTF-8）のSHA-256を16進数の小文字で求めるクラス<br>
+   * Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体（仕様部と本体）を持つ。サブプログラムの数だけ同じ本体をハッシュしないよう、
+   * 直前に求めた定義本体と同じなら結果を使い回す
+   */
+  private static final class DefinitionHasher {
+
+    private String lastDefinition;
+    private String lastHash;
+
+    /** スナップショットが空白だけの定義本体を持たないのに合わせ、その場合はnullを返す */
+    String hashOf(String definition) {
+      if (definition == null || definition.isBlank()) {
+        return null;
+      }
+      if (!definition.equals(lastDefinition)) {
+        lastHash = sha256(definition);
+        lastDefinition = definition;
+      }
+      return lastHash;
     }
-    try {
-      return HexFormat.of()
-          .formatHex(
-              MessageDigest.getInstance("SHA-256")
-                  .digest(definition.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException e) {
-      // SHA-256はJava SEの実装が必ず備えるアルゴリズムのため、起こらない
-      throw new IllegalStateException(e);
+
+    private static String sha256(String definition) {
+      try {
+        return HexFormat.of()
+            .formatHex(
+                MessageDigest.getInstance("SHA-256")
+                    .digest(definition.getBytes(StandardCharsets.UTF_8)));
+      } catch (NoSuchAlgorithmException e) {
+        // SHA-256はJava SEの実装が必ず備えるアルゴリズムのため、起こらない
+        throw new IllegalStateException(e);
+      }
     }
   }
 

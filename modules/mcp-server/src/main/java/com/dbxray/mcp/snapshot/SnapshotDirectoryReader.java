@@ -87,11 +87,12 @@ public final class SnapshotDirectoryReader {
                 schemaDirectory.resolve(TABLE_FILE_NAME),
                 TableLine.class,
                 (line, json) -> line.toEntry(database, json)));
+        final DefinitionHasher hasher = new DefinitionHasher();
         functions.addAll(
             readObjects(
                 schemaDirectory.resolve(FUNCTION_FILE_NAME),
                 FunctionLine.class,
-                (line, json) -> line.toEntry(database, json)));
+                (line, json) -> line.toEntry(database, json, hasher)));
         sequences.addAll(
             readObjects(
                 schemaDirectory.resolve(SEQUENCE_FILE_NAME),
@@ -309,7 +310,7 @@ public final class SnapshotDirectoryReader {
       String definition)
       implements NamedLine {
 
-    FunctionEntry toEntry(String database, String json) {
+    FunctionEntry toEntry(String database, String json, DefinitionHasher hasher) {
       return new FunctionEntry(
           new ObjectKey(database, schema, name),
           kind,
@@ -317,23 +318,41 @@ public final class SnapshotDirectoryReader {
           result,
           language,
           json,
-          definitionHash(definition));
+          hasher.hashOf(definition));
     }
   }
 
-  /** 定義本体（UTF-8）のSHA-256を16進数の小文字で求める（cliの参考情報の{@code definitionHash}と同じ求め方）。定義本体が無い場合は空文字 */
-  private static String definitionHash(String definition) {
-    if (definition == null) {
-      return "";
+  /**
+   * 定義本体（UTF-8）のSHA-256を16進数の小文字で求めるクラス（cliの参考情報の{@code definitionHash}と同じ求め方）<br>
+   * Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体を持つ。サブプログラムの数だけ同じ本体をハッシュしないよう、 直前に求めた定義本体と同じなら結果を使い回す
+   */
+  private static final class DefinitionHasher {
+
+    private String lastDefinition;
+    private String lastHash;
+
+    /** 定義本体が無い場合は空文字を返す */
+    String hashOf(String definition) {
+      if (definition == null) {
+        return "";
+      }
+      if (!definition.equals(lastDefinition)) {
+        lastHash = sha256(definition);
+        lastDefinition = definition;
+      }
+      return lastHash;
     }
-    try {
-      return HexFormat.of()
-          .formatHex(
-              MessageDigest.getInstance("SHA-256")
-                  .digest(definition.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException e) {
-      // SHA-256はJava SEの実装が必ず備えるアルゴリズムのため、起こらない
-      throw new IllegalStateException(e);
+
+    private static String sha256(String definition) {
+      try {
+        return HexFormat.of()
+            .formatHex(
+                MessageDigest.getInstance("SHA-256")
+                    .digest(definition.getBytes(StandardCharsets.UTF_8)));
+      } catch (NoSuchAlgorithmException e) {
+        // SHA-256はJava SEの実装が必ず備えるアルゴリズムのため、起こらない
+        throw new IllegalStateException(e);
+      }
     }
   }
 

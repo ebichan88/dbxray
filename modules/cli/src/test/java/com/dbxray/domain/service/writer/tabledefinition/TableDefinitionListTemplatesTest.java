@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer.tabledefinition;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
@@ -19,7 +20,7 @@ public class TableDefinitionListTemplatesTest {
   private static final String NL2 = NL + NL;
 
   private BaseInfoEntity baseInfo() {
-    return new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    return new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
   }
 
   private TableEntity newEntity(String schema, String physical, String logical) {
@@ -45,7 +46,7 @@ public class TableDefinitionListTemplatesTest {
             + NL
             + "|:---|:---|:---|"
             + NL
-            + "|pg 16|TEST_DB|2025/01/01|"
+            + "|PostgreSQL 16|TEST_DB|2025/01/01|"
             + NL
             + NL;
     String actual = TableDefinitionListTemplates.baseInfo(baseInfo());

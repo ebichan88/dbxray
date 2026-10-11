@@ -2,6 +2,7 @@ package com.dbxray.domain.model.tableusage;
 
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +24,7 @@ public record TableUsage(
       throw new IllegalArgumentException("tables and operations must not be empty");
     }
     tables = List.copyOf(tables);
-    operations = Set.copyOf(EnumSet.copyOf(operations));
+    operations = Collections.unmodifiableSet(EnumSet.copyOf(operations));
   }
 
   /**
@@ -87,6 +88,6 @@ public record TableUsage(
    * @return 操作のリスト
    */
   public List<CrudOperation> orderedOperations() {
-    return EnumSet.copyOf(operations).stream().toList();
+    return List.copyOf(operations);
   }
 }

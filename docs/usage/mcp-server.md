@@ -91,7 +91,7 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 * `target.objects`で出力対象から外した種別は0件になります。
 * 関数・プロシージャの定義本体は、AIのコンテキストを圧迫するため既定では返しません（`get_function`の`includeDefinition`で返します）。
 * `get_function`の`tableUsage`は、cliの[プレビューの機能](./cli.md#関数プロシージャが利用しているテーブルプレビュー)（`--preview`）で出力した参考情報`functionTableUsages.json`から返します。
-  参考情報が無い関数と、参考情報の抽出元の定義本体がスナップショットの定義本体と一致しない関数（参考情報を出力した後に定義が変わり、`--preview`を付けずに出力し直した場合等）には項目ごと付けません。
+  参考情報が無い関数と、参考情報の抽出元の定義本体がスナップショットの定義本体と一致しない関数（`--rm-dist`を付けずに対象のスキーマを減らした場合等で、参考情報だけが前回のまま残り、その後に定義が変わった場合）には項目ごと付けません。
 
     ```json
     "tableUsage": {

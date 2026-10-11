@@ -109,7 +109,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 |---|---|
 | `CatalogRepository` | データベースの情報（`selectDatabase`）・テーブル一覧・外部キー・トリガー・パーティション・関数・シーケンス・型のDB取得IF（DB種別ごとに実装が分かれる）。カラム・インデックス・制約は、指定したテーブル分をテーブルごとの`TableDetail`に組み立てて返す（`selectTableDetails`）。ER図の関連カラム用に、指定したテーブルのカラムだけも取得できる（`selectColumnList`） |
 | `SidecarRepository` | サイドカーYAML（手動付帯情報・論理リレーション・観点）読み込みIF |
-| `FileRepository` | ファイル操作IF（`writeFile`/`appendFile`/`createDirectory`、パスの状態の問い合わせ用の`exists`/`isDirectory`に加え、差分検知用の`listFiles`/`readFile`、一時ディレクトリ操作用の`createTempDirectory`/`deleteDirectory`を持つ） |
+| `FileRepository` | ファイル操作IF（`writeFile`/`appendFile`/`createDirectory`、パスの状態の問い合わせ用の`exists`/`isDirectory`に加え、差分検知用の`listFiles`/`readFile`、一時ディレクトリ操作用の`createTempDirectory`/`deleteDirectory`、前回の参考情報を消す`deleteFile`を持つ） |
 
 ### domain.service
 

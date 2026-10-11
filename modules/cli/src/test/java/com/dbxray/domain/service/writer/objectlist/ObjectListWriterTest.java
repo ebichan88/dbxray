@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer.objectlist;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
@@ -80,13 +81,18 @@ public class ObjectListWriterTest {
     public void deleteDirectory(Path directory) {
       // 何もしない
     }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      // 何もしない
+    }
   }
 
   private InMemoryFileRepository fileRepository;
   private ObjectListWriter writer;
 
   private BaseInfoEntity baseInfo() {
-    return new BaseInfoEntity("testdb", "pg", 16, LocalDate.of(2026, 9, 24));
+    return new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 24));
   }
 
   private OutputRoot outputRoot() {
@@ -123,7 +129,7 @@ public class ObjectListWriterTest {
     assertTrue(fileRepository.files.containsKey(file));
     String content = fileRepository.files.get(file);
     assertTrue(content.contains("# トリガー一覧（DB名：testdb）"));
-    assertTrue(content.contains("|pg 16|testdb|2026/09/24|"));
+    assertTrue(content.contains("|PostgreSQL 16|testdb|2026/09/24|"));
     assertTrue(content.contains("trg_orders"));
     assertTrue(content.contains("[テーブル一覧へ](./tableList_testdb.md)"));
   }

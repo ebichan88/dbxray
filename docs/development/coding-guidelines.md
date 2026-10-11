@@ -171,6 +171,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
   誤りの報告は`FailureReporter`がログファイルにも残す）。
 - **削除**：ディレクトリの削除は`--rm-dist`の出力先だけで行い、削除してよいかは`OutputPathResolver.isRemovableOutputDir`で判定する。
   削除の対象を広げる変更をしない。
+  ファイルの削除は、`--preview`を付けない実行が、プレビューの機能が出力した前回の参考情報`functionTableUsages.json`を消す1箇所だけ（`InsightWriter`。パスは`OutputPathResolver`で解決したもの）。
 - **依存ライブラリ**：更新はDependabot（`.github/dependabot.yml`）が提案する。依存を足す・上げるときは、既知の脆弱性
   （GitHub Advisory Database等）が無い版を選ぶ。
 - **デシリアライズ・SQL**：YAMLは`SafeConstructor`で読み、JSONのデシリアライズで型情報からクラスを生成する設定

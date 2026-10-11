@@ -4,6 +4,7 @@ import static com.dbxray.testsupport.MarkdownAssert.assertMarkdownEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
@@ -242,7 +243,7 @@ class FunctionTableUsageTemplatesTest {
         ObjectDefinitionTemplates.functionFile(
             new FunctionDefinitionContent(
                 FUNCTION, FunctionTableUsage.analyzed(List.of(), List.of(), false, false)),
-            new BaseInfoEntity("db", "PostgreSQL", 16, LocalDate.EPOCH));
+            new BaseInfoEntity("db", Dbms.POSTGRESQL, 16, LocalDate.EPOCH));
 
     final int baseInfo = file.indexOf("## 基本情報");
     final int usage = file.indexOf("## 利用しているテーブル");

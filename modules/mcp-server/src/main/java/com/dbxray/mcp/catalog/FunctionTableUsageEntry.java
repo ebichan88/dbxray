@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @param key 関数のキー（オーバーロードは同じキーになり、{@code arguments}で区別する）
  * @param arguments 引数（スナップショットの{@code arguments}と同じ表記）。引数が無い場合は空文字
- * @param definitionHash 抽出した定義本体のSHA-256（16進数の小文字）。持たない（古いcliの）場合は空文字
+ * @param definitionHash 抽出した定義本体のSHA-256（16進数の小文字）。定義本体が無かった場合は空文字
  * @param status 解析の状態（{@code analyzed}・{@code unsupported_language}等）
  * @param language 解析しなかった言語の名前（{@code unsupported_language}の場合だけ。それ以外は空文字）
  * @param tables 利用しているテーブル

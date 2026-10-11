@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer.tabledefinition;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.relation.DiagramNeighborhood;
 import com.dbxray.domain.model.sidecar.TableAnnotation;
@@ -87,13 +88,18 @@ public class TableDefinitionWriterTest {
     public void deleteDirectory(Path directory) {
       // 何もしない
     }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      // 何もしない
+    }
   }
 
   private InMemoryFileRepository fileRepository;
   private TableDefinitionWriter writer;
 
   private BaseInfoEntity baseInfo() {
-    return new BaseInfoEntity("testdb", "pg", 16, LocalDate.of(2026, 9, 24));
+    return new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2026, 9, 24));
   }
 
   private OutputRoot outputRoot() {
@@ -124,7 +130,7 @@ public class TableDefinitionWriterTest {
     assertTrue(fileRepository.files.containsKey(file));
     String content = fileRepository.files.get(file);
     assertTrue(content.contains("# テーブル一覧（DB名：testdb）"));
-    assertTrue(content.contains("|pg 16|testdb|2026/09/24|"));
+    assertTrue(content.contains("|PostgreSQL 16|testdb|2026/09/24|"));
     assertTrue(content.contains("## 関連ドキュメント"));
     assertTrue(content.contains("[ER図一覧](./erDiagramList_testdb.md)"));
     assertTrue(content.contains("|public|受注|orders|table|"));

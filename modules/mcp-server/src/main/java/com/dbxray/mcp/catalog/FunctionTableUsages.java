@@ -7,8 +7,9 @@ import java.util.Optional;
 
 /**
  * 関数・プロシージャが利用しているテーブルの参考情報を、スナップショットの関数（オーバーロード）から引くクラス<br>
- * 関数はスナップショットと同じく、キー（DB名・スキーマ名・名前）と引数で識別する。cliで{@code --rm-dist}を付けずに出力し直すと前回の参考情報が残るため （{@code
- * --preview}を付けなかった場合等）、定義本体のハッシュがスナップショットと異なるもの（定義が変わった後の古い結果）は返さない
+ * 関数はスナップショットと同じく、キー（DB名・スキーマ名・名前）と引数で識別する。参考情報はスナップショットとは別のファイルのため、 片方だけが出力し直された場合（{@code
+ * --rm-dist}を付けずに対象のスキーマを減らした場合等）に備え、
+ * 定義本体のハッシュがスナップショットと異なるもの（定義が変わった後の古い結果）は返さない。定義本体が無い関数は、どちらのハッシュも空文字で一致する
  */
 public final class FunctionTableUsages {
 
@@ -25,10 +26,7 @@ public final class FunctionTableUsages {
    */
   public Optional<FunctionTableUsageEntry> find(FunctionEntry function) {
     return Optional.ofNullable(byFunction.get(new Identity(function.key(), function.arguments())))
-        .filter(
-            usage ->
-                usage.definitionHash().isEmpty()
-                    || usage.definitionHash().equals(function.definitionHash()));
+        .filter(usage -> usage.definitionHash().equals(function.definitionHash()));
   }
 
   /** 関数を識別する組（オーバーロードは引数で区別する） */

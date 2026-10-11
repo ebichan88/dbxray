@@ -69,6 +69,11 @@ public class OutputDirectoryValidatorTest {
     public void deleteDirectory(Path directory) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void deleteFile(Path filePath) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private final PathStateFileRepository fileRepository = new PathStateFileRepository();
