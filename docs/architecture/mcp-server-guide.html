@@ -250,7 +250,7 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
     <li><b>mcp-core 2.0.1</b>MCP Java SDK。JSONはJackson 2系</li>
     <li><b>stdio</b>MCPクライアントが子プロセスとして起動</li>
   </ul>
-  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114までを含む）を読んで作成し、MCPサーバーの<code>SchemaCatalog</code>の窓口への分割と<code>ArchitectureTest</code>の追加に合わせて更新。JSONの例は、ビルドしたjarに<code>docs/sample/postgres/output/snapshot</code>を読ませて実際に採取した応答です（長いものは省略）。</p>
+  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114までを含む）を読んで作成し、MCPサーバーの<code>SchemaCatalog</code>の窓口への分割と<code>ArchitectureTest</code>の追加に合わせて更新。さらに、cliの<code>--preview</code>が出力する関数の利用テーブル（Issue #134・PR #137）に合わせて、<code>get_function</code>の<code>tableUsage</code>の分を追記しています（7.10節）。JSONの例は、ビルドしたjarに<code>docs/sample/postgres/output/snapshot</code>を読ませて実際に採取した応答です（長いものは省略）。</p>
 </header>
 
 <!-- ============================================================ -->
@@ -518,7 +518,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 980 290" role="img" aria-label="McpServerMainが各部品を生成して配線する。snapshotとinsightの読み込み部品がファイルを読みcatalogを組み立てる。toolはcatalogに問い合わせ、SDKへツールを登録する。catalogは誰にも依存しない。" style="min-width: 780px">
+    <svg viewBox="0 0 980 296" role="img" aria-label="McpServerMainが各部品を生成して配線する。snapshotとinsightの読み込み部品がファイルを読みcatalogを組み立てる。toolはcatalogに問い合わせ、SDKへツールを登録する。catalogは誰にも依存しない。" style="min-width: 780px">
       <defs>
         <marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
         <marker id="f3m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-muted"/></marker>
@@ -539,9 +539,11 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <text x="80" y="140" text-anchor="middle" class="d-t-ms">database.json</text>
       <text x="80" y="158" text-anchor="middle" class="d-t-ms">{schema}/*.jsonl</text>
       <text x="80" y="176" text-anchor="middle" class="d-t-s">cliが出力</text>
-      <rect x="10" y="200" width="140" height="60" rx="5" class="d-box-soft"/>
-      <text x="80" y="224" text-anchor="middle" class="d-t-ms">insights/{DB}/</text>
-      <text x="80" y="242" text-anchor="middle" class="d-t-ms">viewpoints.json</text>
+      <rect x="10" y="200" width="140" height="86" rx="5" class="d-box-soft"/>
+      <text x="80" y="222" text-anchor="middle" class="d-t-ms">insights/{DB}/</text>
+      <text x="80" y="240" text-anchor="middle" class="d-t-ms">viewpoints.json</text>
+      <text x="80" y="258" text-anchor="middle" class="d-t-ms">{schema}/*.json</text>
+      <text x="80" y="275" text-anchor="middle" class="d-t-s">関数の利用テーブル</text>
 
       <rect x="200" y="100" width="170" height="84" rx="6" class="d-box"/>
       <text x="285" y="122" text-anchor="middle" class="d-t-s">mcp.snapshot</text>
@@ -583,13 +585,14 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <text x="394" y="134" text-anchor="middle" class="d-t-s">of(…)</text>
       <line x1="372" y1="230" x2="417" y2="230" class="d-line" marker-end="url(#f3a)"/>
       <text x="394" y="222" text-anchor="middle" class="d-t-s">観点</text>
+      <text x="394" y="248" text-anchor="middle" class="d-t-s">＋関数</text>
       <line x1="658" y1="180" x2="603" y2="180" class="d-line" marker-end="url(#f3a)"/>
       <text x="631" y="172" text-anchor="middle" class="d-t-s">照会</text>
       <line x1="822" y1="180" x2="867" y2="180" class="d-line" marker-end="url(#f3a)"/>
       <text x="844" y="172" text-anchor="middle" class="d-t-s">登録</text>
     </svg>
   </div>
-  <figcaption><b>図3 パッケージと依存の向き。</b>矢印は「相手を知っている（importしている）」向きです。<code>catalog</code>には外へ向かう矢印がありません。<code>McpServerMain</code>は2つの読み込み部品・<code>withViewpoints</code>・<code>TableDefinitionTools</code>・<code>TableDefinitionResources</code>・SDKを順に呼んで配線します。<code>snapshot</code>と<code>insight</code>は互いを知りません。</figcaption>
+  <figcaption><b>図3 パッケージと依存の向き。</b>矢印は「相手を知っている（importしている）」向きです。<code>catalog</code>には外へ向かう矢印がありません。<code>McpServerMain</code>は2つの読み込み部品・<code>withViewpoints</code>・<code>withFunctionTableUsages</code>・<code>TableDefinitionTools</code>・<code>TableDefinitionResources</code>・SDKを順に呼んで配線します。<code>snapshot</code>と<code>insight</code>は互いを知りません。</figcaption>
 </figure>
 
 <div class="table-wrap">
@@ -598,7 +601,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <tbody>
     <tr><td><code>mcp</code>（直下）</td><td>入口。起動引数の検証、読み込みの呼び出し、SDKの起動</td></tr>
     <tr><td><code>mcp.snapshot</code></td><td><code>snapshot/</code>のJSON Linesを読み、<code>SchemaCatalog</code>を組み立てる</td></tr>
-    <tr><td><code>mcp.insight</code></td><td><code>insights/</code>の観点（viewpoints.json）を読む</td></tr>
+    <tr><td><code>mcp.insight</code></td><td><code>insights/</code>の観点（viewpoints.json）と、関数が利用しているテーブル（<code>{スキーマ}/functionTableUsages.json</code>。cliの<code>--preview</code>）を読む</td></tr>
     <tr><td><code>mcp.catalog</code></td><td>メモリ上の全オブジェクトと、検索・名前の解決・関連のたどり・相互参照・関連のまとまり・ER図の範囲</td></tr>
     <tr><td><code>mcp.tool</code></td><td>MCPのツールとリソースの定義。引数を読み、catalogに聞き、結果をJSON（ER図はMermaid）にする</td></tr>
   </tbody>
@@ -613,7 +616,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><div><code>ToolSpecifications.readOnlyTool</code>：全ツール共通の包み。引数の誤りが<code>isError</code>になる場所です。</div></li>
   <li><div><code>SchemaTools</code>：小さなツールクラスで「型」をつかみ、続けて一番大きい<code>TableTools</code>。<code>get_table</code>の結果の加工は<code>TableOutputBuilder</code>に分かれています。</div></li>
   <li><div><code>ToolArguments</code>・<code>ObjectResolver</code>・<code>Page</code>：ツールクラスが共通で使う部品。</div></li>
-  <li><div><code>SchemaCatalog</code>：組み立てと、関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>relations()</code>）の一覧です。続けて<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>の公開メソッドを見ると、ツールから見たcatalogの全機能がつかめます。</div></li>
+  <li><div><code>SchemaCatalog</code>：組み立てと、関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>）の一覧です。続けて<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>の公開メソッドを見ると、ツールから見たcatalogの全機能がつかめます。</div></li>
   <li><div><code>TableFilter</code>・<code>SearchQuery</code>・<code>RelationGraph</code>：テーブルの絞り込み、点数づけ、幅優先探索。7章の図と合わせて読むと速いです。</div></li>
   <li><div><code>SnapshotDirectoryReader</code>：ファイルからEntryができるまで。6章参照。</div></li>
   <li><div><code>DiagramTools</code>・<code>MermaidErDiagram</code>、<code>TableDefinitionResources</code>：ツールの型から外れる2つ。結果にMermaidの記述を入れるER図（7.9節）と、AIではなく利用者が選ぶリソース（1章）です。</div></li>
@@ -625,9 +628,9 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <ol class="steps">
   <li><div><strong>標準エラーをUTF-8に固定</strong>：<code>System.setErr(new PrintStream(…, UTF_8))</code>。実行環境のロケールで日本語が化けないようにするためです。</div></li>
   <li><div><strong>起動引数の解釈</strong>：<code>ServerArguments.parse</code>。受け付けるのは<code>--snapshot=&lt;ディレクトリ&gt;</code>1つだけで、未知の引数・重複・空・未指定はすべて誤りです。</div></li>
-  <li><div><strong>観点の読み込み</strong>：<code>InsightsDirectoryReader.readViewpoints</code>。<code>--snapshot</code>の<em>親の兄弟</em>の<code>insights/</code>を自分で求めて読みます。ディレクトリ・ファイルが無ければ0件で、誤りにはしません。</div></li>
+  <li><div><strong>参考情報の読み込み</strong>：<code>InsightsDirectoryReader</code>の<code>readViewpoints</code>（観点）と<code>readFunctionTableUsages</code>（関数の利用テーブル。cliを<code>--preview</code>で実行した場合だけある。7.10節）。<code>--snapshot</code>の<em>親の兄弟</em>の<code>insights/</code>を自分で求めて読みます。ディレクトリ・ファイルが無ければ0件で、誤りにはしません。</div></li>
   <li><div><strong>スナップショットの読み込み</strong>：<code>SnapshotDirectoryReader.read</code>が<code>SchemaCatalog</code>を返します。ディレクトリが無い、<code>database.json</code>が1つも無い、新しすぎる<code>formatVersion</code>、JSONとして読めない行、<code>schema</code>・<code>name</code>の無い行は誤りです（メッセージにファイル名と行番号が入ります）。</div></li>
-  <li><div><strong>観点の合成</strong>：<code>catalog.withViewpoints(viewpoints)</code>。<code>SchemaCatalog</code>は不変なので、観点を加えた新しいインスタンスを作ります。</div></li>
+  <li><div><strong>参考情報の合成</strong>：<code>catalog.withViewpoints(viewpoints).withFunctionTableUsages(functionTableUsages)</code>。<code>SchemaCatalog</code>は不変なので、観点・関数の利用テーブルを加えた新しいインスタンスを作ります。</div></li>
   <li><div><strong>読み込み件数の表示</strong>：標準エラーへ<code>[info]:14テーブルを読み込みました。 [snapshot=…]</code>。</div></li>
   <li><div><strong>SDKの起動</strong>：<code>start(catalog)</code>。2章のBuilderでツールとリソース（全テーブル分）を登録して組み立て、<code>build()</code>した時点で標準入力の待ち受けが始まり、<code>main</code>は戻ります。</div></li>
 </ol>
@@ -794,6 +797,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><strong>検索に新しい項目を使いたいときだけ</strong>、<code>*Line</code>と<code>*Entry</code>の両方にフィールドを足します。</li>
   <li><code>get_table</code>の<code>sections</code>で削れるのは<code>TableSection</code>のenumに並ぶ9項目（<code>columns</code>・<code>indexes</code>・<code>constraints</code>・<code>foreignKeys</code>・<code>logicalRelations</code>・<code>triggers</code>・<code>definition</code>・<code>referencedTables</code>・<code>referencedByViews</code>）だけです。それ以外（<code>name</code>・<code>logicalName</code>・<code>partitionKey</code>や将来の項目）は常に残ります。</li>
   <li>観点（<code>viewpoints</code>）はスナップショットの項目ではないため、<code>get_table</code>の結果に後から足されます。<code>sections</code>での絞り込みの対象外です。</li>
+  <li>関数が利用しているテーブル（<code>tableUsage</code>）も、スナップショットの項目ではなく、参考情報から<code>get_function</code>の結果に後から足されます。cliを<code>--preview</code>で実行して参考情報がある場合だけで、定義本体のハッシュが一致するときに限ります（7.10節）。</li>
   <li>テーブルのリソースの中身は、<code>get_table</code>と同じ<code>TableOutputBuilder</code>で組み立てます（<code>sections</code>・<code>columns</code>の絞り込み無し）。<code>get_table</code>の結果に項目を足せば、リソースにも同じ項目が載ります。</li>
   <li>テーブルを参照しているビュー（<code>referencedByViews</code>）もスナップショットの項目ではなく、他のビューの<code>referencedTables</code>から逆引きして後から足します（7.5節）。こちらは<code>TableSection</code>に入っているため、<code>sections</code>で選べます。</li>
 </ul>
@@ -806,11 +810,12 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
     <tr><td><code>DatabaseEntry</code></td><td><code>database.json</code></td><td>DB名、DBMS種別、メジャーバージョン（古いcliのスナップショットでは<code>null</code>）</td><td class="muted">—</td></tr>
     <tr><td><code>TableEntry</code></td><td><code>tables.jsonl</code></td><td><code>ObjectKey</code>、論理名・区分・説明・備考、カラム・外部キー・論理リレーション・トリガー、ビューが参照するテーブル（<code>ObjectKey</code>のリスト）、<code>json</code></td><td>○</td></tr>
     <tr><td><code>ColumnEntry</code> / <code>RelationEntry</code> / <code>TriggerEntry</code></td><td>テーブルの中</td><td>カラム、関連（自テーブル→参照先）、トリガー</td><td class="muted">—</td></tr>
-    <tr><td><code>FunctionEntry</code></td><td><code>functions.jsonl</code></td><td>種別・引数・戻り値・言語、<code>json</code>（定義本体を含む）</td><td class="muted">—</td></tr>
+    <tr><td><code>FunctionEntry</code></td><td><code>functions.jsonl</code></td><td>種別・引数・戻り値・言語、<code>definitionHash</code>（定義本体のSHA-256。参考情報と照らす）、<code>json</code>（定義本体を含む）</td><td class="muted">—</td></tr>
     <tr><td><code>FunctionOverloads</code></td><td>（組み立て時に生成）</td><td>同じキーの<code>FunctionEntry</code>の束。名前の解決の単位</td><td>○</td></tr>
     <tr><td><code>SequenceEntry</code></td><td><code>sequences.jsonl</code></td><td>所有カラム（<code>テーブル名.カラム名</code>）、<code>json</code></td><td>○</td></tr>
     <tr><td><code>TypeEntry</code></td><td><code>types.jsonl</code></td><td>種別（ENUM等）、<code>json</code></td><td>○</td></tr>
     <tr><td><code>ViewpointEntry</code></td><td><code>insights/{DB}/viewpoints.json</code></td><td>id・表示名・説明・所属テーブル（<code>ObjectKey</code>のリスト）</td><td class="muted">—（スキーマを持たない）</td></tr>
+    <tr><td><code>FunctionTableUsageEntry</code></td><td><code>insights/{DB}/{schema}/functionTableUsages.json</code>の1件</td><td><code>ObjectKey</code>・引数・<code>definitionHash</code>・状態・利用しているテーブル（<code>UsedTable</code>：スキーマ・名前・スキーマの決まり方・候補・操作）・動的SQL・<code>incomplete</code>・<code>overloadsMerged</code></td><td class="muted">—（<code>FunctionEntry</code>に対応付ける）</td></tr>
   </tbody>
 </table>
 </div>
@@ -1014,6 +1019,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <ul>
   <li><code>SchemaCatalog</code>の組み立て時に、同じ<code>ObjectKey</code>の<code>FunctionEntry</code>を<code>FunctionOverloads</code>へ束ねます（出現順を保つ<code>LinkedHashMap</code>）。名前の解決はこの束が単位です。</li>
   <li><code>get_function</code>は既定で定義本体（<code>definition</code>）を除きます。<code>includeDefinition: true</code>のとき、全オーバーロードの本体が同じなら（Oracleのパッケージ内サブプログラム等）1つにまとめて上位に置き、違えば各オーバーロードに残します。どちらも4,000文字を超えると切り詰め、全体の文字数を書き添えます。<code>getFunction</code>の中で、共通の本体を求める<code>sharedDefinition</code>と、各オーバーロードを切り詰める<code>truncateDefinitionOf</code>を順に呼んでいます。</li>
+  <li>オーバーロードごとに、参考情報があれば利用しているテーブル（<code>tableUsage</code>）を足します（<code>catalog.functionTableUsages().find(entry)</code>。7.10節）。定義本体を除いても、<code>FunctionEntry.definitionHash</code>は読み込み時に求めてあるため、照合できます。</li>
 </ul>
 
 <h3>7.7 一覧の範囲（Page）</h3>
@@ -1104,6 +1110,81 @@ erDiagram
     }</code></pre>
 <p class="small muted">関連が1つも無い範囲では<code>message</code>（「図に描くテーブルの間に、外部キー・論理リレーションはありません。」）を添えます。AIには、<code>mermaid</code>の値を手を加えずに<code>```mermaid</code>のコードブロックに入れて示すよう、ツールの説明で指示しています。</p>
 
+
+<h3>7.10 関数が利用しているテーブル（FunctionTableUsages・get_function の tableUsage）</h3>
+<p>cliを<code>--preview</code>で実行すると、関数・プロシージャが利用しているテーブルと操作（C・R・U・D）を、定義本体から機械的に抽出した<strong>参考値</strong>として、参考情報の<code>{DB名}/{スキーマ名}/functionTableUsages.json</code>へ出力します（<a href="./cli-guide.html#logic">cli 読解ガイド</a>の9.9節）。DBが持つ事実ではなく精度にリスクがあるため、プレビューの機能（互換性の対象外）です。mcp-serverはこれを読み、<code>get_function</code>がオーバーロードごとに<code>tableUsage</code>として返します。観点と同じく、スナップショットとは別のファイルを、読み込みの後に合成する情報です。</p>
+
+<figure>
+  <div class="fig-scroll">
+    <svg viewBox="0 0 900 430" role="img" aria-label="左にスナップショットのfunctions.jsonlの1行。SnapshotDirectoryReaderがdefinitionのSHA-256を求めてFunctionEntryのdefinitionHashにする。右に参考情報のfunctionTableUsages.jsonの1件。InsightsDirectoryReaderがファイルの中のdatabaseとschemaとnameからキーを作り、FunctionTableUsageEntryにする。下のFunctionTableUsages.findが、キーと引数が同じ参考情報を引き、definitionHashが一致するときだけ返す。一致すればget_functionのtableUsageになり、一致しない・参考情報が無い場合は項目ごと付けない。" style="min-width: 760px">
+      <defs>
+        <marker id="f7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
+        <marker id="f7w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-warn"/></marker>
+      </defs>
+      <rect x="20" y="16" width="400" height="92" rx="6" class="d-box-soft"/>
+      <text x="36" y="38" class="d-t-b">スナップショットの関数（functions.jsonl の1行）</text>
+      <text x="36" y="60" class="d-t-ms">"arguments":"IN p_project_id integer"</text>
+      <text x="36" y="78" class="d-t-ms">"definition":"CREATE OR REPLACE PROCEDURE …"</text>
+      <text x="36" y="97" class="d-t-s">cliが出力（定義本体を含む）</text>
+      <rect x="20" y="132" width="400" height="76" rx="6" class="d-box"/>
+      <text x="36" y="154" class="d-t-ms" font-weight="600">SnapshotDirectoryReader（DefinitionHasher）</text>
+      <text x="36" y="174" class="d-t-s">definition をUTF-8でSHA-256にする（小文字の16進）</text>
+      <text x="36" y="192" class="d-t-s">→ FunctionEntry.definitionHash（定義本体が無ければ空文字）</text>
+      <line x1="220" y1="108" x2="220" y2="130" class="d-line" marker-end="url(#f7a)"/>
+
+      <rect x="480" y="16" width="400" height="92" rx="6" class="d-box-soft"/>
+      <text x="496" y="38" class="d-t-b">参考情報の関数（functionTableUsages.json の1件）</text>
+      <text x="496" y="60" class="d-t-ms">"arguments":"IN p_project_id integer"</text>
+      <text x="496" y="78" class="d-t-ms">"definitionHash":"161314b9…","status":"analyzed"</text>
+      <text x="496" y="97" class="d-t-s">cliを --preview で実行したときだけ出力</text>
+      <rect x="480" y="132" width="400" height="76" rx="6" class="d-box"/>
+      <text x="496" y="154" class="d-t-ms" font-weight="600">InsightsDirectoryReader</text>
+      <text x="496" y="174" class="d-t-s">ファイルの中の database・schema と関数の name で ObjectKey を作る</text>
+      <text x="496" y="192" class="d-t-s">→ FunctionTableUsageEntry（ディレクトリ名は使わない）</text>
+      <line x1="680" y1="108" x2="680" y2="130" class="d-line" marker-end="url(#f7a)"/>
+
+      <rect x="150" y="248" width="600" height="92" rx="8" class="d-box-acc"/>
+      <text x="166" y="270" class="d-t-ms" font-weight="600">FunctionTableUsages.find(function)</text>
+      <text x="166" y="292" class="d-t-s">① キー（DB名・スキーマ名・名前）と引数が同じ参考情報を引く</text>
+      <text x="166" y="310" class="d-t-s">② definitionHash が FunctionEntry.definitionHash と等しいときだけ返す</text>
+      <text x="166" y="328" class="d-t-s">（定義本体が無い関数は、どちらも空文字で一致する）</text>
+      <polyline points="220,208 220,228 340,228 340,246" class="d-line" marker-end="url(#f7a)"/>
+      <polyline points="680,208 680,228 560,228 560,246" class="d-line" marker-end="url(#f7a)"/>
+
+      <line x1="330" y1="340" x2="330" y2="366" class="d-line" marker-end="url(#f7a)"/>
+      <line x1="570" y1="340" x2="570" y2="366" class="d-line-warn" marker-end="url(#f7w)"/>
+      <rect x="130" y="368" width="400" height="48" rx="6" class="d-box"/>
+      <text x="146" y="390" class="d-t-b">一致：get_function の overloads[].tableUsage</text>
+      <text x="146" y="408" class="d-t-s">オーバーロードごとに、利用しているテーブルと操作を返す</text>
+      <rect x="550" y="368" width="330" height="48" rx="6" class="d-box-warn"/>
+      <text x="566" y="390" class="d-t-warn">不一致・参考情報なし</text>
+      <text x="566" y="408" class="d-t-s">tableUsage は項目ごと付けない</text>
+    </svg>
+  </div>
+  <figcaption><b>図7 参考情報との対応付け。</b>参考情報はスナップショットとは別のファイルのため、片方だけが出力し直されることがあります（<code>--rm-dist</code>を付けずに対象のスキーマを減らした場合等）。そのとき、定義が変わった後の古い抽出結果を最新のものとして返さないよう、キーと引数に加えて、抽出元の定義本体のハッシュが一致するものだけを返します。</figcaption>
+</figure>
+
+<ul>
+  <li><strong>読み込み</strong>：<code>InsightsDirectoryReader.readFunctionTableUsages</code>が、<code>insights/{DB}/{スキーマ}/functionTableUsages.json</code>をすべて読みます。無ければ0件で、誤りにはしません。<code>formatVersion</code>の上限は観点と同じ1（<code>SUPPORTED_FORMAT_VERSION</code>）、未知の項目は無視します。DB名・スキーマ名は、ディレクトリ名（パスに使えない文字を置き換えたもの）ではなく、<strong>ファイルの中の<code>database</code>・<code>schema</code></strong>を使います（ファイルにDB名が無い場合だけ、DBのディレクトリ名）。<code>:</code>や<code>/</code>を含むDB名でも、スナップショットの関数と対応付けられるようにするためです。</li>
+  <li><strong>定義本体のハッシュ</strong>：<code>FunctionEntry.definitionHash</code>は、読み込み時に<code>SnapshotDirectoryReader</code>が求めます。求め方（UTF-8のSHA-256の小文字の16進）は、cliの<code>FunctionTableUsagesInsight</code>と同じで、<strong>片方だけを変えると、すべての関数で参考情報が返らなくなります</strong>。Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体を持つため、直前と同じ定義本体ならハッシュを使い回します。<code>definitionHash</code>を持たない参考情報を、定義本体のある関数に対応付けることはしません。</li>
+  <li><strong>返す形</strong>：<code>FunctionTools.tableUsage</code>が、AIが読みやすい形に整えます。テーブルは<code>スキーマ名.テーブル名</code>、操作は<code>CRUD</code>の順に1つの文字列（<code>RD</code>等）です。解析した結果は、利用しているテーブルが無くても<code>tables</code>を空の配列で返します（参考情報が無い場合の「<code>tableUsage</code>の項目ごと無い」と区別するため）。解析しなかった場合（<code>unsupported_language</code>等）は<code>status</code>（と<code>language</code>）だけです。動的SQL・読み切れなかった・オーバーロードをまとめた場合だけ、<code>dynamicSql</code>・<code>incomplete</code>・<code>overloadsMerged</code>を足します。</li>
+  <li><strong>スキーマが決まらない名前</strong>：<code>table</code>にスキーマを付けず、<code>schemaResolution</code>（<code>search_path</code>・<code>current_user</code>・<code>synonym</code>）と、同じ名前のテーブルがあるスキーマ<code>schemaCandidates</code>を返します。ツールの説明に「候補が1つでもそのスキーマに決めつけないこと」「出力対象のテーブルだけを返すため、<code>tables</code>が空でもテーブルに触れないとは限らない」と書き、参考値であることをAIに伝えます。</li>
+</ul>
+<p><code>get_function</code>の結果（<code>tableUsage</code>の部分）です。サンプルの<code>close_project</code>（スキーマが決まる例）と、<code>count_rows</code>（動的SQLを含み、スキーマが決まらない例）を、既定のベースラインのスナップショット（<code>docs/sample/postgres/output/snapshot</code>）に、<code>--preview</code>の差分のベースラインの参考情報（<code>docs/sample/postgres/output-preview/insights</code>）を重ねたディレクトリをビルドしたjarに読ませて採取しました。</p>
+<pre><code>{"database":"testdb","schema":"sample","name":"close_project",
+ "overloads":[{"kind":"PROCEDURE","arguments":"IN p_project_id integer","language":"plpgsql",
+   "tableUsage":{"tables":[
+     {"table":"sample.audit_log","operations":"CR"},
+     {"table":"sample.employee","operations":"U"},
+     {"table":"sample.project","operations":"R"},
+     {"table":"sample.project_assignment","operations":"RD"}]}}]}</code></pre>
+<pre><code>{"database":"testdb","schema":"sample","name":"count_rows",
+ "overloads":[{"kind":"FUNCTION","arguments":"p_table_name text","result":"bigint","language":"plpgsql",
+   "tableUsage":{
+     "tables":[{"table":"employee","schemaResolution":"search_path",
+                "schemaCandidates":["sample"],"operations":"R"}],
+     "dynamicSql":["EXECUTE"]}}]}</code></pre>
+
 <!-- ============================================================ -->
 <h2 id="tools"><span class="n">8</span>ツールとソースの対応</h2>
 
@@ -1144,7 +1225,7 @@ erDiagram
     <tr><td><code>find_join_path</code></td><td><code>RelationTools#findJoinPath</code></td><td><code>tables().lookup</code>×2 → <code>relations().joinPaths</code></td><td><code>JoinPathOutput</code></td></tr>
     <tr><td><code>get_er_diagram</code></td><td><code>DiagramTools#getErDiagram</code></td><td><code>tables().lookup</code> → <code>relations().relatedTables</code>（<code>table</code>）か、<code>viewpoints().find</code> → <code>relations().among</code>（<code>viewpoint</code>）→ <code>MermaidErDiagram.render</code></td><td><code>ErDiagramOutput</code></td></tr>
     <tr><td><code>list_functions</code></td><td><code>FunctionTools#listFunctions</code></td><td><code>functions().list(scope, NameFilter)</code>（オーバーロードを展開）</td><td><code>ListFunctionsOutput</code></td></tr>
-    <tr><td><code>get_function</code></td><td><code>FunctionTools#getFunction</code></td><td><code>functions().lookup</code> → <code>tables().triggersCalling</code></td><td><code>GetFunctionOutput</code></td></tr>
+    <tr><td><code>get_function</code></td><td><code>FunctionTools#getFunction</code></td><td><code>functions().lookup</code> → <code>tables().triggersCalling</code>・<code>functionTableUsages().find</code></td><td><code>GetFunctionOutput</code></td></tr>
     <tr><td><code>list_sequences</code></td><td><code>SequenceTools#listSequences</code></td><td><code>sequences().list</code></td><td><code>ListSequencesOutput</code></td></tr>
     <tr><td><code>get_sequence</code></td><td><code>SequenceTools#getSequence</code></td><td><code>sequences().lookup</code> → <code>tables().columnsUsing</code></td><td>元の1行＋<code>usedByColumns</code></td></tr>
     <tr><td><code>list_types</code></td><td><code>TypeTools#listTypes</code></td><td><code>types().list(scope, filter)</code>＋種別の絞り込み</td><td><code>ListTypesOutput</code></td></tr>
@@ -1193,21 +1274,22 @@ erDiagram
   <thead><tr><th>ファイル</th><th>役割</th><th>使う相手・使われる相手</th></tr></thead>
   <tbody>
     <tr class="group"><td colspan="3">mcp（直下）：入口</td></tr>
-    <tr><td class="file">McpServerMain</td><td>エントリーポイント。起動引数の検証→観点・スナップショットの読み込み→SDKの起動（ツールとリソースの登録）。標準エラーをUTF-8に固定し、<code>UserCorrectableException</code>なら終了コード2</td><td>→ <code>ServerArguments</code>・2つのReader・<code>TableDefinitionTools</code>・<code>TableDefinitionResources</code>・SDK</td></tr>
+    <tr><td class="file">McpServerMain</td><td>エントリーポイント。起動引数の検証→観点・関数の利用テーブル・スナップショットの読み込み→SDKの起動（ツールとリソースの登録）。標準エラーをUTF-8に固定し、<code>UserCorrectableException</code>なら終了コード2</td><td>→ <code>ServerArguments</code>・2つのReader・<code>TableDefinitionTools</code>・<code>TableDefinitionResources</code>・SDK</td></tr>
     <tr><td class="file">ServerArguments</td><td>起動引数（<code>--snapshot=</code>のみ）の解釈と検証</td><td>← <code>McpServerMain</code></td></tr>
     <tr><td class="file">UserCorrectableException</td><td>利用者が起動引数・スナップショットを直せば解消する失敗。メッセージに直し方を書く</td><td>← <code>ServerArguments</code>・2つのReader</td></tr>
     <tr><td class="file">package-info</td><td>依存の向き（<code>tool → catalog ← snapshot</code>・<code>catalog ← insight</code>）の宣言</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.snapshot / mcp.insight：ファイルの読み込み</td></tr>
-    <tr><td class="file">SnapshotDirectoryReader</td><td><code>snapshot/{DB}/database.json</code>と<code>{schema}/{tables,functions,sequences,types}.jsonl</code>を読み<code>SchemaCatalog</code>を作る。無いファイルは0件、未知の項目は無視、<code>formatVersion</code>の上限は1。読み込み用のrecord（<code>TableLine</code>等）を内部に持つ</td><td>← <code>McpServerMain</code>／→ <code>SchemaCatalog.of</code>・各Entry</td></tr>
-    <tr><td class="file">InsightsDirectoryReader</td><td><code>--snapshot</code>の親の兄弟<code>insights/{DB}/viewpoints.json</code>を読む。DB名はディレクトリ名。無ければ0件</td><td>← <code>McpServerMain</code>／→ <code>ViewpointEntry</code>・<code>ObjectKey</code></td></tr>
+    <tr><td class="file">SnapshotDirectoryReader</td><td><code>snapshot/{DB}/database.json</code>と<code>{schema}/{tables,functions,sequences,types}.jsonl</code>を読み<code>SchemaCatalog</code>を作る。無いファイルは0件、未知の項目は無視、<code>formatVersion</code>の上限は1。関数は定義本体のSHA-256（<code>definitionHash</code>）も求める。読み込み用のrecord（<code>TableLine</code>等）を内部に持つ</td><td>← <code>McpServerMain</code>／→ <code>SchemaCatalog.of</code>・各Entry</td></tr>
+    <tr><td class="file">InsightsDirectoryReader</td><td><code>--snapshot</code>の親の兄弟<code>insights/{DB}/viewpoints.json</code>と<code>{DB}/{スキーマ}/functionTableUsages.json</code>を読む。観点のDB名はディレクトリ名、関数の利用テーブルのDB名・スキーマ名はファイルの中の値（ファイルにDB名が無ければDBのディレクトリ名）。<code>formatVersion</code>の上限は1。無ければ0件</td><td>← <code>McpServerMain</code>／→ <code>ViewpointEntry</code>・<code>FunctionTableUsageEntry</code>・<code>ObjectKey</code></td></tr>
     <tr><td class="file">package-info ×2</td><td>各パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.catalog：中心のロジック</td></tr>
-    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>relations()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>）だけを持つ。<code>withViewpoints</code>で観点を差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>SchemaSummary.summarize</code></td></tr>
+    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>）だけを持つ。<code>withViewpoints</code>・<code>withFunctionTableUsages</code>で観点・関数の利用テーブルを差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>SchemaSummary.summarize</code></td></tr>
     <tr><td class="file">TableCatalog</td><td>テーブル（ビューを含む）の一覧（関連の数での並べ替えを含む）・検索・名前の解決・カラムの逆引き・トリガーの一覧と、テーブルを走査して求める相互参照（参照しているビュー・関数を実行するトリガー・シーケンスや型を使うカラム）</td><td>← <code>SchemaCatalog.tables()</code>／→ <code>RelationGraph</code>・<code>SearchQuery</code>・<code>ColumnQuery</code>・<code>SqlNames</code></td></tr>
     <tr><td class="file">ObjectCatalog</td><td>関数（<code>FunctionOverloads</code>）・シーケンス・型に共通の、名前の順の一覧（<code>list</code>）と名前の解決（<code>lookup</code>。見つからなければ部分一致の候補）。テーブルの解決もここの汎用メソッドを使う。種類に固有の条件（型の種別）はツール側で絞る</td><td>← <code>SchemaCatalog</code>の<code>functions()</code>等・<code>TableCatalog</code></td></tr>
     <tr><td class="file">ViewpointCatalog</td><td>観点の一覧・idでの解決と、テーブルが所属する観点の逆引き（<code>containing</code>）</td><td>← <code>SchemaCatalog.viewpoints()</code></td></tr>
+    <tr><td class="file">FunctionTableUsages</td><td>関数・プロシージャが利用しているテーブルの参考情報を、スナップショットの関数（<code>FunctionEntry</code>）から引く窓口。キー（DB名・スキーマ名・名前）と引数で識別し、定義本体のハッシュが異なる古い参考情報は返さない（7.10節）</td><td>← <code>SchemaCatalog.functionTableUsages()</code>・<code>FunctionTools</code></td></tr>
     <tr><td class="file">RelationGraph</td><td>関連のグラフ。<code>outgoing</code>・<code>incoming</code>の索引、テーブルごとの関連の数（<code>counts</code>）、向きを問わず隣り合うテーブル（<code>adjacentTables</code>）、幅優先の<code>relatedTables</code>、指定したテーブル同士の関連（<code>among</code>）、全最短経路の<code>joinPaths</code>。公開クラスで、ツールは<code>SchemaCatalog.relations()</code>から直接呼ぶ</td><td>← 関連を扱うツール・<code>TableCatalog</code>・<code>ClusterDetector</code></td></tr>
     <tr><td class="file">ClusterDetector</td><td>関連のまとまりの推測。連結成分に分け、上限を超えるまとまりは被参照の最も多いテーブル（<code>HUB_MIN_INCOMING</code>以上）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルはハブごとに寄せる</td><td>← <code>SchemaCatalog.tableClusters</code>（パッケージプライベート）／→ <code>RelationGraph</code></td></tr>
     <tr><td class="file">TableClusters<br>TableCluster</td><td>まとまりを求めた結果（まとまり・ハブ・関連の無いテーブルの数、ハブの下限<code>HUB_MIN_INCOMING</code>）と、1つのまとまり（先頭が代表のテーブル）</td><td>← <code>ClusterDetector</code>／→ <code>ClusterTools</code></td></tr>
@@ -1230,11 +1312,12 @@ erDiagram
     <tr><td class="file">ColumnEntry</td><td>カラム（名前・論理名・型・PK・NOT NULL・デフォルト値・備考）</td><td>← <code>TableEntry</code></td></tr>
     <tr><td class="file">RelationEntry</td><td>外部キー・論理リレーション（自テーブル→参照先）。参照先スキーマが空なら自スキーマ</td><td>← <code>TableEntry</code>／→ <code>Relation.of</code></td></tr>
     <tr><td class="file">TriggerEntry</td><td>トリガー（タイミング・イベント・実行単位・関数名）</td><td>← <code>TableEntry</code></td></tr>
-    <tr><td class="file">FunctionEntry</td><td><code>functions.jsonl</code>の1行（定義本体を含む<code>json</code>）</td><td>← <code>FunctionOverloads</code></td></tr>
+    <tr><td class="file">FunctionEntry</td><td><code>functions.jsonl</code>の1行（定義本体を含む<code>json</code>）と、定義本体のハッシュ（<code>definitionHash</code>）</td><td>← <code>FunctionOverloads</code>・<code>FunctionTableUsages</code></td></tr>
     <tr><td class="file">FunctionOverloads</td><td>同名の関数の束。名前の解決の単位</td><td>← <code>ObjectCatalog</code>・<code>TableCatalog.triggersCalling</code>・<code>FunctionTools</code></td></tr>
     <tr><td class="file">SequenceEntry</td><td><code>sequences.jsonl</code>の1行（所有カラム）</td><td>← <code>SequenceTools</code></td></tr>
     <tr><td class="file">TypeEntry</td><td><code>types.jsonl</code>の1行（種別）</td><td>← <code>TypeTools</code></td></tr>
     <tr><td class="file">ViewpointEntry</td><td>観点（id・表示名・説明・所属テーブル）。<code>SchemaObject</code>ではない。所属の判定は<code>contains</code></td><td>← <code>InsightsDirectoryReader</code>・<code>ViewpointCatalog</code>・<code>ViewpointResolver</code>・<code>ViewpointTools</code></td></tr>
+    <tr><td class="file">FunctionTableUsageEntry</td><td>関数1つ分の参考情報（キー・引数・<code>definitionHash</code>・状態・<code>UsedTable</code>の列・動的SQL・<code>incomplete</code>・<code>overloadsMerged</code>）。<code>SchemaObject</code>ではない</td><td>← <code>InsightsDirectoryReader</code>・<code>FunctionTableUsages</code>・<code>FunctionTools</code></td></tr>
     <tr><td class="file">Relation</td><td>グラフの辺（参照元・参照先・カラム・由来・多重度・名前）。<code>otherSide</code>で反対側</td><td>← <code>RelationGraph</code>／→ 結果の<code>RelationOutput</code></td></tr>
     <tr><td class="file">RelationKind</td><td><code>FOREIGN_KEY</code>・<code>LOGICAL_RELATION</code></td><td>← <code>Relation</code>・<code>ColumnHit</code></td></tr>
     <tr><td class="file">Direction</td><td>たどる向き（<code>OUTGOING</code>・<code>INCOMING</code>・<code>BOTH</code>）</td><td>← <code>RelationTools</code>・<code>RelationGraph</code></td></tr>
@@ -1266,7 +1349,7 @@ erDiagram
     <tr><td class="file">RelationTools</td><td><code>get_related_tables</code>・<code>find_join_path</code>。<code>kindName</code>で由来を<code>foreignKey</code>/<code>logicalRelation</code>に</td><td>→ <code>relations().relatedTables</code>・<code>relations().joinPaths</code></td></tr>
     <tr><td class="file">DiagramTools</td><td><code>get_er_diagram</code>。<code>table</code>と<code>viewpoint</code>のどちらか一方を受け、範囲を求めて<code>MermaidErDiagram</code>で書く。描くテーブルの上限<code>MAX_NODES</code>（80）</td><td>→ <code>relations().relatedTables</code>・<code>relations().among</code>・<code>ViewpointResolver</code>・<code>MermaidErDiagram</code></td></tr>
     <tr><td class="file">MermaidErDiagram</td><td><code>DiagramScope</code>からMermaidの<code>erDiagram</code>を組み立てる。表記はcliの<code>MermaidSupport</code>に揃え、DB由来の名前の識別子・表示名・型を無害化する（7.9節）</td><td>← <code>DiagramTools</code></td></tr>
-    <tr><td class="file">FunctionTools</td><td><code>list_functions</code>・<code>get_function</code>。定義本体の除去・集約（<code>sharedDefinition</code>）・切り詰め（<code>truncateDefinitionOf</code>）</td><td>→ <code>functions().list</code>・<code>functions().lookup</code>・<code>tables().triggersCalling</code></td></tr>
+    <tr><td class="file">FunctionTools</td><td><code>list_functions</code>・<code>get_function</code>。定義本体の除去・集約（<code>sharedDefinition</code>）・切り詰め（<code>truncateDefinitionOf</code>）と、オーバーロードごとの<code>tableUsage</code>の組み立て（テーブルは<code>スキーマ.テーブル</code>、操作は<code>CRUD</code>の文字列。7.10節）</td><td>→ <code>functions().list</code>・<code>functions().lookup</code>・<code>tables().triggersCalling</code>・<code>functionTableUsages().find</code></td></tr>
     <tr><td class="file">SequenceTools</td><td><code>list_sequences</code>・<code>get_sequence</code></td><td>→ <code>sequences().list</code>・<code>tables().columnsUsing</code></td></tr>
     <tr><td class="file">TypeTools</td><td><code>list_types</code>・<code>get_type</code>。種別はPostgreSQLとOracleの7つ</td><td>→ <code>types().list</code>・<code>tables().columnsUsing</code></td></tr>
     <tr><td class="file">TriggerTools</td><td><code>list_triggers</code>（テーブルをまたぐ一覧）</td><td>→ <code>tables().triggers</code></td></tr>
@@ -1285,10 +1368,12 @@ erDiagram
     <tr><td class="file">SchemaCatalogTest</td><td>スキーマごとの数・テーブルの一覧・関連のまとまり</td><td>→ <code>SchemaCatalog</code></td></tr>
     <tr><td class="file">SearchQueryTest<br>SqlNamesTest</td><td>点数・AND・正規化／名前の取り出し</td><td>→ 各クラス</td></tr>
     <tr><td class="file">TestTables<br>TestCatalogs<br>Lookups</td><td>テスト用のテーブルのビルダー／テーブルだけから<code>SchemaCatalog</code>を組み立てる補助／<code>Lookup</code>から値を取り出す補助</td><td>← catalogのテスト</td></tr>
-    <tr><td class="file">SnapshotDirectoryReaderTest</td><td>読み込みと起動時の誤り（ファイル名・行番号）</td><td>→ <code>SnapshotDirectoryReader</code></td></tr>
+    <tr><td class="file">SnapshotDirectoryReaderTest</td><td>読み込みと起動時の誤り（ファイル名・行番号）、関数の定義本体のハッシュ</td><td>→ <code>SnapshotDirectoryReader</code></td></tr>
     <tr><td class="file">SampleSnapshotContractTest</td><td>cliのベースライン<code>docs/sample/postgres/output/snapshot</code>を読む契約テスト。cliの形式変更への追従漏れを検知</td><td>→ ベースライン</td></tr>
-    <tr><td class="file">InsightsDirectoryReaderTest</td><td>観点の読み込みと兄弟ディレクトリの解決</td><td>→ <code>InsightsDirectoryReader</code></td></tr>
+    <tr><td class="file">InsightsDirectoryReaderTest</td><td>観点・関数の利用テーブルの読み込みと兄弟ディレクトリの解決（DB名・スキーマ名はファイルの中の値）</td><td>→ <code>InsightsDirectoryReader</code></td></tr>
     <tr><td class="file">SampleInsightsContractTest</td><td>ベースラインの観点と、スナップショットのテーブルのキーが一致すること</td><td>→ ベースライン</td></tr>
+    <tr><td class="file">FunctionTableUsagesTest</td><td>参考情報と関数の対応付け（キー・引数・定義本体のハッシュ。ハッシュが異なる古い参考情報・ハッシュを持たない参考情報は返さない）</td><td>→ <code>FunctionTableUsages</code></td></tr>
+    <tr><td class="file">SampleFunctionTableUsagesContractTest</td><td>cliの<code>--preview</code>の差分のベースライン（<code>docs/sample/postgres/output-preview</code>）の参考情報が読めて、スナップショットの関数（既定のベースライン）と対応付くことの契約テスト。cliのハッシュの求め方・形式の変更への追従漏れを検知</td><td>→ ベースライン</td></tr>
     <tr><td class="file">TableDefinitionToolsTest</td><td>全ツールの結果のJSON・エラー。<code>callHandler().apply(null, …)</code>で直接呼ぶため、SDKの入力検証は通らない</td><td>→ <code>TableDefinitionTools</code></td></tr>
     <tr><td class="file">ToolArgumentsTest</td><td>引数の読み取り（空白・型・カンマ区切り・列挙）</td><td>→ <code>ToolArguments</code></td></tr>
     <tr><td class="file">MermaidErDiagramTest</td><td>DB由来の名前（記号・二重引用符・改行）の無害化と、識別子が重なったときの連番</td><td>→ <code>MermaidErDiagram</code></td></tr>
@@ -1321,6 +1406,14 @@ erDiagram
   <li>cliのベースラインを出し直すと、<code>SampleSnapshotContractTest</code>・<code>SampleInsightsContractTest</code>が追従漏れを検知します（<code>./gradlew :mcp-server:test</code>）。</li>
 </ul>
 
+<h3>関数の利用テーブル（プレビュー）の参考情報が変わるとき</h3>
+<ul>
+  <li><strong>項目の追加</strong>は互換です。<code>InsightsDirectoryReader</code>は未知の項目を無視します。<code>get_function</code>の結果に出したいときだけ、<code>FunctionTableUsageLine</code>・<code>FunctionTableUsageEntry</code>に足し、<code>FunctionTools.tableUsage</code>で組み立てます。互換性の無い変更は、cliの<code>FunctionTableUsagesInsight.FORMAT_VERSION</code>を上げ、<code>InsightsDirectoryReader.SUPPORTED_FORMAT_VERSION</code>（観点と共通）を追従させます。</li>
+  <li><strong>定義本体のハッシュの求め方</strong>（UTF-8のSHA-256の小文字の16進）は、cliの<code>FunctionTableUsagesInsight</code>とmcp-serverの<code>SnapshotDirectoryReader</code>に、同じものが1つずつあります。片方だけを変えると、すべての関数で<code>tableUsage</code>が返らなくなります。</li>
+  <li>cliの<code>--preview</code>の差分のベースライン（<code>docs/sample/postgres/output-preview</code>）を出し直すと、<code>SampleFunctionTableUsagesContractTest</code>が追従漏れを検知します（<code>./gradlew :mcp-server:test</code>）。ベースラインのスナップショットは既定の<code>output/snapshot</code>から読みます。</li>
+  <li>プレビューの機能なので、互換性の対象外です。<code>tableUsage</code>の説明（ツールの説明）に、参考値であることと、候補のスキーマに決めつけないことを書き続けます。</li>
+</ul>
+
 <h3>ER図の表記・リソースを変えるとき</h3>
 <ul>
   <li><strong>ER図の表記</strong>（多重度の端点・線種・箱のカラム・エスケープ）は、cliの<code>MermaidSupport</code>とmcp-serverの<code>MermaidErDiagram</code>の両方にあります。片方だけを変えると<code>SampleErDiagramContractTest</code>が失敗します。cliを変えたらベースラインを出し直してから、こちらを追従させます。</li>
@@ -1332,15 +1425,20 @@ erDiagram
 <ul>
   <li><code>System.out</code>への出力や、標準出力へ出すログ設定の追加。プロトコルが壊れます（<code>System.out</code>等への書き込みは<code>ArchitectureTest</code>が検出しますが、ログの設定は検出しません）。</li>
   <li><code>immediateExecution(true)</code>の削除。SDKの修正版が出るまでは、並行呼び出しで応答が止まります。</li>
-  <li>cliのコードへの依存。両者の接点はスナップショットの形式だけです。</li>
+  <li>cliのコードへの依存。両者の接点は、スナップショットと参考情報（<code>insights/</code>）の形式だけです。</li>
+  <li>関数の参考情報を、定義本体のハッシュで照らさずに返す。片方だけが出力し直された後の、古い抽出結果を最新のものとして答えてしまいます。</li>
 </ul>
 
 <!-- ============================================================ -->
 <h2 id="glossary"><span class="n">11</span>用語集</h2>
 <dl class="glossary">
   <dt>スナップショット</dt><dd>cliがDBから取得した定義を、機械可読なJSON Linesで出力したもの。<code>{output.path}/snapshot/{DB名}/</code>に置かれる。mcp-serverの唯一の主な入力。</dd>
-  <dt>参考情報（insights）</dt><dd>スナップショットとは別に<code>{output.path}/insights/</code>へ出力される補助情報。現在は観点のみ。</dd>
+  <dt>参考情報（insights）</dt><dd>スナップショットとは別に<code>{output.path}/insights/</code>へ出力される補助情報。観点と、関数が利用しているテーブル（cliを<code>--preview</code>で実行した場合だけ）。</dd>
   <dt>観点（viewpoint）</dt><dd>業務ドメイン別にテーブルをまとめる切り口（例：人事管理）。1つのテーブルが複数の観点に所属できる。DB単位でスキーマを持たない。</dd>
+  <dt>利用しているテーブル（tableUsage）</dt><dd>関数・プロシージャの定義本体から、cliが機械的に抽出した、利用している出力対象のテーブルと操作（C・R・U・D）。<code>get_function</code>がオーバーロードごとに返す参考値で、呼び出している関数・動的SQLの中の参照は含まない。</dd>
+  <dt>定義本体のハッシュ（definitionHash）</dt><dd>定義本体のSHA-256（小文字の16進）。参考情報が、今のスナップショットと同じ定義本体から抽出したものかを照らすために使う。</dd>
+  <dt>プレビューの機能</dt><dd>cliの<code>--preview</code>を付けたときだけ動く、精度・出力の形を固めている途中の機能。出力は互換性の対象外。</dd>
+  <dt>スキーマが決まらない名前</dt><dd>スキーマ修飾が無く、定義からは決まらないテーブル名。<code>schemaResolution</code>（<code>search_path</code>・<code>current_user</code>・<code>synonym</code>）と、候補のスキーマ（<code>schemaCandidates</code>）で返す。</dd>
   <dt>関連のまとまり（cluster）・ハブ</dt><dd>関連のつながりだけから推測したテーブルの組（<code>list_table_clusters</code>）。人が宣言する観点とは別物。ハブは、大きなまとまりを分けるために除いた、多くのテーブルから参照される共通のテーブル。</dd>
   <dt>外部キー（foreignKey）</dt><dd>DBに実在する制約。関連の由来の1つ。</dd>
   <dt>論理リレーション（logicalRelation）</dt><dd>DBに制約は無いが、サイドカーYAMLで宣言された関連。グラフでは外部キーと同じ辺として扱う。</dd>
@@ -1360,7 +1458,7 @@ erDiagram
 </dl>
 
 <footer>
-  <p>出典：<code>modules/mcp-server/</code>のソース、<code>docs/architecture/mcp-server.md</code>、<code>docs/usage/mcp-server.md</code>、MCP Java SDK 2.0.1のソース（<code>mcp-core</code>・<code>mcp-json-jackson2</code>）。JSONの例はビルドしたjarに対する実際の応答。</p>
+  <p>出典：<code>modules/mcp-server/</code>のソース、<code>docs/architecture/mcp-server.md</code>、<code>docs/usage/mcp-server.md</code>、<code>docs/usage/cli.md</code>（プレビューの機能）、MCP Java SDK 2.0.1のソース（<code>mcp-core</code>・<code>mcp-json-jackson2</code>）。JSONの例はビルドしたjarに対する実際の応答。</p>
 </footer>
 </main>
 </div>

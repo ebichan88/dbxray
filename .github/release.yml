@@ -9,6 +9,9 @@ changelog:
     - title: 破壊的変更
       labels:
         - breaking
+    - title: プレビューの機能（--previewを付けたときだけ動く。互換性の対象外）
+      labels:
+        - preview
     - title: 機能追加・改善
       labels:
         - enhancement

@@ -258,13 +258,13 @@ pre.tree { line-height: 1.55; }
     <li><b>3 出力形式</b>Markdown・スナップショット・参考情報（insights）</li>
     <li><b>2 DBMS</b>PostgreSQL・Oracle。SQLはmapper XMLに分離</li>
   </ul>
-  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114まで）を読んで作成。コンソールの出力例は、ビルドしたjarを、<code>docs/sample/postgres/ddl.sql</code>を流し込んだPostgreSQL 16に対して実行して採取したものです（長いパスは短く書き換えています）。Markdown・JSONの例は、コミット済みのベースライン<code>docs/sample/postgres/output</code>から引用しています。</p>
+  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114まで）を読んで作成し、その後に入った<code>--preview</code>（関数・プロシージャが利用しているテーブルの出力。Issue #134・PR #137）の分を各章に追記しています（9.9節にまとめ）。コンソールの出力例は、ビルドしたjarを、<code>docs/sample/postgres/ddl.sql</code>を流し込んだPostgreSQL 16に対して実行して採取したものです（長いパスは短く書き換えています）。Markdown・JSONの例は、コミット済みのベースライン<code>docs/sample/postgres/output</code>から引用しています。</p>
 </header>
 
 <div class="note key">
   <p class="note-title">先に掴んでおく6つの要点</p>
   <ol class="steps">
-    <li><div><strong>一方向の変換器</strong>：DBのカタログとサイドカーYAMLを読み、Markdown・スナップショット・参考情報の3形式を書きます。DBへは<code>SELECT</code>しか発行しません（<a href="#io">1章</a>）。</div></li>
+    <li><div><strong>一方向の変換器</strong>：DBのカタログとサイドカーYAMLを読み、Markdown・スナップショット・参考情報の3形式を書きます。DBへは<code>SELECT</code>しか発行しません。精度を固めている途中の機能は<code>--preview</code>を付けたときだけ動きます（<a href="#io">1章</a>・<a href="#logic">9.9節</a>）。</div></li>
     <li><div><strong>層と依存の向き</strong>：<code>presentation → application → domain ← infrastructure</code>。ルールはdomainに、DB・ファイル・YAML・JSONとの接点はinfrastructureに、全体の組み立てはエントリーポイントとconfigにあります（<a href="#overview">3章</a>）。</div></li>
     <li><div><strong>検証は入口で、報告はmainの1箇所で</strong>：設定・引数・出力先の誤りはDBへ接続する前に検証し、例外は<code>main</code>だけが捕まえて終了コードに変えます（<a href="#startup">4章</a>・<a href="#failure">5章</a>）。</div></li>
     <li><div><strong>取得は2つの粒度</strong>：軽い情報（テーブル一覧・関連・トリガー等）は対象範囲全体を一括で、重い情報（カラム・インデックス・制約）はスキーマ・チャンク単位で取得して、書いたら捨てます（<a href="#pipeline">6章</a>）。</div></li>
@@ -280,7 +280,7 @@ pre.tree { line-height: 1.55; }
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 900 380" role="img" aria-label="左に入力が4つ。DBのカタログ、サイドカーYAML、conf/config.yml、CLI引数。中央のcliがそれらを読み、右の出力先に、DB名ディレクトリのMarkdown、snapshotのJSON Lines、insightsのviewpoints.jsonを書く。ほかにコンソールへの表示、ログファイル、終了コードがある。" style="min-width: 760px">
+    <svg viewBox="0 0 900 392" role="img" aria-label="左に入力が4つ。DBのカタログ、サイドカーYAML、conf/config.yml、CLI引数（--check・--rm-dist・--preview等）。中央のcliがそれらを読み、右の出力先に、DB名ディレクトリのMarkdown、snapshotのJSON Lines、insightsのviewpoints.jsonと、--preview時だけのスキーマごとのfunctionTableUsages.jsonを書く。ほかにコンソールへの表示、ログファイル、終了コードがある。" style="min-width: 760px">
       <defs>
         <marker id="g1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
         <marker id="g1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
@@ -301,9 +301,10 @@ pre.tree { line-height: 1.55; }
       <text x="24" y="244" class="d-t-s">（パスワードは環境変数で渡す）</text>
       <text x="24" y="264" class="d-t-s">target・output・annotations：</text>
       <text x="24" y="282" class="d-t-s">出力対象・出力先など8項目</text>
-      <rect x="10" y="304" width="270" height="50" rx="6" class="d-box-soft"/>
+      <rect x="10" y="304" width="270" height="68" rx="6" class="d-box-soft"/>
       <text x="24" y="325" class="d-t-b">CLI引数</text>
-      <text x="24" y="344" class="d-t-s">--check・--rm-dist・--help・--version・--config・各設定の上書き</text>
+      <text x="24" y="343" class="d-t-s">--check・--rm-dist・--preview・--config</text>
+      <text x="24" y="361" class="d-t-s">--help・--version・各設定の上書き</text>
 
       <rect x="340" y="110" width="220" height="180" rx="8" class="d-box-acc"/>
       <text x="450" y="138" text-anchor="middle" class="d-t-s">cli（このサブプロジェクト）</text>
@@ -327,20 +328,22 @@ pre.tree { line-height: 1.55; }
       <text x="634" y="120" class="d-t-b">snapshot/{DB名}/ … JSON Lines</text>
       <text x="634" y="138" class="d-t-s">database.json・{スキーマ}/tables.jsonl 等</text>
       <text x="634" y="156" class="d-t-s">--check・mcp-server・jqが読む</text>
-      <rect x="620" y="180" width="270" height="54" rx="6" class="d-box"/>
-      <text x="634" y="202" class="d-t-b">insights/{DB名}/viewpoints.json</text>
-      <text x="634" y="222" class="d-t-s">観点（宣言した場合だけ）。mcp-serverが読む</text>
-      <rect x="620" y="244" width="270" height="110" rx="6" class="d-box-soft"/>
-      <text x="634" y="266" class="d-t-b">コンソール・ログ・終了コード</text>
-      <text x="634" y="286" class="d-t-s">標準出力　[result]:SUCCESS / FAIL</text>
-      <text x="634" y="304" class="d-t-s">標準エラー　[warn]:（警告）</text>
-      <text x="634" y="322" class="d-t-s">var/log/dbxray.log</text>
-      <text x="634" y="340" class="d-t-s">終了コード　0・1・2</text>
+      <rect x="620" y="180" width="270" height="82" rx="6" class="d-box"/>
+      <text x="634" y="202" class="d-t-b">insights/{DB名}/ … 参考情報</text>
+      <text x="634" y="222" class="d-t-s">viewpoints.json … 観点（宣言した場合だけ）</text>
+      <text x="634" y="238" class="d-t-s">{スキーマ}/functionTableUsages.json</text>
+      <text x="634" y="254" class="d-t-s">… 関数の利用テーブル（--previewだけ）</text>
+      <rect x="620" y="272" width="270" height="104" rx="6" class="d-box-soft"/>
+      <text x="634" y="293" class="d-t-b">コンソール・ログ・終了コード</text>
+      <text x="634" y="313" class="d-t-s">標準出力　[result]:SUCCESS / FAIL</text>
+      <text x="634" y="331" class="d-t-s">標準エラー　[warn]:（警告）</text>
+      <text x="634" y="349" class="d-t-s">var/log/dbxray.log</text>
+      <text x="634" y="367" class="d-t-s">終了コード　0・1・2</text>
 
       <line x1="562" y1="150" x2="616" y2="56" class="d-line-acc" marker-end="url(#g1b)"/>
       <line x1="562" y1="180" x2="616" y2="134" class="d-line-acc" marker-end="url(#g1b)"/>
-      <line x1="562" y1="210" x2="616" y2="207" class="d-line-acc" marker-end="url(#g1b)"/>
-      <line x1="562" y1="250" x2="616" y2="299" class="d-line-muted" marker-end="url(#g1a)"/>
+      <line x1="562" y1="210" x2="616" y2="217" class="d-line-acc" marker-end="url(#g1b)"/>
+      <line x1="562" y1="250" x2="616" y2="313" class="d-line-muted" marker-end="url(#g1a)"/>
     </svg>
   </div>
   <figcaption><b>図1 入力と出力。</b>左上の2つは文書に載せる内容、左下の3つは実行のしかたを決める入力です。後者の誤りはすべて失敗にし、前者のサイドカーYAMLの個々の書き誤りは警告して読み飛ばします（5章）。<code>--check</code>はスナップショットだけを一時ディレクトリに作り、出力先の<code>snapshot/</code>と比べます。</figcaption>
@@ -365,6 +368,15 @@ pre.tree { line-height: 1.55; }
   </div>
 </div>
 
+<div class="note">
+  <p class="note-title"><code>--preview</code>：固めている途中の機能は、付けたときだけ動く</p>
+  <p>精度や出力の形を、使った人の声を聞きながら固めている途中の機能は、<code>--preview</code>を付けて実行したときだけ動きます。今あるのは<code>functionTableUsage</code>の1つで、関数・プロシージャの定義本体から、利用しているテーブルと操作（C・R・U・D）を機械的に抽出します（9.9節）。結果は関数の定義書の「利用しているテーブル」と、参考情報の<code>functionTableUsages.json</code>に出ます。</p>
+  <ul>
+    <li>出力・挙動は互換性の対象にしません（<code>CONTRIBUTING.md</code>の「互換性を約束する範囲」）。外すときは機能追加として扱います。</li>
+    <li>スナップショットは変えません。そのため<code>--check</code>の結果には影響せず、<code>--check</code>と同時に指定しても効果はありません（その旨を表示します。7章）。</li>
+  </ul>
+</div>
+
 <h3>出力先の構成</h3>
 <p>出力はすべて<code>output.path</code>（未指定なら<code>./output</code>）の下に、DBごとのディレクトリに分けて置かれます。同じ出力先へ複数のDBを出力しても混ざりません。</p>
 <pre class="tree"><code>{output.path}/
@@ -377,16 +389,18 @@ pre.tree { line-height: 1.55; }
 │   ├─ triggerList / functionList / sequenceList / typeList_{DB名}.md
 │   └─ {スキーマ}/
 │       ├─ table | view | materialized_view/{テーブル}.md  <span class="c">テーブル定義書</span>
-│       └─ function | sequence | type/{名前}.md            <span class="c">個別定義</span>
+│       └─ function | sequence | type/{名前}.md            <span class="c">個別定義（関数は--previewで「利用しているテーブル」の節が付く）</span>
 ├─ snapshot/{DB名}/                     <span class="c">JSON Lines（機械が読む。--checkの比較対象）</span>
 │   ├─ database.json
 │   └─ {スキーマ}/tables.jsonl・functions.jsonl・sequences.jsonl・types.jsonl
-└─ insights/{DB名}/viewpoints.json      <span class="c">参考情報（--checkの対象外）</span></code></pre>
+└─ insights/{DB名}/                     <span class="c">参考情報（--checkの対象外）</span>
+    ├─ viewpoints.json                   <span class="c">観点（宣言した場合だけ）</span>
+    └─ {スキーマ}/functionTableUsages.json   <span class="c">関数・プロシージャの利用しているテーブル（--previewを付けた場合だけ）</span></code></pre>
 <p class="small muted">一覧は、テーブル一覧以外は対象が1件以上あるときだけ出力します。どのファイルをどのクラスが書くかは10章にまとめています。</p>
 
 <div class="note key">
   <p class="note-title">同じ取得結果から3つの形式を作る</p>
-  <p>Markdownは人が読む最終成果物、スナップショットは機械が読む中間表現です。どちらもDBから1回取得した同じデータ（1テーブル分なら<code>TableDefinitionContent</code>）から作るため、内容は食い違いません。スナップショットは実行のたびに変わる生成日を含まないため、DBが変わらなければ何度実行しても同じ内容になり、<code>--check</code>が日付で差分を出しません。観点はスキーマの事実ではなく「見せ方」なので、スナップショットには含めず、参考情報として別に出力します。</p>
+  <p>Markdownは人が読む最終成果物、スナップショットは機械が読む中間表現です。どちらもDBから1回取得した同じデータ（1テーブル分なら<code>TableDefinitionContent</code>）から作るため、内容は食い違いません。スナップショットは実行のたびに変わる生成日を含まないため、DBが変わらなければ何度実行しても同じ内容になり、<code>--check</code>が日付で差分を出しません。観点はスキーマの事実ではなく「見せ方」なので、スナップショットには含めず、参考情報として別に出力します。関数・プロシージャが利用しているテーブルも、DBが持つ事実ではなく定義本体から抽出した参考値なので、同じく参考情報として出します。</p>
 </div>
 
 <h3>サイドカーYAML：DBに無い情報を足す</h3>
@@ -712,10 +726,10 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <rect x="340" y="100" width="360" height="360" rx="8" class="d-box-acc"/>
       <text x="356" y="122" class="d-t-s">domain</text>
       <rect x="356" y="134" width="328" height="110" rx="5" class="d-box"/>
-      <text x="370" y="156" class="d-t-b">domain.model（10パッケージ）</text>
-      <text x="370" y="176" class="d-t-s">table・relation・target・sidecar</text>
-      <text x="370" y="192" class="d-t-s">viewpoint・schemaobject・snapshot</text>
-      <text x="370" y="208" class="d-t-s">insight・database・document</text>
+      <text x="370" y="156" class="d-t-b">domain.model（12パッケージ）</text>
+      <text x="370" y="176" class="d-t-s">table・relation・target・sidecar・viewpoint</text>
+      <text x="370" y="192" class="d-t-s">schemaobject・snapshot・insight・database</text>
+      <text x="370" y="208" class="d-t-s">document・metrics・tableusage（関数の利用テーブル）</text>
       <text x="370" y="232" class="d-t-acc">エンティティ・集合・値オブジェクト・ルール</text>
       <rect x="356" y="254" width="328" height="58" rx="5" class="d-box"/>
       <text x="370" y="276" class="d-t-b">domain.repository（インタフェース）</text>
@@ -725,7 +739,8 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <text x="370" y="366" class="d-t-s">export（出力形式ごとのSink）・target（突き合わせ）</text>
       <text x="370" y="384" class="d-t-s">path（配置の規則）・snapshot（書き込み・比較）</text>
       <text x="370" y="402" class="d-t-s">insight（参考情報）・UnifiedDiffGenerator</text>
-      <text x="370" y="430" class="d-t-acc">writer：Markdownの段取りとテンプレート</text>
+      <text x="370" y="418" class="d-t-s">tableusage（定義本体から利用テーブルを抽出）</text>
+      <text x="370" y="438" class="d-t-acc">writer：Markdownの段取りとテンプレート</text>
 
       <rect x="740" y="100" width="170" height="250" rx="6" class="d-box"/>
       <text x="754" y="122" class="d-t-s">infrastructure（33）</text>
@@ -761,9 +776,9 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
     <tr><td>エントリーポイント（直下）</td><td><code>main</code>。CLI引数・設定・出力先の検証と、DIコンテナの組み立て。<code>--help</code>・<code>--version</code>の表示</td></tr>
     <tr><td><code>presentation</code>（<code>.dto</code>・<code>.type</code>）</td><td>ユースケースを呼んで結果を文面にする。失敗の報告、終了コード</td></tr>
     <tr><td><code>application</code></td><td>2つのユースケースと、両者が共有する取得・書き出しの段取り</td></tr>
-    <tr><td><code>domain.model</code>（10パッケージ）</td><td>エンティティ・集合・値オブジェクトと、それらが持つルール</td></tr>
+    <tr><td><code>domain.model</code>（12パッケージ）</td><td>エンティティ・集合・値オブジェクトと、それらが持つルール</td></tr>
     <tr><td><code>domain.repository</code></td><td>DB・サイドカーYAML・ファイルとのやり取りのインタフェース</td></tr>
-    <tr><td><code>domain.service</code>（writer以外）</td><td>出力形式ごとのSink、突き合わせ、配置の規則（DB由来の名前を安全なパスにする）、スナップショットの書き込み・比較</td></tr>
+    <tr><td><code>domain.service</code>（writer以外）</td><td>出力形式ごとのSink、突き合わせ、配置の規則（DB由来の名前を安全なパスにする）、スナップショットの書き込み・比較、関数の定義本体から利用しているテーブルを抽出する<code>tableusage</code>（9.9節）</td></tr>
     <tr><td><code>domain.service.writer</code></td><td>Markdownの段取り（Writer）と組み立て（Templates）</td></tr>
     <tr><td><code>infrastructure</code></td><td>MyBatis・DTO・接続、ファイル、サイドカーYAML、パス、Jackson</td></tr>
     <tr><td><code>config</code>（<code>.module</code>）</td><td>設定ファイルの読み込み（YAMLの構文誤りの文言を含む）と、Guiceのモジュール</td></tr>
@@ -787,6 +802,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
     <tr><td>Guice</td><td><code>@Inject</code>は<code>jakarta.inject</code>のもの。Guiceに依存するのはエントリーポイントとconfigだけ</td></tr>
     <tr><td>接尾辞と置き場所</td><td><code>…Entity</code>→<code>domain.model</code>、<code>…Dto</code>→<code>infrastructure.db.repository.dto</code>か<code>presentation.dto</code>、<code>…Templates</code>→<code>domain.service.writer</code>、<code>…Writer</code>→<code>domain.service</code>、<code>…Locations</code>→<code>domain.service.path</code>、<code>…Usecase</code>・<code>…Request</code>→<code>application</code></td></tr>
     <tr><td>リポジトリ</td><td><code>domain.repository</code>には<code>…Repository</code>のインタフェースだけ。実装は<code>infrastructure..repository</code></td></tr>
+    <tr><td>定義本体を読むパッケージ</td><td><code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>は正規表現を使わない（<code>java.util.regex</code>と、<code>String.matches</code>・<code>replaceAll</code>・<code>replaceFirst</code>・<code>split</code>）。定義本体はDBでCREATEの権限を持つ人が書ける入力で、正規表現はバックトラックで入力の長さに比例しない時間がかかり得る（ReDoS）ため、1文字ずつ読む（9.9節）</td></tr>
   </tbody>
 </table>
 </div>
@@ -820,6 +836,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
   <li><div><code>ExportSink</code>と3つの<code>…SinkFactory</code>：出力形式ごとに「いつ何を書くか」（6章の表）。</div></li>
   <li><div><code>domain.model.target</code>：<code>ExportTargets</code>・<code>TableDefinitionContent</code>・<code>TableScope</code>。取得したデータを組み立てる単位です（8章）。</div></li>
   <li><div><code>domain.model.table</code>・<code>relation</code>：<code>TableKey</code>・<code>ForeignKeys</code>・<code>ForeignKeyGroups</code>・<code>Cardinality</code>。関連とER図のルールです（9章）。</div></li>
+  <li><div>関数が利用しているテーブルの抽出（<code>--preview</code>）：<code>FunctionTableUsageAnalyzer</code>→<code>FunctionBodyLocator</code>→<code>TableReferenceScanner</code>→<code>SqlLexer</code>の順に、9.9節の図と合わせて読みます。</div></li>
   <li><div>気になる出力のWriter→Templates：たとえば<code>TableDefinitionWriter</code>（セクションの順）→<code>TableDefinitionTemplates</code>（各セクションの組み立て）。</div></li>
   <li><div>infrastructure：<code>AbstractCatalogRepository</code>とmapper XML、<code>SidecarYamlRepository</code>。</div></li>
   <li><div>入口の検証：<code>CliArguments</code>・<code>DbxrayProperties</code>・<code>ConnectionSettings</code>・<code>FailureReporter</code>（5章）。</div></li>
@@ -947,7 +964,7 @@ cliArguments.requireKnownArguments();
 <span class="k">final</span> ConfigFile configFile = ConfigFile.load(cliArguments.configPath());   <span class="c">// 設定ファイルは1回だけ読む</span>
 <span class="k">final</span> ExportSchemaRequest request =
     DbxrayProperties.of(configFile, cliArguments.settingOverrides())
-        .toExportSchemaRequest(cliArguments.isRmDist());
+        .toExportSchemaRequest(cliArguments.isRmDist(), cliArguments.isPreview());
 <span class="k">final</span> Injector injector = createInjector();
 injector.getInstance(OutputDirectoryValidator.<span class="k">class</span>).validate(request);
 <span class="k">final</span> ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);   <span class="c">// ConnectionSettings.merge</span>
@@ -961,13 +978,14 @@ System.out.println(resultDto.getResultMessage());
 <table>
   <thead><tr><th>record</th><th>持つもの</th><th>使う場所</th></tr></thead>
   <tbody>
-    <tr><td><code>ExportSchemaRequest</code></td><td><code>targetSelection</code>・<code>sidecarPath</code>・<code>outputPath</code>・<code>chunkSize</code>・<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code></td><td>通常実行</td></tr>
-    <tr><td><code>CheckDocumentDiffRequest</code></td><td>上から<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>を除いたもの（Markdownを描かず、出力先も消さないため）</td><td><code>--check</code></td></tr>
+    <tr><td><code>ExportSchemaRequest</code></td><td><code>targetSelection</code>・<code>sidecarPath</code>・<code>outputPath</code>・<code>chunkSize</code>・<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>・<code>previewFeatures</code>（有効にするプレビューの機能の集合）</td><td>通常実行</td></tr>
+    <tr><td><code>CheckDocumentDiffRequest</code></td><td>上から<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>・<code>previewFeatures</code>を除いたもの（Markdownを描かず、出力先も消さず、プレビューの機能も使わないため）</td><td><code>--check</code></td></tr>
     <tr><td><code>TargetSelection</code></td><td><code>TableScope</code>（スキーマ名＋テーブル名パターン）と<code>Set&lt;OutputObjectType&gt;</code></td><td>両方のrequestの中</td></tr>
   </tbody>
 </table>
 </div>
 <ul>
+  <li><strong><code>--preview</code>は機能の集合に変える</strong>：<code>--check</code>・<code>--rm-dist</code>と同じ値を持たないフラグで、設定ファイルの項目にはありません。<code>CliArguments.isPreview</code>が真なら、<code>DbxrayProperties.toExportSchemaRequest</code>が<code>PreviewFeature</code>のすべてを<code>previewFeatures</code>に入れます（機能を個別に選ぶ引数はありません）。<code>--check</code>では<code>runCheck</code>が「効果が無い」旨を表示するだけで、<code>CheckDocumentDiffRequest</code>は持ちません（7章）。</li>
   <li><strong>設定ファイルの探し方</strong>：<code>ConfigFile</code>は、<code>--config</code>で指定したファイル、無ければ実行したディレクトリの<code>conf/config.yml</code>を読みます。jarの場所ではなくカレントディレクトリが基準で、配布用の<code>run.sh</code>・<code>run.bat</code>は自分のディレクトリへ移動してから起動します。全項目をCLI引数で上書きする場合でも、設定ファイル自体は必要です（実行するディレクトリを誤ったときに、既定の出力先へ黙って出力しないため）。</li>
   <li><strong>設定項目の仕様は1つの表に持つ</strong>：<code>DbxrayProperties.SETTINGS</code>が、項目ごとに設定ファイルでの位置（<code>output.path</code>等）・上書きするCLI引数名（<code>--output-path</code>等）・値の形式（1つの値・整数・リスト）を持ちます。<code>CliArguments</code>はこの表から上書きの引数を引くため、設定項目を足せば上書きの引数も増えます。</li>
   <li><strong>接続情報</strong>：<code>ConnectionSettings</code>は設定ファイルの<code>database</code>に、環境変数<code>DBXRAY_DB_PASSWORD</code>のパスワード、CLI引数の順で値を重ねて検証します。ファイルに<code>password</code>を書くと誤りです（作業ディレクトリのファイルはAIエージェント等のツールから読まれ得るため、秘密をファイルに残さない）。<code>url</code>にパスワードを埋め込む書き方（<code>?password=</code>・<code>sslpassword=</code>・Oracleの<code>user/pass@</code>）も、同じ理由で誤りにします。</li>
@@ -1070,14 +1088,15 @@ schemaExportPipeline.export(
             targets.foreignKeys()),
         snapshotSinkFactory.create(outputBaseDir),
         insightSinkFactory.create(outputBaseDir)),
-    request.chunkSize());</code></pre>
+    request.chunkSize(),
+    request.previewFeatures());   <span class="c">// --previewで有効にした機能。空なら利用テーブルの抽出をしない（9.9節）</span></code></pre>
 
 <h3>軽い情報は一括で、重い情報はチャンクで</h3>
 <p>対象スキーマ全体を一度にメモリへ載せないよう、取得を2つの粒度に分けています。テーブル一覧・関連・トリガー等は1件が軽く、ER図や被参照情報でスキーマ・チャンクをまたぐ参照を解決するのに全件が要るため、最初に一括で取得して最後まで持ちます。カラム・インデックス・制約はテーブル数に比例して重くなるため、スキーマごと・<code>chunkSize</code>件ごとに取得し、書き出したら捨てます。</p>
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 900 720" role="img" aria-label="左にパイプラインの段階。fetchTargetsでサイドカー、DB情報、テーブル、関連、トリガー等を一括取得してExportTargetsにする。fetchDiagramBoxesで関連カラムを集める。rm-distなら出力先を削除する。exportでは、全SinkのwriteOverview、スキーマごとに関数の定義本体を取得してwriteFunctionDefinitions、スキーマごとにbeginSchemaTablesとチャンクごとの詳細の取得、テーブルごとにTableDefinitionContentを組み立ててwriteTableDefinitionを呼ぶ。右に、最後まで持つものと、書いたら捨てるものが並ぶ。" style="min-width: 780px">
+    <svg viewBox="0 0 900 746" role="img" aria-label="左にパイプラインの段階。fetchTargetsでサイドカー、DB情報、テーブル、関連、トリガー等を一括取得してExportTargetsにする。fetchDiagramBoxesで関連カラムを集める。rm-distなら出力先を削除する。exportでは、全SinkのwriteOverview、スキーマごとに関数の定義本体を取得し（--previewなら利用しているテーブルも抽出して）writeFunctionDefinitions、スキーマごとにbeginSchemaTablesとチャンクごとの詳細の取得、テーブルごとにTableDefinitionContentを組み立ててwriteTableDefinitionを呼ぶ。右に、最後まで持つものと、書いたら捨てるものが並ぶ。" style="min-width: 780px">
       <text x="640" y="14" class="d-t-s">メモリに持つもの</text>
       <!-- A -->
       <rect x="20" y="20" width="580" height="168" rx="6" class="d-box"/>
@@ -1098,23 +1117,25 @@ schemaExportPipeline.export(
       <rect x="20" y="292" width="580" height="40" rx="6" class="d-box-dash"/>
       <text x="36" y="317" class="d-t-s">--rm-dist のときだけ出力先を削除（取得に成功した後。失敗しても既存の出力は残る）</text>
       <!-- D -->
-      <rect x="20" y="352" width="580" height="350" rx="8" class="d-box-acc"/>
-      <text x="36" y="376" class="d-t-ms" font-weight="600">export(targets, sinks, chunkSize)</text>
+      <rect x="20" y="352" width="580" height="376" rx="8" class="d-box-acc"/>
+      <text x="36" y="376" class="d-t-ms" font-weight="600">export(targets, sinks, chunkSize, previewFeatures)</text>
       <rect x="36" y="390" width="548" height="48" rx="5" class="d-box"/>
       <text x="52" y="410" class="d-t-ms">全Sinkの writeOverview(targets)</text>
       <text x="52" y="428" class="d-t-s">一覧・ER図・観点・シーケンス/型の個別定義、database.json 等</text>
-      <rect x="36" y="452" width="548" height="56" rx="5" class="d-box-loop"/>
+      <rect x="36" y="452" width="548" height="82" rx="5" class="d-box-loop"/>
       <text x="52" y="472" class="d-t-acc">スキーマごと（関数があるスキーマ）</text>
-      <text x="52" y="494" class="d-t-s">selectFunctionDefInfo（定義本体）→ 全Sinkの writeFunctionDefinitions</text>
-      <rect x="36" y="522" width="548" height="166" rx="5" class="d-box-loop"/>
-      <text x="52" y="542" class="d-t-acc">スキーマごと（tables.bySchema()）</text>
-      <text x="52" y="562" class="d-t-s">全Sinkの beginSchemaTables（スナップショットは tables.jsonl を空にする）</text>
-      <rect x="52" y="574" width="516" height="104" rx="5" class="d-box-loop"/>
-      <text x="68" y="594" class="d-t-acc">チャンクごと（chunkSize件。0以下ならスキーマ全体）</text>
-      <text x="68" y="614" class="d-t-s">selectTableDetails：selectColumnInfo・selectIndexInfo・selectConstraintInfo</text>
-      <rect x="68" y="626" width="484" height="44" rx="5" class="d-box"/>
-      <text x="82" y="644" class="d-t-s">テーブルごと：TableDefinitionContent.assemble</text>
-      <text x="82" y="662" class="d-t-s">→ 全Sinkの writeTableDefinition（孤児カラム備考も検出）</text>
+      <text x="52" y="492" class="d-t-s">selectFunctionDefInfo（定義本体）→ 関数ごとに FunctionDefinitionContent</text>
+      <text x="52" y="508" class="d-t-s">（--preview なら FunctionTableUsageAnalyzer.analyze で利用テーブルを抽出）</text>
+      <text x="52" y="524" class="d-t-s">→ 全Sinkの writeFunctionDefinitions</text>
+      <rect x="36" y="548" width="548" height="166" rx="5" class="d-box-loop"/>
+      <text x="52" y="568" class="d-t-acc">スキーマごと（tables.bySchema()）</text>
+      <text x="52" y="588" class="d-t-s">全Sinkの beginSchemaTables（スナップショットは tables.jsonl を空にする）</text>
+      <rect x="52" y="600" width="516" height="104" rx="5" class="d-box-loop"/>
+      <text x="68" y="620" class="d-t-acc">チャンクごと（chunkSize件。0以下ならスキーマ全体）</text>
+      <text x="68" y="640" class="d-t-s">selectTableDetails：selectColumnInfo・selectIndexInfo・selectConstraintInfo</text>
+      <rect x="68" y="652" width="484" height="44" rx="5" class="d-box"/>
+      <text x="82" y="670" class="d-t-s">テーブルごと：TableDefinitionContent.assemble</text>
+      <text x="82" y="688" class="d-t-s">→ 全Sinkの writeTableDefinition（孤児カラム備考も検出）</text>
       <!-- 右列 -->
       <rect x="640" y="20" width="250" height="168" rx="6" class="d-box-soft"/>
       <text x="654" y="44" class="d-t-b">ExportTargets</text>
@@ -1127,18 +1148,18 @@ schemaExportPipeline.export(
       <rect x="640" y="208" width="250" height="64" rx="6" class="d-box-soft"/>
       <text x="654" y="232" class="d-t-b">DiagramBoxes</text>
       <text x="654" y="254" class="d-t-s">関連カラムだけ。最後まで持つ</text>
-      <rect x="640" y="452" width="250" height="56" rx="6" class="d-box-soft"/>
-      <text x="654" y="474" class="d-t-b">関数の定義本体</text>
-      <text x="654" y="494" class="d-t-s">1スキーマ分。書いたら捨てる</text>
-      <rect x="640" y="574" width="250" height="104" rx="6" class="d-box-soft"/>
-      <text x="654" y="598" class="d-t-b">TableDetail</text>
-      <text x="654" y="620" class="d-t-s">カラム・インデックス・制約</text>
-      <text x="654" y="640" class="d-t-s">最大 chunkSize 件分</text>
-      <text x="654" y="662" class="d-t-acc">書いたら捨てる</text>
+      <rect x="640" y="452" width="250" height="82" rx="6" class="d-box-soft"/>
+      <text x="654" y="476" class="d-t-b">関数の定義本体・抽出結果</text>
+      <text x="654" y="498" class="d-t-s">1スキーマ分。書いたら捨てる</text>
+      <rect x="640" y="600" width="250" height="104" rx="6" class="d-box-soft"/>
+      <text x="654" y="624" class="d-t-b">TableDetail</text>
+      <text x="654" y="646" class="d-t-s">カラム・インデックス・制約</text>
+      <text x="654" y="666" class="d-t-s">最大 chunkSize 件分</text>
+      <text x="654" y="688" class="d-t-acc">書いたら捨てる</text>
       <line x1="602" y1="104" x2="638" y2="104" class="d-line-muted d-dash"/>
       <line x1="602" y1="240" x2="638" y2="240" class="d-line-muted d-dash"/>
-      <line x1="586" y1="480" x2="638" y2="480" class="d-line-muted d-dash"/>
-      <line x1="570" y1="626" x2="638" y2="626" class="d-line-muted d-dash"/>
+      <line x1="586" y1="493" x2="638" y2="493" class="d-line-muted d-dash"/>
+      <line x1="570" y1="652" x2="638" y2="652" class="d-line-muted d-dash"/>
     </svg>
   </div>
   <figcaption><b>図6 SchemaExportPipelineの段取り。</b>破線の枠はループです。ER図は、テーブル一覧・関連・関連カラム（<code>DiagramBoxes</code>）だけで描けるので、詳細をチャンク単位で取得する前の<code>writeOverview</code>で書き出せます。<code>chunkSize</code>を小さくするとメモリは減り、DBへの問い合わせは増えます。出力の内容は変わりません（結合テストが<code>chunkSize</code>を変えて同じ出力になることを確かめています）。</figcaption>
@@ -1176,13 +1197,15 @@ schemaExportPipeline.export(
   <thead><tr><th>呼ばれる時点</th><th>Markdown</th><th>スナップショット</th><th>参考情報</th></tr></thead>
   <tbody>
     <tr><td><code>writeOverview(targets)</code><br><span class="small muted">一括取得の後に1回</span></td><td>テーブル一覧・README・ER図と索引・トリガー/関数/シーケンス/型の一覧・観点ページと観点一覧・シーケンス/型の個別定義</td><td><code>database.json</code>・<code>sequences.jsonl</code>・<code>types.jsonl</code></td><td><code>viewpoints.json</code>（観点があれば）</td></tr>
-    <tr><td><code>writeFunctionDefinitions</code><br><span class="small muted">スキーマごと</span></td><td>関数・プロシージャの個別定義</td><td><code>functions.jsonl</code></td><td class="na">何もしない</td></tr>
+    <tr><td><code>writeFunctionDefinitions</code><br><span class="small muted">スキーマごと</span></td><td>関数・プロシージャの個別定義（<code>--preview</code>なら「利用しているテーブル」の節つき）</td><td><code>functions.jsonl</code>（利用しているテーブルは含めない）</td><td><code>{スキーマ}/functionTableUsages.json</code>（抽出した場合だけ。抽出していない実行は前回のファイルを削除）</td></tr>
     <tr><td><code>beginSchemaTables</code><br><span class="small muted">スキーマごと（既定は空の実装）</span></td><td class="na">何もしない</td><td><code>tables.jsonl</code>を空にする（前回の内容へ追記しないため）</td><td class="na">何もしない</td></tr>
     <tr><td><code>writeTableDefinition(content)</code><br><span class="small muted">テーブルごと</span></td><td>テーブル定義書</td><td><code>tables.jsonl</code>へ1行追記</td><td class="na">何もしない</td></tr>
     <tr><td>使うモード</td><td>通常実行</td><td>通常実行・<code>--check</code>（一時ディレクトリへ）</td><td>通常実行</td></tr>
   </tbody>
 </table>
 </div>
+<p><code>writeFunctionDefinitions</code>が受け取るのは、関数・プロシージャ1つ分の出力内容<code>FunctionDefinitionContent</code>（関数＋利用しているテーブル）のリストです。パイプラインがスキーマごとに、<code>--preview</code>のときだけ<code>FunctionTableUsageAnalyzer</code>で抽出し、そうでなければ「抽出していない」印（<code>FunctionTableUsage.notAnalyzed()</code>）を持たせます。Sinkは抽出するかどうかを知らず、Markdownは「利用しているテーブル」の節を出すか、参考情報はファイルを書くか消すかを、この印で決めます（9.9節）。</p>
+
 <div class="note key">
   <p class="note-title">出力形式を足すときに触る場所</p>
   <p><code>ExportSink</code>を実装したクラスとそのFactoryを作り、Factoryを<code>DbxrayModule</code>に束縛して、ユースケースが渡すリストに加えます。<code>SchemaExportPipeline</code>は出力形式を知らないので変えません。<code>--check</code>の比較対象にしたくない出力は、<code>CheckDocumentDiffUsecase</code>のリストに加えないだけで、比較から外れます（参考情報がこの方法で外れています）。</p>
@@ -1200,7 +1223,9 @@ schemaExportPipeline.export(
 <span class="k">try</span> {
   <span class="k">final</span> ExportTargets targets =
       schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
-  schemaExportPipeline.export(targets, List.of(snapshotSinkFactory.create(generatedDir)), request.chunkSize());
+  schemaExportPipeline.export(
+      targets, List.of(snapshotSinkFactory.create(generatedDir)), request.chunkSize(),
+      Set.of());   <span class="c">// プレビューの機能はスナップショットを変えないため、差分検知では有効にしない</span>
   <span class="k">return</span> snapshotDiff.compare(
       outputPathResolver.resolveSnapshotDirectory(generatedDir),
       outputPathResolver.resolveSnapshotDirectory(committedDir));
@@ -1288,7 +1313,8 @@ Content differs:
 <ul>
   <li><strong>Markdownだけの差分</strong>：手作業の編集・削除、ツールの更新による出力形式の変更。Markdownは生成しないためです。</li>
   <li><strong>生成日</strong>：スナップショットに含めないため、生成した日と別の日に実行しても差分になりません。</li>
-  <li><strong>観点（参考情報）</strong>：<code>--check</code>では参考情報のSinkを使わず、最初から生成しません。「生成してから除外する」方式ではないので、参考情報の種類が増えても除外リストを保守する必要がありません。</li>
+  <li><strong>観点・関数の利用テーブル（参考情報）</strong>：<code>--check</code>では参考情報のSinkを使わず、最初から生成しません。「生成してから除外する」方式ではないので、参考情報の種類が増えても除外リストを保守する必要がありません。</li>
+  <li><strong>プレビューの機能（<code>--preview</code>）</strong>：スナップショットの内容を変えないため、<code>--check</code>では有効にしません。<code>--check</code>と同時に指定しても効果が無く、<code>runCheck</code>が<code>Note: --preview has no effect in --check mode.</code>と表示します（関数が利用しているテーブルの抽出も行いません）。</li>
   <li><strong>個々のパーティション</strong>：スナップショットはパーティションキーだけを持ち、パーティションを持ちません。パーティションを自動で追加する運用でも、追加のたびに差分になりません。</li>
   <li><strong>DBのマイナー版の更新</strong>：<code>database.json</code>はメジャーバージョンだけを持つため、マイナー版を上げても差分になりません。</li>
 </ul>
@@ -1412,6 +1438,8 @@ Content differs:
 </table>
 </div>
 <p class="small muted">テーブル定義書のER図は、この項目の関連からではなく、<code>MarkdownExportSink</code>が対象範囲全体の<code>ForeignKeys</code>から求める<code>DiagramNeighborhood</code>で描きます（9.7節）。描画距離が2以上だと、関連先のテーブルが持つ関連まで要るためです。<code>TableDefinitionContent</code>はスナップショットと共有するため、Markdownだけが使う図の範囲は持ちません。</p>
+
+<p>関数・プロシージャはテーブルに属さないため、テーブルキーでは束ねません。関数1つ分を<code>FunctionDefinitionContent</code>（<code>function</code>＋<code>tableUsage</code>）として持ち、スキーマ単位で取得した定義本体から作ります。<code>tableUsage</code>は、<code>--preview</code>のときだけ定義本体から抽出し、そうでなければ<code>FunctionTableUsage.notAnalyzed()</code>です。これが、関数の定義書1ファイル、<code>functions.jsonl</code>の1行（<code>tableUsage</code>は含めない）、<code>functionTableUsages.json</code>の1件に対応する書き出しの単位です（9.9節）。</p>
 
 <h3>8.3 「値が無い」の表し方</h3>
 <p>値が無いことの表し方は、段階ごとに決まっています。これを知っていると、<code>null</code>チェックがほとんど無い理由と、どこで変換すべきかが分かります。</p>
@@ -1692,6 +1720,183 @@ erDiagram
 |2|sample.employee_directory_view|view|
 |3|sample_archive.department|table|</code></pre>
 
+<h3>9.9 関数・プロシージャが利用しているテーブルの抽出（--preview）</h3>
+<p>ビューが参照するテーブル（9.8節）と違い、DBは関数・プロシージャの依存関係を保持しません。そこで、定義本体（<code>FunctionEntity.definition</code>）のSQLを読んで、利用している出力対象のテーブルと操作（C・R・U・D）を機械的に拾います。DBが持つ事実ではない<strong>参考値</strong>で、精度にリスクがあるため、<code>--preview</code>を付けたときだけ動く<strong>プレビューの機能</strong>（<code>PreviewFeature.FUNCTION_TABLE_USAGE</code>。互換性の対象外）として入れています。</p>
+<p>設計の軸は2つです。</p>
+<ul>
+  <li><strong>完全な構文解析はしない</strong>：「このキーワードの後ろの名前はテーブル」というきっかけと、前後の字句だけで判定します。構文解析器という依存を増やさず、構文の誤りや未対応の構文があっても止まらずに次の文から読み直せるようにするためです。呼び出している関数・動的SQLの中の参照は追いません（含まないことを定義書・MCPのツールの説明に書きます）。</li>
+  <li><strong>どんな入力でも例外を投げず、入力の長さに比例する時間で終える</strong>：定義本体はDBでCREATEの権限を持つ人が書ける入力です。正規表現を使わず1文字ずつ読み（<code>ArchitectureTest</code>が検査。3章）、閉じていない文字列・コメントは例外にせず「読み切れなかった」印にします（コンパイルに失敗した本体もDBに残り得るため）。</li>
+</ul>
+
+<figure>
+  <div class="fig-scroll">
+    <svg viewBox="0 0 900 510" role="img" aria-label="上から下へ4段。定義本体の文字列を、SqlLexerが字句に分け（SqlLexResult）、FunctionBodyLocatorが解析する本体を切り出し（FunctionBody）、TableReferenceScannerがテーブルを指す名前と操作を拾い（ScanResult）、FunctionTableUsageAnalyzerが出力対象のテーブルと照らす（FunctionTableUsage）。この4段はFunctionTableUsageAnalyzer.analyzeの中で、--previewのときだけ行う。結果は関数の定義書の利用しているテーブルの節と、参考情報のfunctionTableUsages.jsonになり、後者をMCPサーバーのget_functionが返す。" style="min-width: 780px">
+      <defs>
+        <marker id="g12a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
+      </defs>
+      <text x="530" y="20" class="d-t-s">各段が返す値</text>
+      <rect x="20" y="8" width="470" height="42" rx="6" class="d-box-soft"/>
+      <text x="36" y="26" class="d-t-ms">FunctionEntity.definition ＋ language</text>
+      <text x="36" y="42" class="d-t-s">スキーマ単位で取得した定義本体（書いたら捨てる）</text>
+
+      <rect x="10" y="62" width="490" height="352" rx="8" class="d-box-loop"/>
+      <text x="26" y="80" class="d-t-acc">analyze（--previewのときだけ。スキーマごとに1つ作る）</text>
+
+      <rect x="20" y="90" width="470" height="64" rx="6" class="d-box"/>
+      <text x="36" y="110" class="d-t-ms" font-weight="600">① SqlLexer.lex</text>
+      <text x="36" y="128" class="d-t-s">1文字ずつ読み、コメント・文字列を区別して字句に分ける</text>
+      <text x="36" y="144" class="d-t-s">規則はDBごと（Dbms）。閉じていない要素は例外にせず印を立てる</text>
+
+      <rect x="20" y="172" width="470" height="64" rx="6" class="d-box"/>
+      <text x="36" y="192" class="d-t-ms" font-weight="600">② FunctionBodyLocator.locate</text>
+      <text x="36" y="210" class="d-t-s">見出しを除き、解析する本体の字句を切り出す</text>
+      <text x="36" y="226" class="d-t-s">PostgreSQL：ドル引用符の中身 ／ Oracle：サブプログラムの範囲</text>
+
+      <rect x="20" y="254" width="470" height="64" rx="6" class="d-box"/>
+      <text x="36" y="274" class="d-t-ms" font-weight="600">③ TableReferenceScanner.scan</text>
+      <text x="36" y="292" class="d-t-s">INSERT INTO・FROM・JOINの後の名前と操作を拾う</text>
+      <text x="36" y="308" class="d-t-s">文ごとの状態。「;」と最上位のLOOPで作り直す</text>
+
+      <rect x="20" y="336" width="470" height="64" rx="6" class="d-box-acc"/>
+      <text x="36" y="356" class="d-t-ms" font-weight="600">④ FunctionTableUsageAnalyzer.resolve</text>
+      <text x="36" y="374" class="d-t-s">出力対象のテーブル（Tables）と照らして残す</text>
+      <text x="36" y="390" class="d-t-s">スキーマは定義から決まる場合だけ決め、決まらなければ候補を示す</text>
+
+      <line x1="470" y1="50" x2="470" y2="88" class="d-line" marker-end="url(#g12a)"/>
+      <line x1="255" y1="154" x2="255" y2="170" class="d-line" marker-end="url(#g12a)"/>
+      <line x1="255" y1="236" x2="255" y2="252" class="d-line" marker-end="url(#g12a)"/>
+      <line x1="255" y1="318" x2="255" y2="334" class="d-line" marker-end="url(#g12a)"/>
+
+      <rect x="530" y="90" width="360" height="64" rx="6" class="d-box-soft"/>
+      <text x="546" y="110" class="d-t-b">SqlLexResult</text>
+      <text x="546" y="128" class="d-t-s">空白・コメントを除いた字句（SqlToken）の列</text>
+      <text x="546" y="144" class="d-t-s">incomplete：閉じていない要素があったか</text>
+      <rect x="530" y="172" width="360" height="64" rx="6" class="d-box-soft"/>
+      <text x="546" y="192" class="d-t-b">FunctionBody</text>
+      <text x="546" y="210" class="d-t-s">status・segments（字句）・searchPath</text>
+      <text x="546" y="226" class="d-t-s">invokerRights・overloadsMerged</text>
+      <rect x="530" y="254" width="360" height="64" rx="6" class="d-box-soft"/>
+      <text x="546" y="274" class="d-t-b">ScanResult</text>
+      <text x="546" y="292" class="d-t-s">references：スキーマ・名前・操作（C/R/U/D）</text>
+      <text x="546" y="308" class="d-t-s">dynamicSql：動的SQLの種類</text>
+      <rect x="530" y="336" width="360" height="64" rx="6" class="d-box-soft"/>
+      <text x="546" y="356" class="d-t-b">FunctionTableUsage</text>
+      <text x="546" y="374" class="d-t-s">status・tables（スキーマ決定 or 候補・操作）</text>
+      <text x="546" y="390" class="d-t-s">dynamicSql・incomplete・overloadsMerged</text>
+      <line x1="492" y1="122" x2="528" y2="122" class="d-line-muted d-dash"/>
+      <line x1="492" y1="204" x2="528" y2="204" class="d-line-muted d-dash"/>
+      <line x1="492" y1="286" x2="528" y2="286" class="d-line-muted d-dash"/>
+      <line x1="492" y1="368" x2="528" y2="368" class="d-line-muted d-dash"/>
+
+      <line x1="130" y1="414" x2="130" y2="432" class="d-line" marker-end="url(#g12a)"/>
+      <line x1="380" y1="414" x2="380" y2="432" class="d-line" marker-end="url(#g12a)"/>
+      <rect x="10" y="434" width="240" height="66" rx="6" class="d-box"/>
+      <text x="24" y="454" class="d-t-b">定義書「利用しているテーブル」</text>
+      <text x="24" y="474" class="d-t-s">FunctionTableUsageTemplates</text>
+      <text x="24" y="490" class="d-t-s">.section（Markdown）</text>
+      <rect x="260" y="434" width="240" height="66" rx="6" class="d-box"/>
+      <text x="274" y="454" class="d-t-b">functionTableUsages.json</text>
+      <text x="274" y="474" class="d-t-s">InsightWriter.</text>
+      <text x="274" y="490" class="d-t-s">writeFunctionTableUsages</text>
+      <rect x="530" y="434" width="360" height="66" rx="6" class="d-box-dash"/>
+      <text x="546" y="454" class="d-t-b">mcp-server：get_function の tableUsage</text>
+      <text x="546" y="474" class="d-t-s">定義本体のハッシュ（definitionHash）が</text>
+      <text x="546" y="490" class="d-t-s">スナップショットと一致するときだけ返す</text>
+      <line x1="502" y1="467" x2="528" y2="467" class="d-line-muted" marker-end="url(#g12a)"/>
+    </svg>
+  </div>
+  <figcaption><b>図12 利用しているテーブルの抽出。</b>点線の枠が<code>FunctionTableUsageAnalyzer.analyze</code>の中で、右の列は各段が次の段へ渡す値です。どの段も、解析できない場合は例外ではなく<code>FunctionBody</code>・<code>FunctionTableUsage</code>の<code>status</code>（解析しなかった理由）で返します。抽出しない実行（<code>--preview</code>なし・<code>--check</code>）では、この枠の中を一切通りません。</figcaption>
+</figure>
+
+<ol class="steps">
+  <li><div><strong>字句に分ける（<code>SqlLexer</code>）</strong>：先頭から1文字ずつ読み、今いる場所が文字列・コメント・識別子のどれかを状態として持ちます。コメントと文字列は互いの中で効かない（文字列の中の<code>--</code>はコメントにならず、コメントの中の<code>'</code>は文字列を始めない）ため、同時に左から読まないと区別できません。規則はDBで違います（PostgreSQLはブロックコメントの入れ子・ドル引用符・<code>E'…'</code>、Oracleは<code>q'[…]'</code>・条件付きコンパイル）。そのため、DBMS種別を文字列ではなく<code>Dbms</code>のenumにして、<code>switch</code>で網羅的に切り替えます（DBMSを足すとコンパイルエラーで気付ける）。</div></li>
+  <li><div><strong>本体を切り出す（<code>FunctionBodyLocator</code>）</strong>：引数・戻り値の型の見出しは解析しません（<code>RETURNS SETOF t</code>・<code>p t%ROWTYPE</code>をテーブルの利用と誤らないため）。実装はDBMSごとです。<br>
+    PostgreSQL（<code>PostgresBodyLocator</code>）：<code>pg_get_functiondef</code>は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直します。SQL標準の本体（<code>BEGIN ATOMIC … END</code>・<code>RETURN 式</code>）は、最上位の<code>BEGIN ATOMIC</code>・<code>RETURN</code>から終わりまでです。<br>
+    Oracle（<code>OracleBodyLocator</code>）：単独の関数・プロシージャは見出しの<code>IS</code>・<code>AS</code>の後ろ全体です。パッケージのサブプログラムは、どれも定義にパッケージ全体が入っているため、<code>PackageSubprograms</code>が<code>BEGIN</code>・<code>CASE</code>と<code>END</code>の対応を数えて、パッケージ本体の最上位のサブプログラムの範囲を求めます。オーバーロードは引数名で対応付け、区別できなければすべての本体からまとめて抽出します（<code>overloadsMerged</code>）。</div></li>
+  <li><div><strong>拾う（<code>TableReferenceScanner</code>）</strong>：字句を先頭から1回なめ、きっかけのキーワードの後ろの名前と操作を<code>TableReference</code>にします。文の状態（<code>StatementState</code>）は<code>;</code>と最上位の<code>LOOP</code>で丸ごと作り直すため、括弧の数が合わない文があっても次の文から読み直せます。動的SQL（<code>EXECUTE</code>・<code>EXECUTE IMMEDIATE</code>・<code>DBMS_SQL</code>等）は、含むことだけを<code>DynamicSqlKind</code>で示します。</div></li>
+  <li><div><strong>照らす（<code>FunctionTableUsageAnalyzer</code>）</strong>：拾った名前のうち、出力対象のテーブル（ビュー・マテリアライズドビューを含む）と一致したものだけを残します。CTEの名前・変数・<code>DUAL</code>等や、出力対象外のスキーマ・テーブルはここで落ちます。テーブルごとに操作をまとめ、スキーマが決まったものをスキーマ名・テーブル名の順に、決まらないものをその後に並べます。</div></li>
+</ol>
+
+<p><strong>操作とそのきっかけ。</strong>操作は<code>CrudOperation</code>です。細かい規則（括弧で囲んだJOIN・インラインビューへのDML・<code>MERGE</code>の各<code>WHEN</code>等）は、<code>TableReferenceScannerTest</code>のケースの一覧がそのまま仕様になっています。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>操作</th><th>テーブルの名前の前にあるきっかけ</th></tr></thead>
+  <tbody>
+    <tr><td>C（作成）</td><td><code>INSERT INTO</code>（Oracleの<code>INSERT ALL/FIRST</code>の各<code>INTO</code>、<code>MERGE</code>の<code>WHEN NOT MATCHED THEN INSERT</code>を含む）</td></tr>
+    <tr><td>R（読み取り）</td><td><code>FROM</code>（カンマ区切りの並び）・<code>JOIN</code>・<code>APPLY</code>（Oracle）・<code>USING</code>（<code>DELETE</code>・<code>MERGE</code>）。括弧で囲んだ<code>FROM (a JOIN b ON …)</code>の先頭や、<code>SELECT … FOR UPDATE</code>もR</td></tr>
+    <tr><td>U（更新）</td><td><code>UPDATE</code>（<code>MERGE</code>の<code>THEN UPDATE</code>、<code>ON CONFLICT DO UPDATE</code>を含む）</td></tr>
+    <tr><td>D（削除）</td><td><code>DELETE</code>（<code>MERGE</code>の<code>THEN DELETE</code>を含む）・<code>TRUNCATE</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small muted">権限・トリガー・行ロックの構文にも<code>INSERT</code>・<code>UPDATE</code>・<code>DELETE</code>・<code>TRUNCATE</code>・<code>EXECUTE</code>の語が現れます（<code>GRANT SELECT, TRUNCATE ON a, b TO r</code>・<code>CREATE TRIGGER … BEFORE TRUNCATE ON t</code>・<code>GRANT EXECUTE</code>等）。直前の語（<code>GRANT</code>・<code>ON</code>・<code>BEFORE</code>等）でこれらを文として読まず、後ろのカンマ区切りの名前に操作を付けないようにしています。</p>
+
+<p><strong>スキーマ修飾の無い名前。</strong>スキーマは、定義から決まる場合だけ決めます。決まらない場合は、同じ名前の出力対象のテーブルがあるスキーマをすべて<strong>候補</strong>として持ち、候補が1つでもそのスキーマに決めつけません（<code>SchemaResolution</code>・<code>TableUsage.schemaCandidates</code>）。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>DBMS</th><th>定義から決まる場合</th><th>決まらない場合（<code>SchemaResolution</code>）</th></tr></thead>
+  <tbody>
+    <tr><td>PostgreSQL</td><td>関数の属性として<code>SET search_path</code>が指定されていれば（<code>FROM CURRENT</code>は作成時の値に展開された形）、その並びの先頭から、出力対象のテーブルがあるスキーマにする（<code>$user</code>・<code>pg_catalog</code>・<code>pg_temp</code>は除く）。空（<code>''</code>）なら出力対象のスキーマが無く、<code>DEFAULT</code>は指定なしと同じ。本文中の<code>SET</code>文・<code>set_config</code>・<code>EXECUTE</code>で組み立てたSET文（変数でスキーマを渡す場合を含む）は読まない</td><td>属性の指定が無ければ（本文で変更していても）実行時の<code>search_path</code>で決まる（<code>search_path</code>）。指定がある場合に並びのどこにも無い名前は、出力対象外のものとして載せない</td></tr>
+    <tr><td>Oracle</td><td>定義者権限（既定）は、所有者のスキーマにする</td><td>定義者権限で所有者のスキーマに無い名前は、シノニム経由の可能性がある（<code>synonym</code>。シノニムの参照先は照らさない）。実行者権限（<code>AUTHID CURRENT_USER</code>）は実行するユーザーで決まる（<code>current_user</code>）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>解析しなかった・限界がある場合。</strong>状態は<code>TableUsageStatus</code>で表し、定義書では表の代わりに（または表の前に）その旨を書きます。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>状態・印</th><th>意味</th></tr></thead>
+  <tbody>
+    <tr><td class="file">NOT_ANALYZED</td><td>抽出を行わない実行（<code>--preview</code>なし・<code>--check</code>）。定義書の節も参考情報も出さない</td></tr>
+    <tr><td class="file">ANALYZED</td><td>解析した（利用しているテーブルが無い場合を含む）。<code>dynamicSql</code>・<code>incomplete</code>（定義本体を最後まで読めなかった）・<code>overloadsMerged</code>があれば、表の前に注記する</td></tr>
+    <tr><td class="file">UNSUPPORTED_LANGUAGE</td><td>言語がSQL・PL/pgSQL・PL/SQL以外（C・plpython3u・Javaの呼び出し仕様等）</td></tr>
+    <tr><td class="file">NO_DEFINITION<br>WRAPPED</td><td>定義本体を取得できなかった（権限が無い等）／wrap（難読化）されている（Oracle）</td></tr>
+    <tr><td class="file">SUBPROGRAM_NOT_FOUND</td><td>パッケージ本体からサブプログラムの本体を見つけられなかった（Oracle）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>サンプルの<code>close_project</code>（プロシージャ。<code>--preview</code>で出力した関数の定義書から抜粋）と、スキーマが決まらない例の<code>count_rows</code>（<code>functionTableUsages.json</code>から抜粋）です。</p>
+<pre><code><span class="c">// function/close_project.md</span>
+## 利用しているテーブル
+
+定義本体から機械的に抽出した参考値です。呼び出している関数・プロシージャの中の参照と、動的SQLの中の参照は含みません。
+
+| No. | テーブル | 区分 | C | R | U | D |
+|:---|:---|:---|:---|:---|:---|:---|
+|1|sample.audit_log|table|○|○|||
+|2|sample.employee|table|||○||
+|3|sample.project|table||○|||
+|4|sample.project_assignment|table||○||○|</code></pre>
+<pre><code><span class="c">// insights/testdb/sample/functionTableUsages.json の functions のうち count_rows（整形）</span>
+{"name":"count_rows", "arguments":"p_table_name text", "definitionHash":"a600475c…",
+ "status":"analyzed",
+ "tables":[{"name":"employee", "schemaResolution":"search_path",
+            "schemaCandidates":["sample"], "operations":["R"]}],
+ "dynamicSql":["EXECUTE"]}</code></pre>
+
+<div class="note key">
+  <p class="note-title">参考情報は、古い結果を残さない・返さない</p>
+  <p><code>InsightWriter.writeFunctionTableUsages</code>は、抽出した実行（<code>FunctionTableUsage.isAttempted()</code>）ではスキーマごとに<code>functionTableUsages.json</code>を書き、抽出していない実行では同じファイルを削除します。残すと、定義書には節が無いのにMCPサーバーが前回の結果を返し、テーブルや定義が変わった後の結果を最新のものとして答えてしまうためです。この<strong>ファイルの削除は、cliで<code>FileRepository.deleteFile</code>を呼ぶ唯一の箇所</strong>で、消すのは<code>OutputPathResolver</code>で解決した1ファイルだけです（ディレクトリの削除は<code>--rm-dist</code>の出力先に限ります）。</p>
+  <p>それでも、<code>--rm-dist</code>を付けずに対象のスキーマを減らした場合などは、そのスキーマの参考情報だけが前回のまま残ります。そこで参考情報は、抽出元の定義本体のSHA-256（<code>definitionHash</code>）を持ち、MCPサーバーはスナップショットの定義本体のハッシュと一致するときだけ返します（<a href="./mcp-server-guide.html">mcp-server 読解ガイド</a>の7.10節）。DB名・スキーマ名は、ファイル名に使うために置き換えられるため、ファイルの中の<code>database</code>・<code>schema</code>が実際の名前です。</p>
+</div>
+
+<p><strong>精度をどう確かめているか。</strong>精度にリスクがある機能なので、テストの種類を分けています。サンプル（PostgreSQLの関数11件・Oracleのサブプログラム6件）は、全件がDDLから見て正しいことを確かめてあり、Oracleは<code>ALL_DEPENDENCIES</code>の参照先とも一致しました（PR #137の手元の確認）。実際の業務DBでの精度の確認は、プレビューを外す前に行う予定です（Issue #134）。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>テスト</th><th>確かめること</th></tr></thead>
+  <tbody>
+    <tr><td class="file">TableReferenceScannerTest<br>FunctionBodyLocatorTest</td><td>判定・切り出しの規則を、表駆動のケースの一覧にしている。一覧を読むと規則を仕様として追える</td></tr>
+    <tr><td class="file">TableUsageMetamorphicTest<br>SqlTransforms</td><td>全ケースを、改行・空白・コメント・大文字小文字で変形しても、コメント・文字列の中にDMLを足しても、結果が変わらない</td></tr>
+    <tr><td class="file">GeneratedPackagesTest</td><td>文法から生成した妥当なOracleのパッケージ3,000個で、サブプログラムごとの結果を正解と照らす。変形テストは字句の分け方に依存するため、範囲の切り出し（<code>PackageSubprograms</code>）の誤りはこちらで検知する</td></tr>
+    <tr><td class="file">SqlLexerPropertyTest<br>FunctionTableUsageAnalyzerRobustnessTest</td><td>ランダム・壊れた・悪意のある入力でも、例外を投げず、入力の長さに比例する時間で終える</td></tr>
+    <tr><td class="file">RealisticFunctionBodiesTest</td><td>レガシーなシステムにありがちな長い本体（日本語のコメント・コメントアウトした古いコード・入れ子のループ・多数のサブプログラム）</td></tr>
+    <tr><td class="file">FunctionTableUsageTemplatesTest<br>MarkdownInjectionTest</td><td>節の組み立てと、テーブル名・関数名がMarkdownのエスケープを通ること</td></tr>
+    <tr><td class="file">SampleDatabaseExportIT<br>OracleSampleDatabaseExportIT</td><td>実DBのサンプルの関数に対する結果を、差分のベースライン（<code>docs/sample/*/output-preview</code>）と比べる</td></tr>
+  </tbody>
+</table>
+</div>
+
 <!-- ============================================================ -->
 <h2 id="outputs"><span class="n">10</span>出力物とソースの対応</h2>
 <p>出力する各ファイルについて、書き出すメソッドと、中身を組み立てるクラスの対応です。Markdownは「Writerが段取りし、Templatesが文字列を組み立てる」、スナップショットは「Writerがrecordを作ってJSONにする」という分担です。</p>
@@ -1707,7 +1912,7 @@ erDiagram
     <tr><td><code>erDiagram_{DB名}_{スキーマ}.md</code>・<code>_group{n}.md</code></td><td><code>ErDiagramWriter.writeErDiagram</code>（スキーマごと）</td><td><code>ErDiagramTemplates</code>・<code>MermaidSupport</code></td><td><code>writeOverview</code></td></tr>
     <tr><td><code>viewpointList_{DB名}.md</code>・<code>viewpoint_{DB名}_{id}.md</code></td><td><code>ViewpointWriter.writeViewpoints</code></td><td><code>ViewpointTemplates</code>（図と表は<code>ErDiagramTemplates</code>を再利用）</td><td><code>writeOverview</code></td></tr>
     <tr><td><code>triggerList</code>・<code>functionList</code>・<code>sequenceList</code>・<code>typeList_{DB名}.md</code></td><td><code>ObjectListWriter.write…List</code></td><td><code>ObjectListTemplates</code></td><td><code>writeOverview</code></td></tr>
-    <tr><td><code>{スキーマ}/function/{名前}.md</code></td><td><code>ObjectListWriter.writeFunctionDefinition</code></td><td><code>ObjectDefinitionTemplates.functionFile</code></td><td><code>writeFunctionDefinitions</code></td></tr>
+    <tr><td><code>{スキーマ}/function/{名前}.md</code></td><td><code>ObjectListWriter.writeFunctionDefinition</code></td><td><code>ObjectDefinitionTemplates.functionFile</code>・<code>FunctionTableUsageTemplates</code>（「利用しているテーブル」の節。<code>--preview</code>のとき）</td><td><code>writeFunctionDefinitions</code></td></tr>
     <tr><td><code>{スキーマ}/sequence/{名前}.md</code>・<code>type/{名前}.md</code></td><td><code>ObjectListWriter.writeSequenceDefinition</code>・<code>writeTypeDefinition</code></td><td><code>ObjectDefinitionTemplates</code></td><td><code>writeOverview</code></td></tr>
     <tr><td><code>…_{n}.md</code>（分割ページ）</td><td><code>PagedSectionWriter.writePagedSection</code></td><td><code>PagedSectionTemplates</code></td><td>各一覧と同時</td></tr>
     <tr class="group"><td colspan="4">スナップショット（SnapshotExportSink。出力先は {output.path}/snapshot/{DB名}/）</td></tr>
@@ -1717,6 +1922,7 @@ erDiagram
     <tr><td><code>{スキーマ}/sequences.jsonl</code>・<code>types.jsonl</code></td><td><code>SchemaSnapshotWriter.writeSequences</code>・<code>writeTypes</code></td><td><code>SequenceSnapshot</code>・<code>TypeSnapshot</code></td><td><code>writeOverview</code></td></tr>
     <tr class="group"><td colspan="4">参考情報（InsightExportSink。出力先は {output.path}/insights/{DB名}/）</td></tr>
     <tr><td><code>viewpoints.json</code></td><td><code>InsightWriter.writeViewpoints</code></td><td><code>ViewpointsInsight</code>・<code>ViewpointInsight</code></td><td><code>writeOverview</code></td></tr>
+    <tr><td><code>{スキーマ}/functionTableUsages.json</code></td><td><code>InsightWriter.writeFunctionTableUsages</code>（<code>--preview</code>のとき。抽出していない実行は前回のファイルを削除）</td><td><code>FunctionTableUsagesInsight</code></td><td><code>writeFunctionDefinitions</code></td></tr>
   </tbody>
 </table>
 </div>
@@ -1750,6 +1956,21 @@ erDiagram
 </table>
 </div>
 
+<h3>関数・プロシージャの定義書のセクション</h3>
+<p><code>ObjectDefinitionTemplates.functionFile</code>が、次の順に並べて1ファイルにします。「利用しているテーブル」は、<code>--preview</code>で抽出した実行だけの節で、<code>FunctionTableUsageTemplates.section</code>が空文字を返す（<code>NOT_ANALYZED</code>）と出力されません。関数・プロシージャ一覧（<code>functionList_{DB名}.md</code>）には列を足しません。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>順</th><th>セクション</th><th>組み立てるメソッド</th><th>出す条件</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td>見出し（関数名）</td><td><code>functionFile</code></td><td>常に</td></tr>
+    <tr><td class="num">2</td><td>基本情報</td><td><code>baseInfo</code></td><td>常に</td></tr>
+    <tr><td class="num">3</td><td>利用しているテーブル</td><td><code>FunctionTableUsageTemplates.section</code></td><td><code>--preview</code>で抽出したとき。表（No.・テーブル・区分・C・R・U・D）の前に、動的SQL・読み切れなかった等の注記を置く。解析しなかった場合は、表の代わりにその理由。スキーマが決まらない名前は、表の後に候補を並べる</td></tr>
+    <tr><td class="num">4</td><td>定義</td><td><code>functionFile</code></td><td>常に（定義本体を<code>codeFence</code>で囲む）</td></tr>
+    <tr><td class="num">5</td><td>フッター（関数・プロシージャ一覧へ）</td><td><code>functionFile</code></td><td>常に</td></tr>
+  </tbody>
+</table>
+</div>
+
 <h3>Writer と Templates の分担</h3>
 <ul>
   <li><strong>Writer</strong>は「何を・どの順で・どのファイルに書くか」の段取りだけを持ちます。Markdownの文字列を自分で組み立てません。</li>
@@ -1766,7 +1987,7 @@ erDiagram
     <tr><td><code>DocumentLocations</code></td><td>Markdownのファイル名と、<code>{DB名}/</code>からの相対パス。ドキュメント間の相対リンク。関数のオーバーロードは<code>{名前}_{番号}</code>、観点ページは識別子から。DB由来の名前は<code>PathSegments.encode</code>でパスの1要素にする</td><td><code>sample/table/department.md</code>、<code>calculate_bonus_1.md</code></td></tr>
     <tr><td><code>OutputPathResolver</code>（実装<code>DefaultOutputPathResolver</code>）</td><td>出力先の絶対パス。未指定なら<code>./output</code>、<code>{DB名}/</code>を付ける。分割ページのパス。解決したパスが起点のディレクトリの外を指さないことを確かめる（<code>within</code>）。<code>--rm-dist</code>で消してよいか（ルート、カレント・ホームとその上位のディレクトリは拒否）</td><td><code>./output/testdb/sample/table/department.md</code></td></tr>
     <tr><td><code>SnapshotLocations</code></td><td><code>snapshot/</code>の下の配置と、ファイル名から種別への逆引き（<code>kindOf</code>。比較で使う）</td><td><code>snapshot/testdb/sample/tables.jsonl</code></td></tr>
-    <tr><td><code>InsightLocations</code></td><td><code>insights/</code>の下の配置（<code>snapshot/</code>の兄弟）</td><td><code>insights/testdb/viewpoints.json</code></td></tr>
+    <tr><td><code>InsightLocations</code></td><td><code>insights/</code>の下の配置（<code>snapshot/</code>の兄弟）。関数の利用テーブルはスキーマごと</td><td><code>insights/testdb/viewpoints.json</code>、<code>insights/testdb/sample/functionTableUsages.json</code></td></tr>
     <tr><td><code>ListDocumentType</code></td><td>一覧の種類ごとのファイル名の接頭辞とタイトル</td><td><code>FUNCTION</code> → <code>functionList_testdb.md</code>「関数・プロシージャ一覧」</td></tr>
   </tbody>
 </table>
@@ -1788,7 +2009,7 @@ erDiagram
   </tbody>
 </table>
 </div>
-<p class="small muted">名前に上の文字を含まない限り、ファイル名は名前のままです。DB由来の文字列を受け取るテンプレートを足したら、<code>MarkdownInjectionTest</code>の<code>renderedDocuments</code>にも足します。</p>
+<p class="small muted">名前に上の文字を含まない限り、ファイル名は名前のままです。DB由来の文字列を受け取るテンプレートを足したら、<code>MarkdownInjectionTest</code>の<code>renderedDocuments</code>にも足します。関数の「利用しているテーブル」も、テーブル名・スキーマ名は<code>escapeTableCell</code>、候補の一覧と解析しなかった言語の名前は<code>escapeInline</code>を通し、危険な文字列を入れた入力を<code>MarkdownInjectionTest</code>で確かめています。</p>
 
 <!-- ============================================================ -->
 <h2 id="files"><span class="n">11</span>ソースごとの役割</h2>
@@ -1805,8 +2026,8 @@ erDiagram
   <tbody>
     <tr class="group"><td colspan="3">com.dbxray（直下）：エントリーポイント</td></tr>
     <tr><td class="file">Dbxray</td><td><code>main</code>。処理全体を1つの<code>try-catch</code>で囲み、通常実行（<code>run</code>）か差分検知（<code>runCheck</code>）を呼ぶ。DIコンテナを2段階で組み立て、失敗は<code>FailureReporter</code>で報告して終了コードに変える</td><td>→ <code>CliArguments</code>・<code>DbxrayProperties</code>・<code>OutputDirectoryValidator</code>・<code>ConnectionSettings</code>・<code>MyBatisSqlSessionFactories</code>・<code>DatabaseTypeDetector</code>・2つのModule・Controller・<code>FailureReporter</code></td></tr>
-    <tr><td class="file">CliArguments<span class="sub">パッケージプライベート</span></td><td>CLI引数の解析（<code>--check</code>・<code>--rm-dist</code>・<code>--help</code>・<code>--version</code>、接続情報と実行時設定の上書き値）。未知の引数は集めておき、<code>requireKnownArguments</code>で誤りにする（値は伏せて報告）。設定の引数名は<code>SETTINGS</code>から引く</td><td>← <code>Dbxray</code>／→ <code>DbxrayProperties.KEYS</code></td></tr>
-    <tr><td class="file">DbxrayProperties<span class="sub">パッケージプライベート</span></td><td><code>conf/config.yml</code>のうち<code>database</code>以外の仕様（8項目の位置・CLI引数名・既定値・形式・範囲）と検証。CLI引数で上書きしてから検証し、誤りをまとめて<code>InvalidConfigurationException</code>にする。2種類のRequestへ変換</td><td>← <code>Dbxray</code>／→ <code>ConfigFile</code>・<code>TargetSelection</code></td></tr>
+    <tr><td class="file">CliArguments<span class="sub">パッケージプライベート</span></td><td>CLI引数の解析（<code>--check</code>・<code>--rm-dist</code>・<code>--preview</code>・<code>--help</code>・<code>--version</code>、接続情報と実行時設定の上書き値）。未知の引数は集めておき、<code>requireKnownArguments</code>で誤りにする（値は伏せて報告）。設定の引数名は<code>SETTINGS</code>から引く</td><td>← <code>Dbxray</code>／→ <code>DbxrayProperties.KEYS</code></td></tr>
+    <tr><td class="file">DbxrayProperties<span class="sub">パッケージプライベート</span></td><td><code>conf/config.yml</code>のうち<code>database</code>以外の仕様（8項目の位置・CLI引数名・既定値・形式・範囲）と検証。CLI引数で上書きしてから検証し、誤りをまとめて<code>InvalidConfigurationException</code>にする。2種類のRequestへ変換（<code>--preview</code>は<code>previewFeatures</code>＝<code>PreviewFeature</code>の全部へ）</td><td>← <code>Dbxray</code>／→ <code>ConfigFile</code>・<code>TargetSelection</code></td></tr>
     <tr><td class="file">OutputDirectoryValidator<span class="sub">パッケージプライベート</span></td><td>出力先の検証（既存のファイルを指していないか、<code>--rm-dist</code>で消してよいか）。DBへの接続前に、親のコンテナから取り出して使う</td><td>← <code>Dbxray</code>／→ <code>OutputPathResolver</code>・<code>FileRepository</code></td></tr>
     <tr><td class="file">CliUsage<span class="sub">パッケージプライベート</span></td><td><code>--help</code>・<code>--version</code>の文言。版はjarのマニフェスト（<code>Implementation-Version</code>）から</td><td>← <code>Dbxray</code></td></tr>
 
@@ -1819,15 +2040,17 @@ erDiagram
     <tr><td class="file">ExitStatus</td><td>終了状態と終了コード（0成功・1差分あり・2失敗）</td><td>← <code>Dbxray</code>・<code>DiffCheckResultDto</code></td></tr>
 
     <tr class="group"><td colspan="3">application：ユースケース</td></tr>
-    <tr><td class="file">ExportSchemaUsecase</td><td>通常実行。一括取得→ER図の箱→（<code>--rm-dist</code>なら削除）→3つのSinkで書き出し</td><td>← Controller／→ <code>SchemaExportPipeline</code>・3つの<code>…SinkFactory</code></td></tr>
-    <tr><td class="file">CheckDocumentDiffUsecase</td><td><code>--check</code>。スナップショットのSinkだけで一時ディレクトリへ書き、<code>SnapshotDiff</code>で比べる。一時ディレクトリは必ず消す</td><td>← Controller／→ <code>SchemaExportPipeline</code>・<code>SnapshotExportSinkFactory</code>・<code>SnapshotDiff</code></td></tr>
-    <tr><td class="file">SchemaExportPipeline<span class="sub">パッケージプライベート</span></td><td>両ユースケースが共有する取得と書き出しの段取り（<code>fetchTargets</code>・<code>fetchDiagramBoxes</code>・<code>export</code>）。通知と件数をログへ出し、生成日を<code>Clock</code>から求める</td><td>← 2つのUsecase／→ <code>CatalogRepository</code>・<code>SidecarRepository</code>・<code>ExportTargetConsistency</code>・<code>ExportSink</code></td></tr>
-    <tr><td class="file">ExportSchemaRequest<br>CheckDocumentDiffRequest</td><td>ユースケースへの入力のrecord。3層を同じrecordのまま通る。<code>--check</code>用は<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>を持たない</td><td>← <code>DbxrayProperties</code> → Controller → Usecase</td></tr>
+    <tr><td class="file">ExportSchemaUsecase</td><td>通常実行。一括取得→ER図の箱→（<code>--rm-dist</code>なら削除）→3つのSinkで書き出し。有効にしたプレビューの機能をINFOでログへ</td><td>← Controller／→ <code>SchemaExportPipeline</code>・3つの<code>…SinkFactory</code></td></tr>
+    <tr><td class="file">CheckDocumentDiffUsecase</td><td><code>--check</code>。スナップショットのSinkだけで一時ディレクトリへ書き、<code>SnapshotDiff</code>で比べる。プレビューの機能は渡さない（<code>Set.of()</code>）。一時ディレクトリは必ず消す</td><td>← Controller／→ <code>SchemaExportPipeline</code>・<code>SnapshotExportSinkFactory</code>・<code>SnapshotDiff</code></td></tr>
+    <tr><td class="file">SchemaExportPipeline<span class="sub">パッケージプライベート</span></td><td>両ユースケースが共有する取得と書き出しの段取り（<code>fetchTargets</code>・<code>fetchDiagramBoxes</code>・<code>export</code>）。通知と件数をログへ出し、生成日を<code>Clock</code>から求める。関数は、スキーマごとに<code>FunctionDefinitionContent</code>を作る（<code>--preview</code>なら<code>FunctionTableUsageAnalyzer</code>で抽出）</td><td>← 2つのUsecase／→ <code>CatalogRepository</code>・<code>SidecarRepository</code>・<code>ExportTargetConsistency</code>・<code>ExportSink</code></td></tr>
+    <tr><td class="file">ExportSchemaRequest<br>CheckDocumentDiffRequest</td><td>ユースケースへの入力のrecord。3層を同じrecordのまま通る。通常実行用は有効にするプレビューの機能<code>previewFeatures</code>も持つ。<code>--check</code>用は<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>・<code>previewFeatures</code>を持たない</td><td>← <code>DbxrayProperties</code> → Controller → Usecase</td></tr>
+    <tr><td class="file">PreviewFeature</td><td><code>--preview</code>で有効にするプレビューの機能のenum（今は<code>FUNCTION_TABLE_USAGE</code>＝<code>functionTableUsage</code>）。出力は互換性の対象外で、スナップショットは変えない</td><td>← <code>DbxrayProperties</code>・<code>ExportSchemaUsecase</code>・<code>SchemaExportPipeline</code></td></tr>
     <tr><td class="file">TargetSelection</td><td>出力対象の絞り込み条件（<code>TableScope</code>＋<code>OutputObjectType</code>の集合）。<code>of</code>で文字列を型に変え、2種類の誤りをまとめる</td><td>← <code>DbxrayProperties</code>・<code>SchemaExportPipeline</code></td></tr>
 
     <tr class="group"><td colspan="3">domain.model.target：出力対象</td></tr>
     <tr><td class="file">ExportTargets</td><td>一括取得した出力対象の組（基本情報・テーブル・関連・トリガー・パーティション・ビューの参照・関数/シーケンス/型・付帯情報・観点）</td><td>← <code>SchemaExportPipeline</code> → 各Sink</td></tr>
     <tr><td class="file">TableDefinitionContent</td><td>1テーブル分の出力内容。<code>assemble</code>で組み立てる。定義書1ファイル・スナップショット1行に対応</td><td>← <code>SchemaExportPipeline</code>／→ <code>TableDefinitionWriter</code>・<code>TableSnapshot</code></td></tr>
+    <tr><td class="file">FunctionDefinitionContent</td><td>関数・プロシージャ1つ分の出力内容（<code>function</code>＋<code>tableUsage</code>）。定義書1ファイル・スナップショットと参考情報の1件に対応。<code>withoutTableUsage</code>は抽出しない実行用</td><td>← <code>SchemaExportPipeline</code>／→ 各Sink・<code>FunctionTableUsagesInsight</code></td></tr>
     <tr><td class="file">TableScope</td><td>出力対象の範囲（スキーマ名リスト＋テーブル名パターン）。<code>matches</code>・<code>isFiltered</code>・<code>schemaNames</code></td><td>← <code>TargetSelection</code>・<code>SchemaExportPipeline</code>／→ <code>TableNamePatterns</code></td></tr>
     <tr><td class="file">OutputObjectType</td><td>trigger・function・sequence・type。<code>parse</code>（空なら全種別、未知の名前は例外）</td><td>← <code>TargetSelection</code>・<code>SchemaExportPipeline</code></td></tr>
     <tr><td class="file">ConsistencyNotice</td><td>突き合わせの通知（種類・文言）。重要度（INFO・WARN）は種類が決める</td><td>← <code>ExportTargetConsistency</code> → <code>SchemaExportPipeline.report</code></td></tr>
@@ -1836,7 +2059,7 @@ erDiagram
     <tr><td class="file">TableEntity</td><td>テーブル1件（table・view・materialized_view）。論理名・ビューの定義・パーティションキー。<code>getHeaderTableName</code>・<code>isPartitioned</code>・<code>isView</code></td><td>どこでも</td></tr>
     <tr><td class="file">TableKey</td><td>スキーマ名＋テーブル名。テーブルの識別子で、カラム・関連・付帯情報とテーブルを結ぶ。<code>parse</code>で「スキーマ.テーブル」を解析</td><td>どこでも</td></tr>
     <tr><td class="file">TableType</td><td>テーブルの区分のenum。未知の区分は読み込み時に例外</td><td>← <code>TableDto</code>・<code>TableEntity</code></td></tr>
-    <tr><td class="file">Tables</td><td>出力対象のテーブルの集合。<code>contains</code>・<code>find</code>（テーブルキー）、<code>bySchema</code>（呼ぶたびに作る）</td><td>← <code>SchemaExportPipeline</code>・<code>ExportTargetConsistency</code>・Writer等</td></tr>
+    <tr><td class="file">Tables</td><td>出力対象のテーブルの集合。<code>contains</code>・<code>find</code>（テーブルキー）、<code>bySchema</code>・<code>byTableName</code>（呼ぶたびに作る。後者は利用テーブルの抽出でスキーマ修飾の無い名前を引く）</td><td>← <code>SchemaExportPipeline</code>・<code>ExportTargetConsistency</code>・<code>FunctionTableUsageAnalyzer</code>・Writer等</td></tr>
     <tr><td class="file">TableDetail</td><td>1テーブル分のカラム・インデックス・制約。<code>assembleAll</code>で、まとめて取得した結果をテーブルごとに振り分ける</td><td>← <code>AbstractCatalogRepository</code>・<code>TableDefinitionContent</code></td></tr>
     <tr><td class="file">ColumnEntity<br>IndexEntity<br>ConstraintEntity</td><td>カラム・インデックス・制約1件</td><td>← <code>TableDetail</code>・テンプレート・<code>TableSnapshot</code></td></tr>
     <tr><td class="file">Columns<br>Indexes<br>Constraints<span class="sub">パッケージプライベート</span></td><td><code>TableDetail.assembleAll</code>専用の、テーブルキーで引ける集合</td><td>← <code>TableDetail</code></td></tr>
@@ -1872,8 +2095,14 @@ erDiagram
     <tr><td class="file">FunctionEntity<br>Functions</td><td>関数・プロシージャ1件と集合。オーバーロードの番号・数、定義本体（一覧の取得では空）。<code>schemaNames</code>は定義本体を取る単位</td><td>← <code>SchemaExportPipeline</code>・<code>ObjectListWriter</code>・<code>FunctionSnapshot</code>・<code>DocumentLocations</code></td></tr>
     <tr><td class="file">SequenceEntity<br>Sequences</td><td>シーケンス1件と集合。数値は桁あふれしないよう文字列のまま</td><td>← <code>ObjectListWriter</code>・<code>SchemaSnapshotWriter</code></td></tr>
     <tr><td class="file">TypeEntity<br>Types</td><td>ユーザー定義型1件と集合</td><td>← <code>ObjectListWriter</code>・<code>SchemaSnapshotWriter</code></td></tr>
-    <tr><td class="file">DatabaseEntity<br>BaseInfoEntity</td><td>DB名・DBMS種別・メジャーバージョン（カタログから）と、それに生成日を足した基本情報</td><td>← <code>AbstractCatalogRepository</code>・<code>SchemaExportPipeline</code>／→ テンプレート</td></tr>
+    <tr><td class="file">Dbms</td><td>接続先のDBMS種別のenum（<code>POSTGRESQL</code>・<code>ORACLE</code>）。表示名（<code>PostgreSQL</code>・<code>Oracle</code>）を基本情報・スナップショットに出し、種別そのものは定義本体の字句の規則（9.9節）の切り替えに使う。<code>fromDisplayName</code>で、mapperが返す表示名から求める</td><td>← <code>DatabaseDto</code>・<code>DatabaseEntity</code>／→ <code>SqlLexer</code>・各<code>BodyLocator</code>・<code>TableReferenceScanner</code></td></tr>
+    <tr><td class="file">DatabaseEntity<br>BaseInfoEntity</td><td>DB名・DBMS種別（<code>Dbms</code>）・メジャーバージョン（カタログから）と、それに生成日を足した基本情報。<code>BaseInfoEntity.dbmsName</code>は表示名</td><td>← <code>AbstractCatalogRepository</code>・<code>SchemaExportPipeline</code>／→ テンプレート</td></tr>
     <tr><td class="file">ListDocumentType</td><td>一覧ドキュメントの種類（7つ）。ファイル名の接頭辞とタイトル</td><td>← <code>MarkdownExportSinkFactory</code>・<code>DocumentLocations</code>・テンプレート</td></tr>
+
+    <tr class="group"><td colspan="3">domain.model.tableusage：関数・プロシージャの利用テーブル（<code>--preview</code>）</td></tr>
+    <tr><td class="file">FunctionTableUsage</td><td>1関数分の抽出結果（状態・解析しなかった言語・<code>tables</code>・<code>dynamicSql</code>・<code>incomplete</code>・<code>overloadsMerged</code>）。<code>notAnalyzed</code>（抽出しない実行）・<code>analyzed</code>等のファクトリ、<code>isAttempted</code>（節・参考情報を出すか）、<code>schemaUndeterminedTables</code>（決まり方ごとの行）</td><td>← <code>FunctionTableUsageAnalyzer</code>・<code>FunctionDefinitionContent</code>／→ <code>FunctionTableUsageTemplates</code>・<code>FunctionTableUsagesInsight</code></td></tr>
+    <tr><td class="file">TableUsage</td><td>利用しているテーブル1件。同じ名前の候補のテーブル・スキーマの決まり方・操作の集合。<code>schemaDetermined</code>・<code>has</code>・<code>orderedOperations</code>・<code>tableType</code></td><td>← <code>FunctionTableUsageAnalyzer</code>／→ <code>FunctionTableUsage</code></td></tr>
+    <tr><td class="file">CrudOperation<br>DynamicSqlKind<br>SchemaResolution<br>TableUsageStatus</td><td>操作（C・R・U・D）／動的SQLの種類（<code>EXECUTE</code>・<code>EXECUTE_IMMEDIATE</code>・<code>DBMS_SQL</code>・<code>OPEN_FOR</code>・<code>DBLINK</code>）／スキーマの決まり方（<code>DETERMINED</code>・<code>SEARCH_PATH</code>・<code>CURRENT_USER</code>・<code>SYNONYM</code>）／抽出の状態（<code>NOT_ANALYZED</code>・<code>ANALYZED</code>・<code>UNSUPPORTED_LANGUAGE</code>・<code>NO_DEFINITION</code>・<code>WRAPPED</code>・<code>SUBPROGRAM_NOT_FOUND</code>）</td><td>← <code>TableReferenceScanner</code>・<code>FunctionTableUsage</code>・テンプレート</td></tr>
 
     <tr class="group"><td colspan="3">domain.model.snapshot・insight：機械が読む形</td></tr>
     <tr><td class="file">DatabaseSnapshot</td><td><code>database.json</code>（形式バージョン・DB名・DBMS・メジャーバージョン）。<code>FORMAT_VERSION</code>はmcp-serverとの契約</td><td>← <code>SchemaSnapshotWriter</code></td></tr>
@@ -1883,28 +2112,41 @@ erDiagram
     <tr><td class="file">SnapshotKind</td><td>tables・functions・sequences・types。<code>identify</code>で行の表示名（関数は引数を含む）</td><td>← <code>SnapshotLocations</code>・<code>SnapshotDiff</code></td></tr>
     <tr><td class="file">DiffResult<br>ContentDiff</td><td>比較結果（生成側だけ・コミット側だけ・内容不一致）と、1件分のunified diff</td><td>← <code>SnapshotDiff</code> → <code>DiffReportFormatter</code></td></tr>
     <tr><td class="file">ViewpointsInsight<br>ViewpointInsight</td><td><code>viewpoints.json</code>（形式バージョン・観点・所属テーブル）。<code>ViewpointContent</code>から作る</td><td>← <code>InsightWriter</code></td></tr>
+    <tr><td class="file">FunctionTableUsagesInsight</td><td><code>functionTableUsages.json</code>（1スキーマ分。形式バージョン・DB名・スキーマ名・関数ごとの状態・利用テーブル・動的SQL・抽出元の定義本体のSHA-256）。<code>FunctionDefinitionContent</code>から作る。抽出していない関数は含めない</td><td>← <code>InsightWriter</code>／mcp-serverが読む</td></tr>
 
     <tr class="group"><td colspan="3">domain.repository：外部とのやり取りのインタフェース</td></tr>
     <tr><td class="file">CatalogRepository</td><td>DBからの取得（12メソッド）。実装はDB種別ごと</td><td>← <code>SchemaExportPipeline</code>／実装 <code>AbstractCatalogRepository</code></td></tr>
     <tr><td class="file">SidecarRepository</td><td>サイドカーYAMLの読み込み。パスが空なら空の<code>Sidecar</code></td><td>← <code>SchemaExportPipeline</code>／実装 <code>SidecarYamlRepository</code></td></tr>
-    <tr><td class="file">FileRepository</td><td>ファイル操作（書く・追記・ディレクトリ作成・存在・一覧・読む・一時ディレクトリ・再帰削除）</td><td>← Writer・Usecase・<code>SnapshotDiff</code>・<code>OutputDirectoryValidator</code>／実装 <code>LocalFileRepository</code></td></tr>
+    <tr><td class="file">FileRepository</td><td>ファイル操作（書く・追記・ディレクトリ作成・存在・一覧・読む・一時ディレクトリ・再帰削除・ファイル1つの削除）。ファイル1つの削除（<code>deleteFile</code>）を呼ぶのは<code>InsightWriter</code>だけ</td><td>← Writer・Usecase・<code>SnapshotDiff</code>・<code>OutputDirectoryValidator</code>／実装 <code>LocalFileRepository</code></td></tr>
 
     <tr class="group"><td colspan="3">domain.service（export・target・snapshot・insight・path・直下）</td></tr>
-    <tr><td class="file">ExportSink</td><td>1つの出力形式で書き出すインタフェース（<code>writeOverview</code>・<code>writeFunctionDefinitions</code>・<code>beginSchemaTables</code>・<code>writeTableDefinition</code>）</td><td>← <code>SchemaExportPipeline</code></td></tr>
+    <tr><td class="file">ExportSink</td><td>1つの出力形式で書き出すインタフェース（<code>writeOverview</code>・<code>writeFunctionDefinitions</code>（関数1つ分の出力内容<code>FunctionDefinitionContent</code>のリストを受ける）・<code>beginSchemaTables</code>・<code>writeTableDefinition</code>）</td><td>← <code>SchemaExportPipeline</code></td></tr>
     <tr><td class="file">MarkdownExportSinkFactory</td><td>MarkdownのSinkを作る。出力する一覧の決定（<code>listDocuments</code>）、テーブル定義書のER図の範囲（<code>neighborhoodOf</code>）の決定と、5つのWriterの呼び出し</td><td>← <code>ExportSchemaUsecase</code>／→ 5つのWriter</td></tr>
     <tr><td class="file">SnapshotExportSinkFactory</td><td>スナップショットのSinkを作る</td><td>← 2つのUsecase／→ <code>SchemaSnapshotWriter</code></td></tr>
-    <tr><td class="file">InsightExportSinkFactory</td><td>参考情報のSinkを作る。<code>writeOverview</code>だけで観点を書く</td><td>← <code>ExportSchemaUsecase</code>／→ <code>InsightWriter</code></td></tr>
+    <tr><td class="file">InsightExportSinkFactory</td><td>参考情報のSinkを作る。<code>writeOverview</code>で観点を、<code>writeFunctionDefinitions</code>でスキーマごとの関数の利用テーブルを書く</td><td>← <code>ExportSchemaUsecase</code>／→ <code>InsightWriter</code></td></tr>
     <tr><td class="file">ExportTargetConsistency</td><td>出力対象と関連・付帯情報・観点の突き合わせ。関連の合流（<code>resolveForeignKeys</code>）と、孤児・不一致の検出。結果は通知で返す</td><td>← <code>SchemaExportPipeline</code></td></tr>
     <tr><td class="file">SchemaSnapshotWriter</td><td>スナップショットの書き込み。テーブルは<code>initTableFile</code>で空にしてから1行ずつ追記</td><td>← <code>SnapshotExportSinkFactory</code>／→ <code>SnapshotSerializer</code>・<code>FileRepository</code></td></tr>
     <tr><td class="file">SnapshotDiff</td><td>2つの<code>snapshot/</code>をオブジェクト単位で比べ、内容の違いにunified diffを付ける</td><td>← <code>CheckDocumentDiffUsecase</code>／→ <code>UnifiedDiffGenerator</code></td></tr>
     <tr><td class="file">SnapshotSerializer</td><td>recordとJSONの変換のインタフェース（<code>serialize</code>・<code>deserialize</code>・<code>formatForDiff</code>）</td><td>実装 <code>JacksonSnapshotSerializer</code></td></tr>
     <tr><td class="file">UnifiedDiffGenerator</td><td>2つの行リストからunified diffを作る（Myers法、前後3行、外部ライブラリに依存しない）</td><td>← <code>SnapshotDiff</code></td></tr>
-    <tr><td class="file">InsightWriter</td><td><code>viewpoints.json</code>の書き込み（観点が無ければ書かない）</td><td>← <code>InsightExportSinkFactory</code></td></tr>
-    <tr><td class="file">OutputPathResolver</td><td>出力先パスのインタフェース（ベース・<code>{DB名}/</code>・各ドキュメント・分割ページ・<code>snapshot/</code>・<code>insights/</code>）。<code>--rm-dist</code>で消してよいか</td><td>実装 <code>DefaultOutputPathResolver</code></td></tr>
+    <tr><td class="file">InsightWriter</td><td><code>viewpoints.json</code>の書き込み（観点が無ければ書かない）と、<code>functionTableUsages.json</code>（スキーマごと）の書き込み。抽出していない実行では、後者の前回のファイルを<code>deleteFile</code>で削除する</td><td>← <code>InsightExportSinkFactory</code></td></tr>
+    <tr><td class="file">OutputPathResolver</td><td>出力先パスのインタフェース（ベース・<code>{DB名}/</code>・各ドキュメント・分割ページ・<code>snapshot/</code>・<code>insights/</code>・参考情報の各ファイル）。<code>--rm-dist</code>で消してよいか</td><td>実装 <code>DefaultOutputPathResolver</code></td></tr>
     <tr><td class="file">DocumentLocations</td><td>Markdownのファイル名・<code>{DB名}/</code>からの相対パス・相対リンクの規則。名前は<code>PathSegments</code>を通す</td><td>← <code>DefaultOutputPathResolver</code>・各テンプレート</td></tr>
     <tr><td class="file">SnapshotLocations<br>InsightLocations</td><td><code>snapshot/</code>・<code>insights/</code>の配置。ファイル名から種別を逆引き（<code>kindOf</code>）</td><td>← <code>DefaultOutputPathResolver</code></td></tr>
     <tr><td class="file">PathSegments</td><td>DB由来の名前をパスの1要素として安全な形にする（<code>encode</code>。区切り・Windowsで使えない文字・制御文字・<code>~</code>を<code>~</code>＋16進2桁に）</td><td>← <code>DocumentLocations</code>・<code>SnapshotLocations</code>・<code>InsightLocations</code>・<code>DefaultOutputPathResolver</code></td></tr>
     <tr><td class="file">OutputRoot</td><td>出力先ベースディレクトリと基本情報の組。常に対で使うため1つの値にしている</td><td>← 各Sink・Writer・<code>OutputPathResolver</code></td></tr>
+
+    <tr class="group"><td colspan="3">domain.service.tableusage：関数・プロシージャの定義本体から利用テーブルを抽出（9.9節。正規表現を使わない）</td></tr>
+    <tr><td class="file">FunctionTableUsageAnalyzer</td><td>抽出の入口。<code>of(tables, dbms)</code>でスキーマごとに作り、<code>analyze(function)</code>で本体を切り出し→テーブルを拾い→出力対象のテーブルと照らす。スキーマが決まる条件（<code>SET search_path</code>・Oracleの所有者）と候補の示し方を持つ</td><td>← <code>SchemaExportPipeline</code>／→ <code>FunctionBodyLocator</code>・<code>TableReferenceScanner</code>・<code>Tables</code></td></tr>
+    <tr><td class="file">SqlLexer</td><td>定義本体を字句に分ける。1文字ずつ読み、コメント・文字列を同時に区別する。規則はDBごと（PostgreSQLの入れ子のブロックコメント・ドル引用符・<code>E'…'</code>、Oracleの<code>q'[…]'</code>・条件付きコンパイル）。閉じていない要素は例外にせず<code>incomplete</code></td><td>← 各<code>BodyLocator</code>／→ <code>Dbms</code>・<code>SqlToken</code></td></tr>
+    <tr><td class="file">SqlToken<br>SqlTokenKind<br>SqlLexResult</td><td>字句1つ（元の文字列・位置・行番号・ドル引用符の中身の範囲）／字句の種類／字句の列と<code>incomplete</code></td><td>← <code>SqlLexer</code>・<code>TableReferenceScanner</code></td></tr>
+    <tr><td class="file">SqlTokens<span class="sub">パッケージプライベート</span></td><td>字句の列と、位置を指定した判定・名前の読み取り。範囲外の位置は判定が偽・取得がnullで、前後を覗く処理で位置の検査を繰り返さない</td><td>← <code>TableReferenceScanner</code>・<code>PackageSubprograms</code>・各<code>BodyLocator</code></td></tr>
+    <tr><td class="file">SqlNames<br>AsciiCase</td><td>字句からカタログ上の名前（引用符を外し、引用符の無い名前はASCIIの英字だけ畳み込む）を求める／ASCIIの英字だけを対象にした大文字小文字の比較・変換（<code>ı</code>が<code>I</code>になる等を避ける）</td><td>← <code>TableReferenceScanner</code>・各<code>BodyLocator</code></td></tr>
+    <tr><td class="file">FunctionBodyLocator<span class="sub">パッケージプライベート</span><br>PostgresBodyLocator<br>OracleBodyLocator</td><td>定義から解析する本体を切り出すインタフェース（<code>of(dbms)</code>で実装を選ぶ）と、DBMSごとの実装。PostgreSQLはドル引用符の中身・SQL標準の本体、Oracleは単独の関数は見出しの<code>IS</code>・<code>AS</code>の後ろ、パッケージのサブプログラムは<code>PackageSubprograms</code>で求めた範囲。言語が対象外・wrap・定義が無い場合は理由を持つ結果を返す</td><td>← <code>FunctionTableUsageAnalyzer</code>／→ <code>SqlLexer</code>・<code>PackageSubprograms</code></td></tr>
+    <tr><td class="file">PackageSubprograms<span class="sub">パッケージプライベート</span></td><td>Oracleのパッケージ本体から、最上位のサブプログラムの範囲を求める。<code>BEGIN</code>・<code>CASE</code>と<code>END</code>の対応をスタックで数え（<code>CASE</code>は文と式を区別）、条件付きコンパイルは分岐ごとに読む。範囲がずれると後ろのサブプログラムすべてに波及するため、テストが厚い</td><td>← <code>OracleBodyLocator</code></td></tr>
+    <tr><td class="file">FunctionBody<span class="sub">パッケージプライベート</span></td><td>切り出した本体（状態・字句・<code>incomplete</code>・<code>overloadsMerged</code>・<code>searchPath</code>・<code>invokerRights</code>）</td><td>← 各<code>BodyLocator</code>／→ <code>FunctionTableUsageAnalyzer</code></td></tr>
+    <tr><td class="file">TableReferenceScanner<span class="sub">パッケージプライベート</span></td><td>字句から、テーブルを指す位置の名前と操作（C・R・U・D）・動的SQLを拾う。きっかけの語と前後の字句だけで判定し、完全な構文解析はしない。<code>;</code>と最上位の<code>LOOP</code>で文の状態を作り直す</td><td>← <code>FunctionTableUsageAnalyzer</code>／→ <code>SqlTokens</code></td></tr>
+    <tr><td class="file">TableReference<br>ScanResult<span class="sub">パッケージプライベート</span></td><td>拾った名前1件（スキーマ・テーブル・操作。出力対象と照らす前）／拾った結果（名前の列と動的SQLの種類）</td><td>← <code>TableReferenceScanner</code>／→ <code>FunctionTableUsageAnalyzer</code></td></tr>
 
     <tr class="group"><td colspan="3">domain.service.writer：Markdownの段取りとテンプレート</td></tr>
     <tr><td class="file">PagedSectionWriter</td><td>3,000行を超える表を別ページへ分ける</td><td>← 4つのWriter</td></tr>
@@ -1916,7 +2158,8 @@ erDiagram
     <tr><td class="file">ViewpointWriter</td><td>観点ページと観点一覧の段取り。観点ごとに<code>resolve</code>を1回だけ</td><td>← <code>MarkdownExportSinkFactory</code></td></tr>
     <tr><td class="file">ViewpointTemplates</td><td>観点ページの各セクション。図と表は<code>ErDiagramTemplates</code>を再利用</td><td>← <code>ViewpointWriter</code></td></tr>
     <tr><td class="file">ObjectListWriter</td><td>トリガー・関数・シーケンス・型の一覧と個別定義</td><td>← <code>MarkdownExportSinkFactory</code></td></tr>
-    <tr><td class="file">ObjectListTemplates<br>ObjectDefinitionTemplates</td><td>一覧の表／個別定義のページ</td><td>← <code>ObjectListWriter</code></td></tr>
+    <tr><td class="file">ObjectListTemplates<br>ObjectDefinitionTemplates</td><td>一覧の表／個別定義のページ（関数は<code>FunctionDefinitionContent</code>から作り、「利用しているテーブル」の節を差し込む）</td><td>← <code>ObjectListWriter</code></td></tr>
+    <tr><td class="file">FunctionTableUsageTemplates</td><td>関数の個別定義の「利用しているテーブル」の節。表の前に限界（該当なし・動的SQL・読み切れなかった・オーバーロードをまとめた）を示す文、スキーマが決まらない名前は<code>(search_path)</code>等のプレースホルダーと候補。解析しなかった場合は表の代わりに理由。テーブル名・候補は既存のエスケープを通す</td><td>← <code>ObjectDefinitionTemplates</code>／→ <code>MarkdownTemplateSupport</code></td></tr>
     <tr><td class="file">ReadmeWriter<br>ReadmeTemplates</td><td><code>{DB名}/README.md</code>（出力する一覧へのリンク）</td><td>← <code>MarkdownExportSinkFactory</code></td></tr>
     <tr><td class="file">MarkdownTemplateSupport</td><td>共通部品（基本情報・表の行・リンクのセル・エスケープ・HTMLの無害化・コードブロック／コードスパンの囲み・○）</td><td>← 全テンプレート</td></tr>
     <tr><td class="file">MermaidSupport</td><td>Mermaid記法の部品（識別子・表示名・別名・属性・関連線）。二重引用符・改行を置き換える</td><td>← <code>ErDiagramTemplates</code>・<code>TableDefinitionTemplates</code></td></tr>
@@ -1933,7 +2176,7 @@ erDiagram
     <tr><td class="file">DtoValues<span class="sub">パッケージプライベート</span></td><td><code>null</code>・空白を空文字へ、区切り文字で連結された値をリストへ</td><td>← 各DTO</td></tr>
 
     <tr class="group"><td colspan="3">infrastructure.file・path・snapshot</td></tr>
-    <tr><td class="file">LocalFileRepository</td><td><code>FileRepository</code>の実装（UTF-8で書く・追記・再帰削除等）</td><td>← <code>DbxrayModule</code></td></tr>
+    <tr><td class="file">LocalFileRepository</td><td><code>FileRepository</code>の実装（UTF-8で書く・追記・再帰削除・ファイル1つの削除等）</td><td>← <code>DbxrayModule</code></td></tr>
     <tr><td class="file">SidecarYamlRepository</td><td>サイドカーYAMLの読み込み（SnakeYAMLの<code>SafeConstructor</code>）。ファイルが無い・YAMLとして読めないのは誤り（文言は<code>YamlSyntaxErrors</code>）、個々の記述の誤りは何件目の定義かを添えて警告し、読み飛ばす</td><td>← <code>DbxrayModule</code>／→ <code>TableKey.parse</code>・<code>Viewpoint.of</code>・<code>Cardinality</code></td></tr>
     <tr><td class="file">DefaultOutputPathResolver</td><td><code>OutputPathResolver</code>の実装。既定の出力先<code>./output</code>。解決したパスが起点の外を指さないことを<code>within</code>で確かめる。<code>--rm-dist</code>でルート、カレント・ホームとその上位を拒否</td><td>→ <code>DocumentLocations</code>・<code>SnapshotLocations</code>・<code>InsightLocations</code></td></tr>
     <tr><td class="file">JacksonSnapshotSerializer</td><td><code>SnapshotSerializer</code>の実装（<code>NON_EMPTY</code>、差分表示用の整形）</td><td>← <code>DbxrayModule</code></td></tr>
@@ -1957,14 +2200,15 @@ erDiagram
     <tr class="group"><td colspan="3">テスト（modules/cli/src/test・modules/cli/src/integrationTest）</td></tr>
     <tr><td class="file">ArchitectureTest</td><td>構造の規約（3章の表）をArchUnitで検査</td><td>→ main配下の全クラス</td></tr>
     <tr><td class="file">DbxrayModuleTest</td><td>本番と同じ2段階でDIコンテナを組み立て、コントローラーまで解決できるか（DBには接続しない）</td><td>→ 2つのModule</td></tr>
-    <tr><td class="file">ExportSchemaUsecaseTest</td><td>通常実行・<code>--check</code>の流れ全体。Writerは本物、ファイルはメモリ上（<code>InMemoryFileRepository</code>）、DBは呼び出しを記録するスタブ</td><td>→ 2つのUsecase</td></tr>
+    <tr><td class="file">ExportSchemaUsecaseTest</td><td>通常実行・<code>--check</code>の流れ全体（<code>--preview</code>の有無による関数の出力の違いを含む）。Writerは本物、ファイルはメモリ上（<code>InMemoryFileRepository</code>）、DBは呼び出しを記録するスタブ</td><td>→ 2つのUsecase</td></tr>
+    <tr><td class="file">tableusageのテスト（<code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>）</td><td>字句（<code>SqlLexerTest</code>・<code>SqlLexerPropertyTest</code>）、本体の切り出し（<code>FunctionBodyLocatorTest</code>。パッケージのサブプログラムの範囲）、テーブルの判定（<code>TableReferenceScannerTest</code>。<code>ScanCase</code>・<code>ExpectedNotation</code>で期待値を書く）、名前の解決（<code>FunctionTableUsageAnalyzerTest</code>）、結果の型（<code>TableUsageTest</code>）、精度（<code>TableUsageMetamorphicTest</code>・<code>GeneratedPackagesTest</code>・<code>RealisticFunctionBodiesTest</code>・<code>FunctionTableUsageAnalyzerRobustnessTest</code>。9.9節）。本番のDBを使わず、<code>src/test/resources/tableusage</code>に長い定義本体を置く</td><td>→ <code>domain.service.tableusage</code></td></tr>
     <tr><td class="file">入口のテスト</td><td><code>CliArgumentsTest</code>・<code>CliUsageTest</code>・<code>DbxrayPropertiesTest</code>・<code>OutputDirectoryValidatorTest</code>・<code>TargetSelectionTest</code></td><td>→ 入口の各クラス</td></tr>
     <tr><td class="file">presentationのテスト</td><td>Controller・<code>FailureReporter</code>（原因の併記）・<code>DiffReportFormatter</code>（行数の上限）・<code>ExitStatus</code></td><td>→ presentation</td></tr>
     <tr><td class="file">domain.modelのテスト</td><td>多重度・グループ分割・関連の集合（描画距離を含む）・ビューの参照・テーブル名パターン・<code>TableScope</code>・観点・<code>TableDefinitionContent</code>・<code>TableSnapshot</code>等</td><td>→ domain.model</td></tr>
     <tr><td class="file">domain.serviceのテスト</td><td>突き合わせ・スナップショットの書き込みと比較・unified diff・配置の規則（<code>PathSegmentsTest</code>）・全Writer・全テンプレート（<code>TableDefinitionTemplatesTest</code>は911行）・DB由来の文字列の注入（<code>MarkdownInjectionTest</code>）</td><td>→ domain.service</td></tr>
     <tr><td class="file">infrastructureのテスト</td><td>接続情報・DB種別・DTOの変換・ファイル・サイドカーYAML・パス（出力先の外を指さないことの網羅的な検査<code>OutputPathContainmentTest</code>を含む）・JSON</td><td>→ infrastructure</td></tr>
     <tr><td class="file">ConfigFileTest<br>testsupport</td><td>設定ファイルの読み込みと、テスト用の部品（<code>EntityFixtures</code>・<code>ForeignKeyFixtures</code>・<code>DiagramBoxesFixtures</code>・<code>MarkdownAssert</code>・ログの警告を確かめる<code>CapturedLogs</code>）</td><td>← 各テスト</td></tr>
-    <tr><td class="file">SampleDatabaseExportIT<br>OracleSampleDatabaseExportIT</td><td>結合テスト。サンプルDBに対して全体を通し、出力をベースライン（<code>docs/sample/*/output</code>）とファイル単位で完全一致させる。<code>--check</code>で差分が無いことも確かめる</td><td>→ <code>ExportBaseline</code></td></tr>
+    <tr><td class="file">SampleDatabaseExportIT<br>OracleSampleDatabaseExportIT</td><td>結合テスト。サンプルDBに対して全体を通し、出力をベースライン（<code>docs/sample/*/output</code>）とファイル単位で完全一致させる。<code>--preview</code>の出力は、既定のベースラインに差分のベースライン（<code>docs/sample/*/output-preview</code>）を重ねたものと比べる。<code>--check</code>で差分が無いことも確かめる</td><td>→ <code>ExportBaseline</code></td></tr>
     <tr><td class="file">PostgresCatalogRepositoryIT<br>OracleCatalogRepositoryIT</td><td>mapperの各SQLの取得結果（パーティション・多重度・オーバーロード・ビューの参照・メジャーバージョン・トリガーの本体等）</td><td>→ 2つのmapper</td></tr>
     <tr><td class="file">ExportBaseline<br>SampleDatabase<br>OracleSampleDatabase</td><td>Testcontainersで<code>ddl.sql</code>を流したDBを起動し、本番と同じ2段階でコントローラーを作る（時計は固定、作成日は比較の前に置き換える）</td><td>← 結合テスト</td></tr>
     <tr class="empty-row" hidden><td colspan="3">一致するファイルはありません。</td></tr>
@@ -2011,6 +2255,21 @@ erDiagram
   <li>束縛の漏れは<code>DbxrayModuleTest</code>で分かる。ファイルを読み書きするなら<code>FileRepository</code>を受け取る（<code>Files</code>を直接使うと<code>ArchitectureTest</code>が落ちる）。日付が要るなら<code>Clock</code>を受け取る。</li>
 </ul>
 
+<h3>プレビューの機能を足す・外すとき</h3>
+<ul>
+  <li><strong>足す</strong>：<code>PreviewFeature</code>にenumの値を足し、<code>SchemaExportPipeline</code>などの有効かどうかで分かれる箇所だけが、<code>request.previewFeatures()</code>を見ます。<code>--preview</code>は機能を個別に選ばず全部を有効にするため、引数は増えません。出力が増えるファイルは、スナップショットに入れず、参考情報（<code>insights/</code>）か、<code>--preview</code>のときだけ出す節にします（スナップショットを変えると<code>--check</code>の結果が変わるため）。</li>
+  <li><strong>互換性の扱い</strong>：プレビューの機能の出力・挙動は互換性の対象外です。<code>docs/usage/cli.md</code>の「プレビューの機能」の表に足し、PRに<code>preview</code>ラベルを付けます（<code>CONTRIBUTING.md</code>）。</li>
+  <li><strong>ベースライン</strong>：<code>--preview</code>で変わる・増えるファイルだけを、差分のベースライン<code>docs/sample/{postgres,oracle}/output-preview</code>に置きます。既定のベースラインと重複して持たず、結合テストが既定のものに重ねて比べます。サンプルの関数が変わったときも作り直します（<code>verify</code>スキルの手順）。</li>
+  <li><strong>外す</strong>（<code>--preview</code>なしでも動くようにする）：機能追加として扱い、リリースノートで知らせます。実際の業務DBでの精度の確認を、外す前に行います。</li>
+</ul>
+
+<h3>関数の定義本体を読むコードを足す・変えるとき</h3>
+<ul>
+  <li>字句の規則は<code>SqlLexer</code>に、テーブルの判定は<code>TableReferenceScanner</code>に、DBごとの切り出しは<code>…BodyLocator</code>に置きます。<strong>正規表現は使いません</strong>（<code>ArchitectureTest</code>が検出する）。どんな入力でも例外を投げず、入力の長さに比例する時間で終えるようにします。</li>
+  <li>判定の規則を変えたら、<code>TableReferenceScannerTest</code>・<code>FunctionBodyLocatorTest</code>のケースの一覧に足します。範囲の切り出し（<code>PackageSubprograms</code>）を変えたときは、<code>GeneratedPackagesTest</code>も確かめます（後ろのサブプログラムすべてに波及するため）。</li>
+  <li>DBMSを足したら、<code>Dbms</code>のenumに足します。<code>switch</code>が網羅的なため、DBごとに分岐している箇所がコンパイルエラーで分かります。</li>
+</ul>
+
 <h3>スナップショットの形式を変えるとき</h3>
 <ul>
   <li>スナップショットはmcp-serverとの契約です。互換性の無い変更なら<code>DatabaseSnapshot.FORMAT_VERSION</code>を上げ、mcp-serverの<code>SnapshotDirectoryReader.SUPPORTED_FORMAT_VERSION</code>を追従させる。</li>
@@ -2026,7 +2285,8 @@ erDiagram
     <tr><td>mapper XML・ドメイン層・テンプレート</td><td><code>./gradlew integrationTest</code>（Docker上のPostgreSQL。出力全体をベースラインと比較）</td></tr>
     <tr><td>Oracle用mapper、Oracleの出力が変わりうる変更</td><td><code>./gradlew oracleIntegrationTest</code>（Oracle Database Free。メモリ2GB程度）</td></tr>
     <tr><td>スナップショットの形式</td><td><code>./gradlew :mcp-server:test</code></td></tr>
-    <tr><td>出力を意図して変えた</td><td><code>verify</code>スキル（<code>.claude/skills/verify/SKILL.md</code>）の手順で<code>docs/sample/*/output</code>を出し直す</td></tr>
+    <tr><td>出力を意図して変えた</td><td><code>verify</code>スキル（<code>.claude/skills/verify/SKILL.md</code>）の手順で<code>docs/sample/*/output</code>を出し直す。<code>--preview</code>の出力が変わるなら、差分のベースライン<code>output-preview</code>も作り直す</td></tr>
+    <tr><td>参考情報の形式（<code>functionTableUsages.json</code>等）</td><td><code>./gradlew :mcp-server:test</code>（<code>SampleFunctionTableUsagesContractTest</code>が差分のベースラインを読む）。互換性の無い変更なら<code>FunctionTableUsagesInsight.FORMAT_VERSION</code>とmcp-serverの<code>InsightsDirectoryReader.SUPPORTED_FORMAT_VERSION</code>を揃えて上げる</td></tr>
   </tbody>
 </table>
 </div>
@@ -2040,6 +2300,9 @@ erDiagram
   <li>ループの中で毎回<code>TableNamePatterns.of(…)</code>のような値オブジェクトを組み立て直す（入口で1回組み立てて使い回す）。</li>
   <li>DB由来の名前を<code>Path.resolve</code>や<code>String.format</code>で直接パス・Markdownにつなぐ（<code>…Locations</code>・<code>OutputPathResolver</code>と、エスケープの部品を通す。10章の「DB由来の文字列を信頼しない」）。</li>
   <li>CLI引数・設定値・接続URLの値を、例外のメッセージやログにそのまま含める（書き誤りの引数にパスワードが入り得る）。</li>
+  <li>関数の定義本体を読むコードに正規表現を使う、定義本体の字句の読み取りで例外を投げる（DB由来の入力でバックトラックによる極端な遅さ・処理の中断を招く。9.9節）。</li>
+  <li><code>InsightWriter</code>以外でファイルを削除する、削除の対象を広げる（ファイルの削除は、前回の<code>functionTableUsages.json</code>を1つ消す1箇所だけ。ディレクトリの削除は<code>--rm-dist</code>の出力先だけ）。</li>
+  <li>プレビューの機能の結果を、スナップショットに入れる（<code>--check</code>の比較対象が変わり、互換性の対象外のものを契約に混ぜることになる）。</li>
 </ul>
 
 <!-- ============================================================ -->
@@ -2054,6 +2317,14 @@ erDiagram
   <dt>テーブル名パターン</dt><dd><code>TableNamePatterns</code>。<code>table=</code>の記法（ワイルドカード・除外・スキーマ修飾）。観点の所属テーブルの指定でも使う。</dd>
   <dt>出力対象オブジェクト種別</dt><dd><code>OutputObjectType</code>。設定の<code>target.objects</code>（trigger・function・sequence・type）。</dd>
   <dt>1テーブル分の出力内容</dt><dd><code>TableDefinitionContent</code>。テーブル定義書1ファイル・スナップショット1行分。</dd>
+  <dt>関数1つ分の出力内容</dt><dd><code>FunctionDefinitionContent</code>。関数・プロシージャの定義書1ファイル・スナップショットと参考情報の1件分（関数＋利用しているテーブル）。</dd>
+  <dt>プレビューの機能</dt><dd><code>PreviewFeature</code>（<code>--preview</code>）。精度・出力の形を固めている途中で、付けたときだけ動く機能。互換性の対象にせず、スナップショットは変えない。</dd>
+  <dt>利用しているテーブル</dt><dd><code>FunctionTableUsage</code>・<code>TableUsage</code>・<code>FunctionTableUsageAnalyzer</code>。関数・プロシージャの定義本体から機械的に抽出した、利用している出力対象のテーブルと操作。呼び出し先の関数・動的SQLの中は含まない参考値。</dd>
+  <dt>操作（C・R・U・D）</dt><dd><code>CrudOperation</code>。利用しているテーブルへの作成・読み取り・更新・削除。<code>TRUNCATE</code>はD、<code>MERGE</code>はWHEN句の操作。</dd>
+  <dt>スキーマが決まらない名前</dt><dd><code>SchemaResolution</code>・<code>TableUsage.schemaCandidates</code>。スキーマ修飾が無く、定義からは決まらない名前（<code>search_path</code>・<code>current_user</code>・<code>synonym</code>）。同じ名前の出力対象のテーブルがあるスキーマを候補として示し、決めつけない。</dd>
+  <dt>動的SQL</dt><dd><code>DynamicSqlKind</code>。実行時に組み立てるSQL（<code>EXECUTE</code>・<code>EXECUTE IMMEDIATE</code>等）。中の参照は抽出できないため、含むことだけを示す。</dd>
+  <dt>字句（トークン）</dt><dd><code>SqlToken</code>。定義本体を、空白・コメントを除いて分けた最小の単位（<code>SqlLexer</code>が作る）。</dd>
+  <dt>DBMS種別</dt><dd><code>Dbms</code>。接続先のDBMS（PostgreSQL・Oracle）。基本情報に出す表示名と、定義本体の字句の規則の切り替えに使う。</dd>
   <dt>関連</dt><dd><code>ForeignKeyEntity</code>・<code>ForeignKeys</code>。外部キー（物理、<code>RelationType.PHYSICAL</code>）と論理リレーション（論理、<code>LOGICAL</code>）の総称。クラス名は歴史的経緯で<code>ForeignKey</code>。</dd>
   <dt>論理リレーション</dt><dd>DBに制約が無く、サイドカーYAMLの<code>relations</code>で宣言した関連。ER図では破線。</dd>
   <dt>被参照の関連</dt><dd><code>incomingRelations</code>・<code>ForeignKeys.referencingTo</code>。自分を参照している関連（自己参照を除く）。</dd>
@@ -2072,12 +2343,12 @@ erDiagram
   <dt>チャンク</dt><dd>詳細情報をまとめて取得・出力するテーブルの塊。大きさは設定の<code>chunkSize</code>（既定3000、0以下でスキーマ全体）。</dd>
   <dt>Sink</dt><dd><code>ExportSink</code>。取得した情報を1つの出力形式で書き出すもの。Markdown・スナップショット・参考情報の3つ。</dd>
   <dt>スナップショット</dt><dd><code>domain.model.snapshot</code>。取得結果を構造化したJSON Lines。生成日を含まず、<code>--check</code>の比較対象で、mcp-serverの入力。</dd>
-  <dt>参考情報（insights）</dt><dd><code>domain.model.insight</code>。スナップショットの事実とは別にAIへ渡す情報（今は観点だけ）。<code>--check</code>の対象外。</dd>
+  <dt>参考情報（insights）</dt><dd><code>domain.model.insight</code>。スナップショットの事実とは別にAIへ渡す情報（観点と、<code>--preview</code>のときの関数の利用しているテーブル）。<code>--check</code>の対象外。</dd>
   <dt>利用者が直せる誤り</dt><dd><code>UserCorrectableException</code>。設定・入力・実行環境を見直せば解消する失敗。報告にスタックトレースを含めない。</dd>
 </dl>
 
 <footer>
-  <p>出典：<code>modules/cli/</code>のソース、<code>docs/architecture/overview.md</code>・<code>domain-model.md</code>・<code>package-structure.md</code>、README・<code>docs/usage/cli.md</code>、<code>AGENTS.md</code>・<code>docs/development/coding-guidelines.md</code>。コンソールの出力例はビルドしたjarをサンプルDBに対して実行して採取したもの、Markdown・JSONの例は<code>docs/sample/postgres/output</code>から引用。このガイドはある時点のコードを読んで書いたもので、クラス名・行数等が食い違う場合はコードとアーキテクチャの各文書を正とします。</p>
+  <p>出典：<code>modules/cli/</code>のソース、<code>docs/architecture/overview.md</code>・<code>domain-model.md</code>・<code>package-structure.md</code>、README・<code>docs/usage/cli.md</code>（プレビューの機能・既知の限界）、<code>CONTRIBUTING.md</code>、<code>AGENTS.md</code>・<code>docs/development/coding-guidelines.md</code>。コンソールの出力例はビルドしたjarをサンプルDBに対して実行して採取したもの、Markdown・JSONの例は<code>docs/sample/postgres/output</code>から引用。このガイドはある時点のコードを読んで書いたもので、クラス名・行数等が食い違う場合はコードとアーキテクチャの各文書を正とします。</p>
 </footer>
 </main>
 </div>
