@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.Dbms;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -244,21 +245,36 @@ class SqlLexerTest {
   }
 
   @Test
-  @DisplayName("SqlToken: ドル引用符の中身の範囲は、閉じていれば区切りを除き、閉じていなければ終わりまでとする")
+  @DisplayName("lex: ドル引用符の中身の範囲は、閉じていれば区切りを除き、閉じていなければ終わりまでとする")
   void testDollarContentRange() {
     final String source = "$fn$ body $fn$";
     final SqlToken terminated = SqlLexer.lex(source, Dbms.POSTGRESQL).tokens().get(0);
-    assertTrue(terminated.isTerminatedDollarString());
-    assertEquals(
-        " body ", source.substring(terminated.dollarContentStart(), terminated.dollarContentEnd()));
+    assertEquals(" body ", source.substring(terminated.contentStart(), terminated.contentEnd()));
 
     final String unterminatedSource = "$fn$ body";
     final SqlToken unterminated = SqlLexer.lex(unterminatedSource, Dbms.POSTGRESQL).tokens().get(0);
-    assertFalse(unterminated.isTerminatedDollarString());
     assertEquals(
         " body",
-        unterminatedSource.substring(
-            unterminated.dollarContentStart(), unterminated.dollarContentEnd()));
+        unterminatedSource.substring(unterminated.contentStart(), unterminated.contentEnd()));
+  }
+
+  @Test
+  @DisplayName("lex: ドル引用符以外の字句の中身の範囲は、字句全体とする")
+  void testContentRangeOfOtherTokens() {
+    final SqlToken token = SqlLexer.lex("insert", Dbms.POSTGRESQL).tokens().get(0);
+
+    assertEquals(token.start(), token.contentStart());
+    assertEquals(token.end(), token.contentEnd());
+  }
+
+  @Test
+  @DisplayName("SqlToken.isAnyWord: 引用符の無い単語だけを、ASCIIの大文字にしてキーワードの集合と比べる")
+  void testIsAnyWord() {
+    assertTrue(word("InSeRt").isAnyWord(Set.of("INSERT", "UPDATE")));
+    assertFalse(word("delete").isAnyWord(Set.of("INSERT", "UPDATE")));
+    assertFalse(
+        new SqlToken(SqlTokenKind.QUOTED_IDENTIFIER, "\"insert\"", 0, 8, 1)
+            .isAnyWord(Set.of("INSERT")));
   }
 
   @Test

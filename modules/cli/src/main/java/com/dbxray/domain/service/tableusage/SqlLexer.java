@@ -29,6 +29,11 @@ final class SqlLexer {
   private int line;
   private boolean incomplete;
 
+  /** 直前に読んだドル引用符の中身の範囲（ドル引用符以外を読んだ後は-1） */
+  private int contentStart = -1;
+
+  private int contentEnd = -1;
+
   private SqlLexer(String source, int from, int to, int firstLine, Dbms dbms, boolean keepTrivia) {
     this.source = source;
     this.to = to;
@@ -66,11 +71,20 @@ final class SqlLexer {
     while (pos < to) {
       final int start = pos;
       final int startLine = line;
+      contentStart = -1;
       final SqlTokenKind kind = scanOne();
       if (keepTrivia || !kind.isTrivia()) {
-        tokens.add(new SqlToken(kind, source.substring(start, pos), start, pos, startLine));
+        tokens.add(
+            new SqlToken(
+                kind,
+                source.substring(start, pos),
+                start,
+                pos,
+                startLine,
+                contentStart < 0 ? start : contentStart,
+                contentStart < 0 ? pos : contentEnd));
       }
-      countLines(start, pos);
+      line += lineBreaks(source, start, pos, to);
     }
     return new SqlLexResult(tokens, incomplete);
   }
@@ -101,7 +115,10 @@ final class SqlLexer {
       return SqlTokenKind.QUOTED_IDENTIFIER;
     }
     final SqlTokenKind dialectKind =
-        dbms == Dbms.POSTGRESQL ? scanPostgresSpecific(c) : scanOracleSpecific(c);
+        switch (dbms) {
+          case POSTGRESQL -> scanPostgresSpecific(c);
+          case ORACLE -> scanOracleSpecific(c);
+        };
     if (dialectKind != null) {
       return dialectKind;
     }
@@ -206,7 +223,7 @@ final class SqlLexer {
         if (depth == 0) {
           return;
         }
-      } else if (dbms == Dbms.POSTGRESQL && source.charAt(pos) == '/' && peek(1) == '*') {
+      } else if (nestsBlockComments() && source.charAt(pos) == '/' && peek(1) == '*') {
         pos += 2;
         depth++;
       } else {
@@ -214,6 +231,22 @@ final class SqlLexer {
       }
     }
     incomplete = true;
+  }
+
+  /** ブロックコメントを入れ子にできるか（DBMSを足したときにコンパイルエラーで規則の決め忘れに気付けるよう、{@code switch}で書く） */
+  private boolean nestsBlockComments() {
+    return switch (dbms) {
+      case POSTGRESQL -> true;
+      case ORACLE -> false;
+    };
+  }
+
+  /** {@code #}を識別子に使えるか（Oracleの{@code A#B}） */
+  private boolean allowsHashInIdentifier() {
+    return switch (dbms) {
+      case POSTGRESQL -> false;
+      case ORACLE -> true;
+    };
   }
 
   /**
@@ -294,11 +327,15 @@ final class SqlLexer {
           && i + tagLength <= to
           && source.regionMatches(i, source, tagStart, tagLength)) {
         pos = i + tagLength;
+        contentStart = tagEnd;
+        contentEnd = i;
         return SqlTokenKind.DOLLAR_STRING;
       }
     }
     pos = to;
     incomplete = true;
+    contentStart = tagEnd;
+    contentEnd = to;
     return SqlTokenKind.DOLLAR_STRING;
   }
 
@@ -355,14 +392,21 @@ final class SqlLexer {
     return index < to ? source.charAt(index) : '\0';
   }
 
-  /** CRLFは1つの改行として数える（CRの直後がLFなら、LFの方で数える） */
-  private void countLines(int start, int end) {
+  /**
+   * 範囲の改行の数を数えるメソッド（字句の行番号と同じ規則で、行番号を求める処理が食い違わないようにする）<br>
+   * CRLFは1つの改行として数える（CRの直後がLFなら、LFの方で数える）
+   *
+   * @param limit 先読みの上限（含まない）。範囲の終わりのCRの直後のLFは、上限の外なら読まない
+   */
+  static int lineBreaks(String source, int start, int end, int limit) {
+    int count = 0;
     for (int i = start; i < end; i++) {
       final char c = source.charAt(i);
-      if (c == '\n' || (c == '\r' && (i + 1 >= to || source.charAt(i + 1) != '\n'))) {
-        line++;
+      if (c == '\n' || (c == '\r' && (i + 1 >= limit || source.charAt(i + 1) != '\n'))) {
+        count++;
       }
     }
+    return count;
   }
 
   /**
@@ -378,9 +422,8 @@ final class SqlLexer {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || isNonAsciiLetter(c);
   }
 
-  /** Oracleは{@code #}も識別子に使える（{@code A#B}） */
   private boolean isIdentifierPart(char c) {
-    return isIdentifierStart(c) || isDigit(c) || c == '$' || (dbms == Dbms.ORACLE && c == '#');
+    return isIdentifierStart(c) || isDigit(c) || c == '$' || (allowsHashInIdentifier() && c == '#');
   }
 
   /** ドル引用符のタグは、識別子と異なり{@code $}を含まない */

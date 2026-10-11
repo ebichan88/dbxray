@@ -22,7 +22,10 @@ final class SqlNames {
 
   /** 引用符の無い名前を、DBの規則で畳み込む */
   static String fold(String name, Dbms dbms) {
-    return dbms == Dbms.POSTGRESQL ? AsciiCase.toLower(name) : AsciiCase.toUpper(name);
+    return switch (dbms) {
+      case POSTGRESQL -> AsciiCase.toLower(name);
+      case ORACLE -> AsciiCase.toUpper(name);
+    };
   }
 
   /** 閉じていない識別子は、終わりまでを中身とする */

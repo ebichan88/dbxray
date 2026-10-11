@@ -25,11 +25,11 @@ final class SqlTransforms {
    * @param addsStatements 本体の前後に文を足す変形か（定義全体には使えない）
    */
   record Transform(
-      String name, boolean preservesTokens, boolean addsStatements, Function function) {
+      String name, boolean preservesTokens, boolean addsStatements, Rewriter rewriter) {
 
     /** 本体を変形するメソッド。namesは本体が利用するテーブルの名前（コメント・文字列の中に書くDMLの対象） */
     String apply(String sql, Dbms dbms, List<String> names) {
-      return function.apply(sql, dbms, names.isEmpty() ? List.of("sample.employee") : names);
+      return rewriter.apply(sql, dbms, names.isEmpty() ? List.of("sample.employee") : names);
     }
 
     @Override
@@ -40,7 +40,7 @@ final class SqlTransforms {
 
   /** 変形の関数 */
   @FunctionalInterface
-  interface Function {
+  interface Rewriter {
     String apply(String sql, Dbms dbms, List<String> names);
   }
 

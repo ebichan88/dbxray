@@ -25,7 +25,7 @@ final class PackageSubprograms {
   private static final Set<String> STATEMENT_PREDECESSORS =
       Set.of("BEGIN", "THEN", "ELSE", "LOOP", "EXCEPTION");
 
-  private final List<SqlToken> tokens;
+  private final SqlTokens tokens;
   private final List<Subprogram> found = new ArrayList<>();
 
   /** {@code END}で閉じるまとまりのスタック（先頭が最も内側。空はnull） */
@@ -40,7 +40,7 @@ final class PackageSubprograms {
   private final Deque<Conditional> conditionals = new ArrayDeque<>();
 
   private PackageSubprograms(List<SqlToken> tokens) {
-    this.tokens = tokens;
+    this.tokens = new SqlTokens(tokens);
   }
 
   /**
@@ -70,7 +70,8 @@ final class PackageSubprograms {
    */
   static List<Subprogram> find(List<SqlToken> tokens, int from) {
     final PackageSubprograms finder = new PackageSubprograms(tokens);
-    for (int i = from; i < tokens.size(); i++) {
+    int i = from;
+    while (i < tokens.size()) {
       i = finder.visit(i);
     }
     return finder.found;
@@ -79,10 +80,10 @@ final class PackageSubprograms {
   /**
    * 字句1つ分の状態の変化
    *
-   * @return 次に読む字句の1つ前の位置（{@code END IF}等の後ろの語を読み飛ばす場合は{@code i + 1}）
+   * @return 次に読む字句の位置（{@code END IF}等の後ろの語を読み飛ばす場合は{@code i + 2}）
    */
   private int visit(int i) {
-    final SqlToken token = tokens.get(i);
+    final SqlToken token = tokens.at(i);
     if (token.kind() == SqlTokenKind.DIRECTIVE) {
       visitDirective(token);
     } else if (token.isSymbol("(")) {
@@ -104,10 +105,10 @@ final class PackageSubprograms {
       header = null;
     } else if (header != null) {
       visitHeader(i, token);
-    } else if (token.kind() == SqlTokenKind.WORD && !isAfterDot(i)) {
+    } else if (token.kind() == SqlTokenKind.WORD && !tokens.isAfterDot(i)) {
       return visitKeyword(i, token);
     }
-    return i;
+    return i + 1;
   }
 
   /** 見出しの中の字句（引数名と、見出しを閉じる{@code IS}・{@code AS}） */
@@ -133,10 +134,10 @@ final class PackageSubprograms {
   /**
    * キーワード1つ分の状態の変化
    *
-   * @return 次に読む字句の1つ前の位置
+   * @return 次に読む字句の位置
    */
   private int visitKeyword(int i, SqlToken token) {
-    final SqlToken next = at(i + 1);
+    final SqlToken next = tokens.at(i + 1);
     switch (AsciiCase.toUpper(token.text())) {
       case "FUNCTION", "PROCEDURE" -> {
         if (isDeclarationStart(i)
@@ -168,20 +169,20 @@ final class PackageSubprograms {
       }
       default -> {}
     }
-    return i;
+    return i + 1;
   }
 
   /**
    * {@code END}の処理。{@code CASE}式は{@code END}だけで閉じる。それ以外は、{@code END IF}・{@code END
    * LOOP}ならまとまりを閉じず、{@code END CASE}・{@code END}・{@code END ラベル}なら閉じる
    *
-   * @return 次に読む字句の1つ前の位置（{@code END IF}・{@code END LOOP}・{@code END CASE}は後ろの語を読み飛ばす）
+   * @return 次に読む字句の位置（{@code END IF}・{@code END LOOP}・{@code END CASE}は後ろの語を読み飛ばす）
    */
   private int visitEnd(int i, SqlToken next) {
     final boolean closesCaseExpression =
         blocks != null && blocks.block.kind == BlockKind.CASE_EXPRESSION;
     if (!closesCaseExpression && next != null && (next.isWord("IF") || next.isWord("LOOP"))) {
-      return i + 1;
+      return i + 2;
     }
     if (blocks != null) {
       final Block closed = blocks.block;
@@ -190,7 +191,7 @@ final class PackageSubprograms {
         found.add(closed.header.toSubprogram(i));
       }
     }
-    return !closesCaseExpression && next != null && next.isWord("CASE") ? i + 1 : i;
+    return !closesCaseExpression && next != null && next.isWord("CASE") ? i + 2 : i + 1;
   }
 
   /** 条件付きコンパイルの選択指令（{@code $IF}・{@code $ELSIF}・{@code $ELSE}・{@code $END}・{@code $ERROR}） */
@@ -222,12 +223,11 @@ final class PackageSubprograms {
 
   /** サブプログラムの見出しを置ける位置（宣言部の先頭・前の宣言の後ろ）か */
   private boolean isDeclarationStart(int i) {
-    final SqlToken previous = at(i - 1);
+    final SqlToken previous = tokens.at(i - 1);
     return previous == null
         || previous.isSymbol(";")
         || previous.kind() == SqlTokenKind.DIRECTIVE
-        || (previous.kind() == SqlTokenKind.WORD
-            && DECLARATION_PREDECESSORS.contains(AsciiCase.toUpper(previous.text())));
+        || previous.isAnyWord(DECLARATION_PREDECESSORS);
   }
 
   /** 文の始まりに現れた{@code CASE}は{@code CASE}文。{@code CASE}式の中の{@code CASE}は常に式 */
@@ -235,33 +235,21 @@ final class PackageSubprograms {
     if (parenDepth > 0 || (blocks != null && blocks.block.kind == BlockKind.CASE_EXPRESSION)) {
       return false;
     }
-    final SqlToken previous = at(i - 1);
+    final SqlToken previous = tokens.at(i - 1);
     return previous == null
         || previous.isSymbol(";")
         || previous.isSymbol(">>")
         || previous.kind() == SqlTokenKind.DIRECTIVE
-        || (previous.kind() == SqlTokenKind.WORD
-            && STATEMENT_PREDECESSORS.contains(AsciiCase.toUpper(previous.text())));
+        || previous.isAnyWord(STATEMENT_PREDECESSORS);
   }
 
   /** 引数の並びの括弧の中で、{@code (}か{@code ,}の直後の名前は引数名 */
   private boolean isParameterStart(int i) {
-    final SqlToken previous = tokens.get(i - 1);
-    return previous.isSymbol("(") || previous.isSymbol(",");
-  }
-
-  private boolean isAfterDot(int i) {
-    final SqlToken previous = at(i - 1);
-    return previous != null && previous.isSymbol(".");
+    return tokens.isSymbolAt(i - 1, "(") || tokens.isSymbolAt(i - 1, ",");
   }
 
   private void push(Block block) {
     blocks = new Node(block, blocks);
-  }
-
-  /** 範囲の外はnull */
-  private SqlToken at(int index) {
-    return index >= 0 && index < tokens.size() ? tokens.get(index) : null;
   }
 
   /**
@@ -269,19 +257,14 @@ final class PackageSubprograms {
    *
    * @return {@code LANGUAGE JAVA}は{@code JAVA}、{@code EXTERNAL}は{@code C}。呼び出し仕様でなければ空文字
    */
-  static String callSpecLanguage(List<SqlToken> tokens, int i) {
-    if (isWordAt(tokens, i, "EXTERNAL")) {
+  static String callSpecLanguage(SqlTokens tokens, int i) {
+    if (tokens.isWordAt(i, "EXTERNAL")) {
       return "C";
     }
-    if (!isWordAt(tokens, i, "LANGUAGE")) {
+    if (!tokens.isWordAt(i, "LANGUAGE")) {
       return "";
     }
-    final boolean named = i + 1 < tokens.size() && tokens.get(i + 1).isName();
-    return named ? SqlNames.identifier(tokens.get(i + 1), Dbms.ORACLE) : "LANGUAGE";
-  }
-
-  private static boolean isWordAt(List<SqlToken> tokens, int i, String keyword) {
-    return i < tokens.size() && tokens.get(i).isWord(keyword);
+    return tokens.isNameAt(i + 1) ? SqlNames.identifier(tokens.at(i + 1), Dbms.ORACLE) : "LANGUAGE";
   }
 
   /** 宣言中のサブプログラムの見出し（{@code FUNCTION 名前 (引数…) … IS}の{@code IS}まで） */

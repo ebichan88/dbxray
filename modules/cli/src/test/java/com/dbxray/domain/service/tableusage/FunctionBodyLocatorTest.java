@@ -26,7 +26,7 @@ class FunctionBodyLocatorTest {
   @Nested
   class PostgreSQL {
 
-    private final FunctionBodyLocator locator = new FunctionBodyLocator(Dbms.POSTGRESQL);
+    private final FunctionBodyLocator locator = FunctionBodyLocator.of(Dbms.POSTGRESQL);
 
     @Test
     @DisplayName("locate: pg_get_functiondefの形から、ドル引用符の中身だけを本体とし、見出しの型のテーブル名は含めない")
@@ -235,7 +235,7 @@ class FunctionBodyLocatorTest {
   @Nested
   class Oracle {
 
-    private final FunctionBodyLocator locator = new FunctionBodyLocator(Dbms.ORACLE);
+    private final FunctionBodyLocator locator = FunctionBodyLocator.of(Dbms.ORACLE);
 
     private static final String PACKAGE =
         """
@@ -697,10 +697,10 @@ class FunctionBodyLocatorTest {
     void testParameterNames() {
       assertEquals(
           List.of("P_ID", "P_NAME"),
-          FunctionBodyLocator.parameterNames("P_ID NUMBER, P_NAME OUT VARCHAR2"));
-      assertEquals(List.of(), FunctionBodyLocator.parameterNames(""));
-      assertEquals(List.of("A", "B"), FunctionBodyLocator.parameterNames("  A  NUMBER ,B"));
-      assertEquals(List.of("A"), FunctionBodyLocator.parameterNames("A NUMBER,,"));
+          OracleBodyLocator.parameterNames("P_ID NUMBER, P_NAME OUT VARCHAR2"));
+      assertEquals(List.of(), OracleBodyLocator.parameterNames(""));
+      assertEquals(List.of("A", "B"), OracleBodyLocator.parameterNames("  A  NUMBER ,B"));
+      assertEquals(List.of("A"), OracleBodyLocator.parameterNames("A NUMBER,,"));
     }
 
     private FunctionBody locate(String name, String arguments, String definition) {

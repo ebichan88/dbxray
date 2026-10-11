@@ -40,7 +40,7 @@ public final class FunctionTableUsageAnalyzer {
   private FunctionTableUsageAnalyzer(Tables tables, Dbms dbms) {
     this.tables = tables;
     this.dbms = dbms;
-    this.locator = new FunctionBodyLocator(dbms);
+    this.locator = FunctionBodyLocator.of(dbms);
     this.tablesByName = tables.byTableName();
   }
 
@@ -91,7 +91,7 @@ public final class FunctionTableUsageAnalyzer {
     final Map<TableKey, Set<CrudOperation>> determined =
         new TreeMap<>(Comparator.comparing(TableKey::schema).thenComparing(TableKey::table));
     final Map<String, Set<CrudOperation>> undetermined = new TreeMap<>();
-    final SchemaResolution unqualified = unqualifiedResolution(body);
+    final Optional<SchemaResolution> unqualified = unqualifiedResolution(body);
     for (final TableReference reference : references) {
       final Optional<TableKey> key = determineSchema(reference, function, body);
       if (key.isPresent()) {
@@ -99,7 +99,7 @@ public final class FunctionTableUsageAnalyzer {
             .computeIfAbsent(key.get(), k -> EnumSet.noneOf(CrudOperation.class))
             .add(reference.operation());
       } else if (reference.schema().isEmpty()
-          && unqualified != SchemaResolution.DETERMINED
+          && unqualified.isPresent()
           && tablesByName.containsKey(reference.table())) {
         undetermined
             .computeIfAbsent(reference.table(), k -> EnumSet.noneOf(CrudOperation.class))
@@ -116,7 +116,8 @@ public final class FunctionTableUsageAnalyzer {
                     operations)));
     undetermined.forEach(
         (name, operations) ->
-            usages.add(new TableUsage(tablesByName.get(name), unqualified, operations)));
+            usages.add(
+                new TableUsage(tablesByName.get(name), unqualified.orElseThrow(), operations)));
     return usages;
   }
 
@@ -130,30 +131,37 @@ public final class FunctionTableUsageAnalyzer {
     if (!reference.schema().isEmpty()) {
       return existing(TableKey.of(reference.schema(), reference.table()));
     }
-    if (dbms == Dbms.ORACLE) {
+    return switch (dbms) {
       // 定義者権限では、修飾の無い名前はまず所有者のスキーマで解決する
-      return body.invokerRights()
-          ? Optional.empty()
-          : existing(TableKey.of(function.schemaName(), reference.table()));
-    }
-    return body.searchPath().stream()
-        .map(schema -> TableKey.of(schema, reference.table()))
-        .filter(tables::contains)
-        .findFirst();
+      case ORACLE ->
+          body.invokerRights()
+              ? Optional.empty()
+              : existing(TableKey.of(function.schemaName(), reference.table()));
+      case POSTGRESQL ->
+          body.searchPath().stream()
+              .map(schema -> TableKey.of(schema, reference.table()))
+              .filter(tables::contains)
+              .findFirst();
+    };
   }
 
   /**
-   * スキーマ修飾の無い名前が{@link #determineSchema}で決まらなかった場合の扱いを求めるメソッド
+   * スキーマ修飾の無い名前が{@link #determineSchema}で決まらなかった場合の、候補の示し方を求めるメソッド
    *
-   * @return 候補を示す場合はその決まり方。{@link SchemaResolution#DETERMINED}は候補を示さない（関数の{@code SET
-   *     search_path}のどのスキーマにも無い名前は、出力対象外のスキーマ・{@code pg_catalog}のもの）
+   * @return 候補を示す場合はその決まり方。空は候補を示さない（関数の{@code SET search_path}のどのスキーマにも無い名前は、出力対象外のスキーマ・{@code
+   *     pg_catalog}のもの）
    */
-  private SchemaResolution unqualifiedResolution(FunctionBody body) {
-    if (dbms == Dbms.ORACLE) {
+  private Optional<SchemaResolution> unqualifiedResolution(FunctionBody body) {
+    return switch (dbms) {
       // 定義者権限で所有者のスキーマに無い名前は、シノニム経由の参照の可能性がある（シノニムは解決しない）
-      return body.invokerRights() ? SchemaResolution.CURRENT_USER : SchemaResolution.SYNONYM;
-    }
-    return body.searchPath().isEmpty() ? SchemaResolution.SEARCH_PATH : SchemaResolution.DETERMINED;
+      case ORACLE ->
+          Optional.of(
+              body.invokerRights() ? SchemaResolution.CURRENT_USER : SchemaResolution.SYNONYM);
+      case POSTGRESQL ->
+          body.searchPath().isEmpty()
+              ? Optional.of(SchemaResolution.SEARCH_PATH)
+              : Optional.empty();
+    };
   }
 
   private Optional<TableKey> existing(TableKey key) {
