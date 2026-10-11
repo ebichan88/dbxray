@@ -115,6 +115,32 @@ public class ArchitectureTest {
   }
 
   @Test
+  @DisplayName("関数の定義本体を読むパッケージは正規表現を使わない（DB由来の入力で処理が極端に遅くならないようにするため）")
+  void testTableUsageDoesNotUseRegularExpressions() {
+    noClasses()
+        .that()
+        .resideInAnyPackage(
+            ROOT + ".domain.service.tableusage..", ROOT + ".domain.model.tableusage..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAPackage("java.util.regex..")
+        .orShould()
+        .callMethod(String.class, "matches", String.class)
+        .orShould()
+        .callMethod(String.class, "replaceAll", String.class, String.class)
+        .orShould()
+        .callMethod(String.class, "replaceFirst", String.class, String.class)
+        .orShould()
+        .callMethod(String.class, "split", String.class)
+        .orShould()
+        .callMethod(String.class, "split", String.class, int.class)
+        .because(
+            "定義本体はDBでCREATEの権限を持つ別の人が書ける入力で、正規表現の組み合わせはバックトラックで"
+                + "入力の長さに比例しない時間がかかりうる（ReDoS）。1文字ずつ読む字句の解析で読む")
+        .check(MAIN_CLASSES);
+  }
+
+  @Test
   @DisplayName("現在日時は引数なしのnow()で取得せず、DIで受け取るClockから求める")
   void testCurrentTimeIsTakenFromClock() {
     noClasses()
