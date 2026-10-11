@@ -3,7 +3,6 @@ package com.dbxray.domain.service.writer.objectlist;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
@@ -177,7 +176,7 @@ public class ObjectListWriterTest {
     var function =
         new FunctionEntity("testdb", "public", "calc_total", 1, 1, "", "", "", "", "SELECT 1;");
     writer.writeFunctionDefinition(
-        FunctionDefinitionContent.withoutTableUsage(function, Dbms.POSTGRESQL), outputRoot());
+        FunctionDefinitionContent.withoutTableUsage(function), outputRoot());
 
     Path expectedDir = OUT.resolve("testdb").resolve("public").resolve("function");
     Path expectedFile = expectedDir.resolve("calc_total.md");

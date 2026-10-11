@@ -3,7 +3,6 @@ package com.dbxray.domain.service.writer;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.DiagramNeighborhood;
@@ -24,6 +23,7 @@ import com.dbxray.domain.model.table.ViewReferenceEntity;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.OutputObjectType;
@@ -38,6 +38,7 @@ import com.dbxray.testsupport.DiagramBoxesFixtures;
 import com.dbxray.testsupport.ExportTargetsFixtures;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -172,31 +173,35 @@ public class MarkdownInjectionTest {
         "objectDefinition.functionFile",
         () ->
             ObjectDefinitionTemplates.functionFile(
-                FunctionDefinitionContent.withoutTableUsage(function, Dbms.POSTGRESQL), BASE_INFO));
+                FunctionDefinitionContent.withoutTableUsage(function), BASE_INFO));
     final TableEntity hostileTable =
         new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.TABLE, HOSTILE);
     final FunctionTableUsage tableUsage =
         FunctionTableUsage.analyzed(
-            List.of(
-                new TableUsage(List.of(hostileTable), true, Set.of(CrudOperation.READ)),
-                new TableUsage(
-                    List.of(hostileTable, hostileTable), false, Set.of(CrudOperation.DELETE))),
+            Arrays.stream(SchemaResolution.values())
+                .map(
+                    resolution ->
+                        new TableUsage(
+                            resolution == SchemaResolution.DETERMINED
+                                ? List.of(hostileTable)
+                                : List.of(hostileTable, hostileTable),
+                            resolution,
+                            Set.of(CrudOperation.READ)))
+                .toList(),
             List.of(DynamicSqlKind.EXECUTE),
             true,
             true);
-    for (final Dbms dbms : Dbms.values()) {
-      documents.put(
-          "objectDefinition.functionFile.tableUsage." + dbms,
-          () ->
-              ObjectDefinitionTemplates.functionFile(
-                  new FunctionDefinitionContent(function, tableUsage, dbms), BASE_INFO));
-    }
+    documents.put(
+        "objectDefinition.functionFile.tableUsage",
+        () ->
+            ObjectDefinitionTemplates.functionFile(
+                new FunctionDefinitionContent(function, tableUsage), BASE_INFO));
     documents.put(
         "objectDefinition.functionFile.unsupportedLanguage",
         () ->
             ObjectDefinitionTemplates.functionFile(
                 new FunctionDefinitionContent(
-                    function, FunctionTableUsage.unsupportedLanguage(HOSTILE), Dbms.ORACLE),
+                    function, FunctionTableUsage.unsupportedLanguage(HOSTILE)),
                 BASE_INFO));
     documents.put(
         "objectDefinition.sequenceFile",

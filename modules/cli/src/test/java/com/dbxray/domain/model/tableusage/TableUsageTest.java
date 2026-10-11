@@ -26,7 +26,7 @@ class TableUsageTest {
   void testOperationsAreOrderedAndCopied() {
     final Set<CrudOperation> operations = EnumSet.of(CrudOperation.DELETE, CrudOperation.CREATE);
     final List<TableEntity> tables = new ArrayList<>(List.of(SAMPLE_EMPLOYEE));
-    final TableUsage usage = new TableUsage(tables, true, operations);
+    final TableUsage usage = new TableUsage(tables, SchemaResolution.DETERMINED, operations);
     operations.add(CrudOperation.READ);
     tables.add(OTHER_EMPLOYEE);
 
@@ -42,17 +42,18 @@ class TableUsageTest {
   void testRejectsEmpty() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TableUsage(List.of(), true, Set.of(CrudOperation.READ)));
+        () -> new TableUsage(List.of(), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TableUsage(List.of(SAMPLE_EMPLOYEE), true, Set.of()));
+        () -> new TableUsage(List.of(SAMPLE_EMPLOYEE), SchemaResolution.DETERMINED, Set.of()));
   }
 
   @Test
   @DisplayName("TableUsage: スキーマが決まった行はスキーマ名・区分を返し、候補は空")
   void testDetermined() {
     final TableUsage usage =
-        new TableUsage(List.of(OTHER_EMPLOYEE), true, Set.of(CrudOperation.READ));
+        new TableUsage(
+            List.of(OTHER_EMPLOYEE), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ));
 
     assertEquals("other", usage.schemaName());
     assertEquals("employee", usage.tableName());
@@ -64,9 +65,13 @@ class TableUsageTest {
   @DisplayName("TableUsage: スキーマが決まらない行はスキーマ名を空にし、候補を並べ、区分は候補で揃うときだけ返す")
   void testUndetermined() {
     final TableUsage mixed =
-        new TableUsage(List.of(SAMPLE_EMPLOYEE, OTHER_EMPLOYEE), false, Set.of(CrudOperation.READ));
+        new TableUsage(
+            List.of(SAMPLE_EMPLOYEE, OTHER_EMPLOYEE),
+            SchemaResolution.SEARCH_PATH,
+            Set.of(CrudOperation.READ));
     final TableUsage single =
-        new TableUsage(List.of(SAMPLE_EMPLOYEE), false, Set.of(CrudOperation.READ));
+        new TableUsage(
+            List.of(SAMPLE_EMPLOYEE), SchemaResolution.SEARCH_PATH, Set.of(CrudOperation.READ));
 
     assertEquals("", mixed.schemaName());
     assertEquals(List.of("sample", "other"), mixed.schemaCandidates());

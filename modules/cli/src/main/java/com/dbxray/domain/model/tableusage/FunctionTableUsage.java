@@ -1,6 +1,9 @@
 package com.dbxray.domain.model.tableusage;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 1関数・プロシージャ分の利用テーブル（定義本体から機械的に抽出した参考値）
@@ -57,12 +60,22 @@ public record FunctionTableUsage(
   }
 
   /**
-   * スキーマが決まらない名前の行を取得するメソッド
+   * スキーマが決まらない名前の行を、決まり方ごとにまとめるメソッド
    *
-   * @return スキーマが決まらない行（{@link #tables}の並び順）
+   * @return 決まり方（{@link SchemaResolution}の宣言順）をキー、その行（{@link
+   *     #tables}の並び順）を値とするマップ。スキーマが決まらない行が無ければ空
    */
-  public List<TableUsage> schemaUndeterminedTables() {
-    return tables.stream().filter(table -> !table.schemaDetermined()).toList();
+  public Map<SchemaResolution, List<TableUsage>> schemaUndeterminedTables() {
+    final Map<SchemaResolution, List<TableUsage>> byResolution =
+        new EnumMap<>(SchemaResolution.class);
+    tables.stream()
+        .filter(table -> !table.schemaDetermined())
+        .forEach(
+            table ->
+                byResolution
+                    .computeIfAbsent(table.resolution(), resolution -> new ArrayList<>())
+                    .add(table));
+    return byResolution;
   }
 
   /**

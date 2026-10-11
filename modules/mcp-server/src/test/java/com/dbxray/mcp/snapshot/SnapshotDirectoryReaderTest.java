@@ -137,7 +137,7 @@ class SnapshotDirectoryReaderTest {
   }
 
   @Test
-  @DisplayName("関数・シーケンス・ユーザー定義型・トリガーを読み込み、1行をそのまま保持する")
+  @DisplayName("関数・シーケンス・ユーザー定義型・トリガーを読み込み、1行をそのまま保持する（関数は定義本体のハッシュも求める）")
   void readsOtherObjects() throws IOException {
     final String function =
         "{\"schema\":\"sample\",\"name\":\"calc\",\"kind\":\"FUNCTION\",\"arguments\":\"p numeric\","
@@ -163,6 +163,10 @@ class SnapshotDirectoryReaderTest {
         List.of("FUNCTION", "p numeric", "numeric", "sql"),
         List.of(calc.kind(), calc.arguments(), calc.result(), calc.language()));
     assertEquals(function, calc.json());
+    assertEquals(
+        "822ae07d4783158bc1912bb623e5107cc9002d519e1143a9c200ed6ee18b6d0f",
+        calc.definitionHash(),
+        "定義本体（select 1）のSHA-256");
     final SequenceEntry ordersId = catalog.sequences().list(SearchScope.ALL, NameFilter.ALL).get(0);
     assertEquals("orders.id", ordersId.ownedBy());
     assertEquals(sequence, ordersId.json());

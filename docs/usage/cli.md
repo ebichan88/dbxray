@@ -284,6 +284,7 @@ java -jar dbxray.jar --preview
 * プレビューの機能はスナップショットの内容を変えません。そのため`--check`の結果には影響せず、`--check`と同時に指定した場合は効果がありません（その旨を表示します）。
 * 有効にした機能は、ログにINFOで記録します（`Preview features enabled. [features=functionTableUsage]`）。
 * `--preview`を付けて出力した後に付けずに出力し直しても、プレビューの機能が出力した参考情報のファイルは残ります。残したくない場合は`--rm-dist`と組み合わせてください。
+  なお、[MCPサーバー](./mcp-server.md)は、参考情報の出力後に定義本体が変わった関数には、古い参考情報を返しません（定義本体のハッシュで照らします）。
 
 ### DB vs ドキュメントの差分検知（`--check`モード）
 
@@ -582,15 +583,18 @@ PostgreSQLの場合は、テーブル定義に加えて以下のオブジェク�
 | 操作 | 対象 |
 |---|---|
 | C | `INSERT INTO`（OracleのINSERT ALL/FIRSTの各`INTO`、MERGEの`WHEN NOT MATCHED THEN INSERT`を含む） |
-| R | `FROM`（カンマ区切りの並び）・`JOIN`・`APPLY`（Oracle）・`USING`（DELETE・MERGE）の後のテーブル。`SELECT … FOR UPDATE`もR |
+| R | `FROM`（カンマ区切りの並び）・`JOIN`・`APPLY`（Oracle）・`USING`（DELETE・MERGE）の後のテーブル（括弧で囲んだJOINの`FROM (a JOIN b ON …)`を含む）。`SELECT … FOR UPDATE`もR |
 | U | `UPDATE`（MERGEの`THEN UPDATE`、`ON CONFLICT DO UPDATE`を含む） |
 | D | `DELETE`（MERGEの`THEN DELETE`を含む）・`TRUNCATE` |
+
+Oracleのインラインビューを対象にしたDML（`UPDATE (SELECT … FROM t …) SET …`・`INSERT INTO (SELECT … FROM t) VALUES …`・`DELETE FROM (SELECT … FROM t)`）は、
+副問い合わせの最初の`FROM`のテーブルを対象とし、C・U・Dを付けます（それ以外の副問い合わせの中のテーブルはR）。
 
 * 載せるのは、出力対象のテーブル（ビュー・マテリアライズドビューを含む）と一致したものだけです。CTEの名前・変数・カーソル・`DUAL`等や、出力対象外のスキーマ・テーブルは載せません。
 * コメント・文字列（PostgreSQLのドル引用符、Oracleの`q'[...]'`を含む）の中のSQLは読みません。改行・空白・コメントの位置や、大文字小文字の違いでは結果が変わりません。
 * スキーマ修飾の無い名前は、定義から決まる場合だけスキーマを決めます。
     * PostgreSQL: 関数に`SET search_path`が指定されていれば、その並びの先頭から、出力対象のテーブルがあるスキーマにします（`$user`・`pg_catalog`・`pg_temp`は除く）。指定が無ければ実行時の`search_path`で決まるため、`(search_path).テーブル名`と示し、同じ名前のテーブルがあるスキーマを候補として書きます（候補が1つでも、そのスキーマに決めつけません）。
-    * Oracle: 定義者権限（既定）なら所有者のスキーマにします。所有者のスキーマに無い名前はシノニム経由の可能性があり、載せません。実行者権限（`AUTHID CURRENT_USER`）なら`(current_user).テーブル名`と示し、候補を書きます。
+    * Oracle: 定義者権限（既定）なら所有者のスキーマにします。所有者のスキーマに無い名前は、シノニム経由の参照の可能性があるため、他のスキーマに同じ名前の出力対象のテーブルがあれば`(synonym).テーブル名`と示し、候補を書きます（シノニムの参照先は照らしません）。実行者権限（`AUTHID CURRENT_USER`）なら`(current_user).テーブル名`と示し、候補を書きます。
 * 次の場合は、表の前（表が無い場合は表の代わり）にその旨を書きます。
     * 動的SQL（PostgreSQLの`EXECUTE`・`dblink`、Oracleの`EXECUTE IMMEDIATE`・`DBMS_SQL`・`OPEN カーソル FOR 文字列`）を含む（中で利用するテーブルは抽出できません。`format(`だけでは動的SQLとしません）
     * 閉じていない文字列・コメント等があり、定義本体を最後まで読めなかった
@@ -602,9 +606,10 @@ PostgreSQLの場合は、テーブル定義に加えて以下のオブジェク�
 既知の限界:
 
 * 呼び出している関数・プロシージャ（`FROM 関数名(…)`で読む表関数を含む）の中の参照と、動的SQLの中の参照は含みません。
-* Oracleのパッケージで宣言したカーソル・変数を経由した参照は、そのサブプログラムに含みません。シノニム経由の参照、Oracleのトリガーの本体は含みません。
+* Oracleのパッケージで宣言したカーソル・変数を経由した参照は、そのサブプログラムに含みません。Oracleのトリガーの本体は含みません。
+* Oracleのシノニム経由の参照は、シノニムを照らさず、同じ名前の出力対象のテーブルを`(synonym)`の候補として示すだけです。テーブルと違う名前のシノニム、出力対象外のスキーマを指すシノニムによる参照は載りません。
 * 条件付きコンパイル（`$IF`）の両方の分岐や、到達しない分岐（`IF false THEN`）の参照も含みます（実行時の条件を評価しません）。
-* `UPDATE (SELECT … FROM t) SET …`（Oracleの更新可能なインラインビュー）は、tをRとして示します。
+* インラインビューを対象にしたDMLは、副問い合わせの最初の`FROM`のテーブルを対象とみなします。JOINしたインラインビューで、実際に更新するテーブル（キー保存表）が後ろのテーブルの場合は、実際と違うテーブルにUを付けます。
 * `SET search_path`で決める場合も、照らせるのは出力対象のテーブルだけのため、`target.tables`で外したテーブルが`search_path`の手前のスキーマにあると、実際と違うスキーマに決まることがあります。
 
 ### PostgreSQLのパーティション表
@@ -695,6 +700,7 @@ AIへ渡すための出力です。観点（[`viewpoints`](#viewpoints観点)）
 * 観点を1つも宣言していない場合は、`viewpoints.json`自体を出力しません。
 * `functionTableUsages.json`は、[プレビューの機能](#プレビューの機能--previewオプション)を有効にした場合だけ、関数・プロシージャのあるスキーマごとに出力します。
   関数はスナップショットと同じく名前・引数で識別し、状態（`analyzed`・`unsupported_language`・`no_definition`・`wrapped`・`subprogram_not_found`）、
-  利用しているテーブル（スキーマ・名前・操作。スキーマが決まらない名前はスキーマの代わりに候補`schemaCandidates`）、動的SQLの種類を持ちます。値の無い項目は出力しません。
+  利用しているテーブル（スキーマ・名前・操作。スキーマが決まらない名前はスキーマの代わりに、何で決まるか`schemaResolution`（`search_path`・`current_user`・`synonym`）と候補`schemaCandidates`）、
+  動的SQLの種類、抽出元の定義本体のSHA-256（`definitionHash`。MCPサーバーがスナップショットの定義本体と照らし、定義が変わった後の古い結果を返さないため）を持ちます。値の無い項目は出力しません。
 * `--check`の比較対象には含まれません（参考情報を変更しても`--check`は差分として報告しません）。
 * [MCPサーバー](./mcp-server.md)の`list_viewpoints`・`list_table_clusters`・`list_tables`・`search_tables`・`get_table`から参照されます。

@@ -82,7 +82,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | `domain.model.schemaobject` | `FunctionEntity`, `SequenceEntity`, `TypeEntity` | テーブルに属さないスキーマ直下のオブジェクト（関数・プロシージャ／シーケンス／ユーザー定義型）のrecord。`FunctionEntity`は同名関数（オーバーロード）内の番号を持つ |
 | | `Functions`, `Sequences`, `Types` | 上記エンティティのファーストクラスコレクション（取得順のリストを保持する。テーブルキーでは引かない） |
 | `domain.model.tableusage` | `FunctionTableUsage`, `TableUsage` | 関数・プロシージャ1つ分の利用しているテーブル（状態・テーブルごとの操作・動的SQLの種類・不完全／オーバーロードの和の印）と、1テーブル分の利用（一致した出力対象のテーブル。スキーマが決まらない名前は候補のすべて） |
-| | `CrudOperation`, `DynamicSqlKind`, `TableUsageStatus` | 操作（C・R・U・D）、動的SQLの種類、解析の状態（抽出しなかった・解析した・対象外の言語・定義が無い・wrap・サブプログラムが見つからない）のenum |
+| | `CrudOperation`, `DynamicSqlKind`, `TableUsageStatus`, `SchemaResolution` | 操作（C・R・U・D）、動的SQLの種類、解析の状態（抽出しなかった・解析した・対象外の言語・定義が無い・wrap・サブプログラムが見つからない）、名前のスキーマの決まり方（決まった・実行時のsearch_path・実行者・シノニムの可能性）のenum |
 | `domain.model.database` | `DatabaseEntity`, `Dbms` | DBのカタログから取得するデータベースの情報（DB名・DBMS種別・メジャーバージョン）のrecordと、DBMS種別のenum（表示名を持つ。関数の定義本体の字句の規則の切り替えにも使う） |
 | | `BaseInfoEntity` | 各ドキュメントに掲載する基本情報（`DatabaseEntity`の情報＋生成日）のrecord |
 | `domain.model.sidecar` | `Sidecar` | サイドカーYAMLの読み込み結果全体（手動付帯情報＋論理リレーション＋観点）を束ねるrecord |
@@ -93,7 +93,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `OutputObjectType` | 追加オブジェクト（テーブル以外）の出力対象の種別のenum。`parse()`で設定値を解釈する（未指定なら全種別、未知の種別名は例外） |
 | | `ExportTargets` | 一括取得する軽量な出力対象の情報（基本情報・テーブル一覧・関連・トリガー・パーティション・関数/シーケンス/型の一覧・手動付帯情報・観点）と、取得した追加オブジェクトの種別の組 |
 | | `TableDefinitionContent` | 1テーブル分の出力内容を束ねるrecord（`assemble()`で`TableDetail`と一括取得分から組み立て）。出力先は持たない |
-| | `FunctionDefinitionContent` | 関数・プロシージャ1つ分の出力内容（定義本体を含む関数・利用しているテーブル・DBMS種別）のrecord。抽出を行わない実行では利用しているテーブルを`NOT_ANALYZED`とする |
+| | `FunctionDefinitionContent` | 関数・プロシージャ1つ分の出力内容（定義本体を含む関数・利用しているテーブル）のrecord。抽出を行わない実行では利用しているテーブルを`NOT_ANALYZED`とする |
 | | `ConsistencyNotice` | 出力対象のテーブルと関連・付帯情報・観点を突き合わせた通知1件分の値オブジェクト（種類・メッセージ。重要度は種類が決める） |
 | `domain.model.metrics` | `DatabaseMetrics`, `SchemaMetrics` | 出力対象の集計（READMEに載せる、スキーマごとのオブジェクトの数・論理名の記述状況・関連と読み解きの状況）。`DatabaseMetrics.builder(ExportTargets)`が一括取得分から数え、`collectColumns(TableDetail)`でチャンクごとにカラムを足す。取得しなかった種別は`isCounted`で判定する |
 | `domain.model.snapshot` | `DatabaseSnapshot`, `TableSnapshot`, `FunctionSnapshot`, `SequenceSnapshot`, `TypeSnapshot` | スキーマのスナップショット（JSON Lines）の1行分を表すrecord群。エンティティからの変換時に、値が無いこと（空文字）をnullへ正規化する（パッケージプライベートの`SnapshotValues`） |
@@ -126,7 +126,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `OutputRoot` | 出力先ベースディレクトリと基本情報の組を表す値オブジェクト（Writer・`OutputPathResolver`へそのまま渡す） |
 | `domain.service.tableusage` | `SqlLexer`, `SqlToken`, `SqlTokenKind` | 関数・プロシージャの定義本体を字句に分ける（DBごとのコメント・文字列・ドル引用符・`q'[...]'`の規則。正規表現を使わず1文字ずつ読み、閉じていない要素があっても例外にしない。正規表現を使わないことは`ArchitectureTest`が検査する） |
 | | `FunctionTableUsageAnalyzer` | 関数・プロシージャの定義本体から利用しているテーブルを抽出する入口（スキーマごとに生成する）。本体の切り出し・位置の判定の結果の名前を、出力対象のテーブルと照らして解決する（スキーマ修飾・`SET search_path`・Oracleの所有者／実行者権限） |
-| | `FunctionBodyLocator`, `PackageSubprograms` | 定義から解析する本体を切り出す（PostgreSQLはドル引用符の中身を字句に分け直す。Oracleはパッケージ本体の最上位のサブプログラムの範囲を`BEGIN`・`CASE`と`END`の対応で求め、オーバーロードを引数名で対応付ける。同じパッケージの字句を使い回す） |
+| | `FunctionBodyLocator`, `PackageSubprograms` | 定義から解析する本体を切り出す（PostgreSQLはドル引用符の中身を字句に分け直す。Oracleはパッケージ本体の最上位のサブプログラムの範囲を`BEGIN`・`CASE`（文と式を区別する）と`END`の対応で求め、条件付きコンパイルの各分岐は分岐の前の状態から読み、オーバーロードを引数名で対応付ける。同じパッケージの字句を使い回す。仕様部の字句が閉じない場合は本体の始まりから分け直す） |
 | | `TableReferenceScanner` | 本体の字句から、テーブルを指す位置（`INSERT INTO`・`FROM`の並び・`JOIN`等）の名前と操作、動的SQLを拾う。完全な構文解析はせず、きっかけのキーワードと前後の字句で判定し、`;`で文の状態を戻す |
 | | `SqlNames` | 字句からカタログでの名前を求める（引用符の無い名前はPostgreSQLは小文字・Oracleは大文字へ、ASCIIの英字だけ畳み込む） |
 | `domain.service.insight` | `InsightWriter` | 参考情報の書き込み（`snapshot`の兄弟の`insights/`へ。`--check`では使わない）。対象が無い場合はファイル自体を出力しない |

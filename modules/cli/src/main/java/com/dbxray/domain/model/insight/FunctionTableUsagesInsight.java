@@ -5,6 +5,10 @@ import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 
@@ -47,6 +51,8 @@ public record FunctionTableUsagesInsight(
    * 関数・プロシージャ1つ分
    *
    * @param arguments 引数（スナップショットと同じ表記）
+   * @param definitionHash 抽出元の定義本体（スナップショットの{@code definition}と同じ文字列）のSHA-256（16進数の小文字）。
+   *     MCPサーバーがスナップショットの定義本体と照らし、定義が変わった後の古い結果を返さないために使う。定義本体が無い場合はnull
    * @param status 解析の状態（{@code analyzed}・{@code unsupported_language}・{@code no_definition}・{@code
    *     wrapped}・{@code subprogram_not_found}）
    * @param language 解析しなかった言語の名前（{@code unsupported_language}の場合だけ）
@@ -57,6 +63,7 @@ public record FunctionTableUsagesInsight(
   public record FunctionInsight(
       String name,
       String arguments,
+      String definitionHash,
       String status,
       String language,
       List<TableInsight> tables,
@@ -75,6 +82,7 @@ public record FunctionTableUsagesInsight(
       return new FunctionInsight(
           content.function().functionName(),
           content.function().functionArguments(),
+          hashOf(content.function().definition()),
           usage.status().name().toLowerCase(Locale.ROOT),
           usage.language(),
           usage.tables().stream().map(TableInsight::of).toList(),
@@ -84,15 +92,37 @@ public record FunctionTableUsagesInsight(
     }
   }
 
+  /** 定義本体（UTF-8）のSHA-256を16進数の小文字で求める。スナップショットが空白だけの定義本体を持たないのに合わせ、その場合はnull */
+  private static String hashOf(String definition) {
+    if (definition == null || definition.isBlank()) {
+      return null;
+    }
+    try {
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256")
+                  .digest(definition.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException e) {
+      // SHA-256はJava SEの実装が必ず備えるアルゴリズムのため、起こらない
+      throw new IllegalStateException(e);
+    }
+  }
+
   /**
    * 利用しているテーブル1件
    *
    * @param schema スキーマ名。スキーマが決まらない名前は空文字（出力しない）
+   * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code search_path}・{@code current_user}・{@code
+   *     synonym}）。スキーマが決まった場合は空文字（出力しない）
    * @param schemaCandidates スキーマが決まらない名前の、同じ名前の出力対象のテーブルがあるスキーマ
    * @param operations 操作（{@code C}・{@code R}・{@code U}・{@code D}の順）
    */
   public record TableInsight(
-      String schema, String name, List<String> schemaCandidates, List<String> operations) {
+      String schema,
+      String name,
+      String schemaResolution,
+      List<String> schemaCandidates,
+      List<String> operations) {
 
     /** リストは変更不可な複製として保持する */
     public TableInsight {
@@ -104,6 +134,7 @@ public record FunctionTableUsagesInsight(
       return new TableInsight(
           usage.schemaName(),
           usage.tableName(),
+          usage.resolution().id(),
           usage.schemaCandidates(),
           usage.orderedOperations().stream().map(CrudOperation::letter).toList());
     }

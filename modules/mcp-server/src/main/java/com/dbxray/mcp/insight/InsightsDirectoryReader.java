@@ -199,6 +199,7 @@ public final class InsightsDirectoryReader {
   record FunctionTableUsageLine(
       String name,
       String arguments,
+      String definitionHash,
       String status,
       String language,
       List<UsedTableLine> tables,
@@ -210,6 +211,7 @@ public final class InsightsDirectoryReader {
       return new FunctionTableUsageEntry(
           new ObjectKey(database, schema, name),
           arguments,
+          definitionHash,
           status,
           language,
           tables == null ? List.of() : tables.stream().map(UsedTableLine::toTable).toList(),
@@ -222,10 +224,14 @@ public final class InsightsDirectoryReader {
   /** 利用しているテーブル1件 */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record UsedTableLine(
-      String schema, String name, List<String> schemaCandidates, List<String> operations) {
+      String schema,
+      String name,
+      String schemaResolution,
+      List<String> schemaCandidates,
+      List<String> operations) {
 
     UsedTable toTable() {
-      return new UsedTable(schema, name, schemaCandidates, operations);
+      return new UsedTable(schema, name, schemaResolution, schemaCandidates, operations);
     }
   }
 }

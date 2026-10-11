@@ -90,21 +90,25 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 * 一覧を返すツールは、件数が`limit`を超える場合に続きの`offset`（`nextOffset`）を返します。
 * `target.objects`で出力対象から外した種別は0件になります。
 * 関数・プロシージャの定義本体は、AIのコンテキストを圧迫するため既定では返しません（`get_function`の`includeDefinition`で返します）。
-* `get_function`の`tableUsage`は、cliの[プレビューの機能](./cli.md#関数プロシージャが利用しているテーブルプレビュー)（`--preview`）で出力した参考情報`functionTableUsages.json`から返します。参考情報が無い関数には項目ごと付けません。
+* `get_function`の`tableUsage`は、cliの[プレビューの機能](./cli.md#関数プロシージャが利用しているテーブルプレビュー)（`--preview`）で出力した参考情報`functionTableUsages.json`から返します。
+  参考情報が無い関数と、参考情報の抽出元の定義本体がスナップショットの定義本体と一致しない関数（参考情報を出力した後に定義が変わり、`--preview`を付けずに出力し直した場合等）には項目ごと付けません。
 
     ```json
     "tableUsage": {
       "tables": [
         {"table": "sample.employee", "operations": "U"},
-        {"table": "project", "schemaCandidates": ["sample"], "operations": "R"}
+        {"table": "project", "schemaResolution": "search_path", "schemaCandidates": ["sample"], "operations": "R"}
       ],
       "dynamicSql": ["EXECUTE"]
     }
     ```
 
     * 定義本体から機械的に抽出した参考値で、呼び出している関数の中と動的SQLの中の参照は含みません（ツールの説明でAIにも伝えます）。
-    * スキーマが決まらない名前（実行時の`search_path`や実行者で決まるもの）は、`table`にスキーマを付けず`schemaCandidates`で候補を返します。候補が1つでも、そのスキーマに決めつけないようツールの説明でAIに伝えます。
-    * 利用しているテーブルが見つからなかった場合は`"tables": []`を返します。定義本体を最後まで読めなかった場合は`"incomplete": true`、Oracleで同名のサブプログラムの本体をまとめて抽出した場合は`"overloadsMerged": true`を付けます。
+    * スキーマが決まらない名前は、`table`にスキーマを付けず、何で決まるか（`schemaResolution`）と候補（`schemaCandidates`）を返します。候補が1つでも、そのスキーマに決めつけないようツールの説明でAIに伝えます。
+        * `search_path`: PostgreSQLで、実行時の`search_path`で決まる
+        * `current_user`: Oracleの実行者権限（`AUTHID CURRENT_USER`）で、実行するユーザーで決まる
+        * `synonym`: Oracleの定義者権限で、所有者のスキーマに無いため、シノニム経由で参照している可能性がある
+    * 返すのは出力対象のテーブルと一致したものだけです。利用しているテーブルが見つからなかった場合は`"tables": []`を返しますが、テーブルに触れないことを意味しません（出力対象外のテーブル・名前の違うシノニム・呼び出し先の関数・動的SQLの中の参照は含まないため。ツールの説明でAIにも伝えます）。定義本体を最後まで読めなかった場合は`"incomplete": true`、Oracleで同名のサブプログラムの本体をまとめて抽出した場合は`"overloadsMerged": true`を付けます。
     * 解析しなかった場合は`{"status": "unsupported_language", "language": "plpython3u"}`のように状態だけを返します（`no_definition`・`wrapped`・`subprogram_not_found`もあります）。
 * `get_table`の`sections`を指定しても、テーブル名・論理名・区分・説明・備考・所属する観点は常に返します。`columns`を指定した場合は、`sections`に関わらず指定したカラムを返します。
 

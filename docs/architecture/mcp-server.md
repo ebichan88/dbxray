@@ -37,9 +37,9 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | | `ClusterDetector`・`TableClusters`・`TableCluster` | 関連のつながりだけから推測するテーブルのまとまり（`list_table_clusters`の元）。連結成分を1つのまとまりとし、上限を超えるまとまりは被参照の最も多いテーブル（`TableClusters.HUB_MIN_INCOMING`以上から参照される共通のマスタ）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルは、被参照の最も多いハブごとにまとめる。呼び出しのたびに求める（範囲・上限が引数で変わるため） |
 | | `SqlNames`・`TableColumn` | カラムの型・デフォルト値（`nextval`）・トリガーの関数名に現れるオブジェクトの名前の判定（相互参照に使う）と、カラムとそれを持つテーブル |
 | | `TableEntry`・`ColumnEntry`・`RelationEntry`・`TriggerEntry`・`ObjectKey`・`DatabaseEntry` | スナップショットの1行のうち、検索・一覧・逆引き・関連のたどりに使う項目 |
-| | `FunctionTableUsageEntry`・`FunctionTableUsages` | 関数・プロシージャが利用しているテーブルの参考情報1件（cliの`--preview`で出力する。状態・テーブルごとの操作・スキーマが決まらない名前の候補・動的SQL）と、スナップショットの関数（キーと引数）から引く窓口（`SchemaCatalog#functionTableUsages`） |
+| | `FunctionTableUsageEntry`・`FunctionTableUsages` | 関数・プロシージャが利用しているテーブルの参考情報1件（cliの`--preview`で出力する。状態・テーブルごとの操作・スキーマが決まらない名前の決まり方と候補・動的SQL・抽出元の定義本体のハッシュ）と、スナップショットの関数（キーと引数）から引く窓口（`SchemaCatalog#functionTableUsages`。定義本体のハッシュが`FunctionEntry`と異なる古い参考情報は返さない） |
 | | `ViewpointEntry` | 観点の参考情報1件（識別子・表示名・説明・所属テーブル）。スキーマを持たないため`SchemaObject`は実装しない。テーブルから所属する観点は`ViewpointCatalog#containing`で逆引きする（読み込み済みの観点を引くだけで、索引は持たない） |
-| | `FunctionEntry`・`FunctionOverloads`・`SequenceEntry`・`TypeEntry` | 関数・シーケンス・ユーザー定義型の1行。関数は同名のもの（オーバーロード）を`FunctionOverloads`にまとめて名前の解決の単位にする |
+| | `FunctionEntry`・`FunctionOverloads`・`SequenceEntry`・`TypeEntry` | 関数・シーケンス・ユーザー定義型の1行。関数は同名のもの（オーバーロード）を`FunctionOverloads`にまとめて名前の解決の単位にする。関数は参考情報と照らすため、定義本体のハッシュ（読み込み時に`SnapshotDirectoryReader`が求める）を持つ |
 | | `NameFilter` | 関数・シーケンス・型の一覧を、名前の部分一致で絞り込む条件 |
 | | `TableFilter`・`TableType` | テーブルの一覧・検索の絞り込み（DB・スキーマ・区分・観点）を1回組み立てて`matches`で問い合わせる値オブジェクトと、テーブルの区分（table/view/materialized_view）。区分の値はツールの入力スキーマの`enum`にも使う |
 | | `SchemaSummary` | スキーマごとのオブジェクトの数（`list_schemas`の元）。集計は`SchemaSummary.summarize`が行う。数え方（オーバーロードはそれぞれ・トリガーはテーブルに属するもの）はcliのREADMEの集計（`DatabaseMetrics`）に揃える |
@@ -173,7 +173,9 @@ mcp-serverはcliのスナップショットのrecordを共有せず、読み込�
   cliの出力先（`output.path`）配下で`snapshot/`と`insights/`が常に兄弟になる配置規則に依存する
 - `McpServerMain`が`SnapshotDirectoryReader`で組み立てた`SchemaCatalog`に、`withViewpoints`で観点を、
   `withFunctionTableUsages`で関数・プロシージャが利用しているテーブル（cliの`--preview`で出力するスキーマごとのファイル）を合成する。
-  後者はスナップショットの関数とキー（DB名・スキーマ名・名前）と引数で対応付ける。スキーマ名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなくファイルの中の値を使う
+  後者はスナップショットの関数とキー（DB名・スキーマ名・名前）と引数で対応付ける。スキーマ名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなくファイルの中の値を使う。
+  参考情報はcliで`--rm-dist`を付けずに出力し直すと前回のものが残るため、参考情報の`definitionHash`（抽出元の定義本体のSHA-256）が
+  スナップショットの定義本体のハッシュと異なるものは対応付けない（`definitionHash`を持たない参考情報は照らさずに対応付ける）
 - ディレクトリ・DBごとのファイルが無い場合は0件とする（観点を1つも宣言していない場合、cliの版が古く参考情報を
   まだ出力しない場合等）。起動時の誤りにはしない（スナップショットが1つも無い場合とは扱いが異なる）
 - 互換性はスナップショットと同じ仕組み（`SampleInsightsContractTest`によるベースラインの確認、

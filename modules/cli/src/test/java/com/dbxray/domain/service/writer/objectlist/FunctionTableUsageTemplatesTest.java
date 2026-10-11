@@ -4,13 +4,13 @@ import static com.dbxray.testsupport.MarkdownAssert.assertMarkdownEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.tableusage.TableUsageStatus;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
@@ -42,7 +42,7 @@ class FunctionTableUsageTemplatesTest {
   @Test
   @DisplayName("section: 抽出を行わない実行では、節を出さない")
   void testNotAnalyzed() {
-    assertEquals("", section(FunctionTableUsage.notAnalyzed(), Dbms.POSTGRESQL));
+    assertEquals("", section(FunctionTableUsage.notAnalyzed()));
   }
 
   @Test
@@ -51,10 +51,13 @@ class FunctionTableUsageTemplatesTest {
     final FunctionTableUsage usage =
         FunctionTableUsage.analyzed(
             List.of(
-                new TableUsage(List.of(SAMPLE_DEPARTMENT), true, Set.of(CrudOperation.READ)),
+                new TableUsage(
+                    List.of(SAMPLE_DEPARTMENT),
+                    SchemaResolution.DETERMINED,
+                    Set.of(CrudOperation.READ)),
                 new TableUsage(
                     List.of(SAMPLE_EMPLOYEE),
-                    true,
+                    SchemaResolution.DETERMINED,
                     Set.of(CrudOperation.CREATE, CrudOperation.UPDATE, CrudOperation.DELETE))),
             List.of(),
             false,
@@ -73,7 +76,7 @@ class FunctionTableUsageTemplatesTest {
 
         """
             .formatted(DISCLAIMER),
-        section(usage, Dbms.POSTGRESQL));
+        section(usage));
   }
 
   @Test
@@ -82,10 +85,18 @@ class FunctionTableUsageTemplatesTest {
     final FunctionTableUsage usage =
         FunctionTableUsage.analyzed(
             List.of(
-                new TableUsage(List.of(SAMPLE_EMPLOYEE), true, Set.of(CrudOperation.UPDATE)),
-                new TableUsage(List.of(SAMPLE_EMPLOYEE), false, Set.of(CrudOperation.READ)),
                 new TableUsage(
-                    List.of(SAMPLE_PROJECT, OTHER_PROJECT), false, Set.of(CrudOperation.READ))),
+                    List.of(SAMPLE_EMPLOYEE),
+                    SchemaResolution.DETERMINED,
+                    Set.of(CrudOperation.UPDATE)),
+                new TableUsage(
+                    List.of(SAMPLE_EMPLOYEE),
+                    SchemaResolution.SEARCH_PATH,
+                    Set.of(CrudOperation.READ)),
+                new TableUsage(
+                    List.of(SAMPLE_PROJECT, OTHER_PROJECT),
+                    SchemaResolution.SEARCH_PATH,
+                    Set.of(CrudOperation.READ))),
             List.of(),
             false,
             false);
@@ -109,24 +120,24 @@ class FunctionTableUsageTemplatesTest {
 
         """
             .formatted(DISCLAIMER),
-        section(usage, Dbms.POSTGRESQL));
+        section(usage));
   }
 
   @Test
-  @DisplayName("section: Oracleの実行者権限で決まらない名前は(current_user)を付けて示す")
+  @DisplayName("section: Oracleの実行者権限で決まらない名前は(current_user)、所有者のスキーマに無い名前は(synonym)を付けて示す")
   void testUndeterminedOracle() {
     final FunctionTableUsage usage =
         FunctionTableUsage.analyzed(
             List.of(
                 new TableUsage(
                     List.of(table("SCOTT", "EMP", TableType.TABLE)),
-                    false,
+                    SchemaResolution.CURRENT_USER,
                     Set.of(CrudOperation.DELETE))),
             List.of(),
             false,
             false);
 
-    final String section = section(usage, Dbms.ORACLE);
+    final String section = section(usage);
 
     assertTrue(section.contains("|1|(current_user).EMP|table||||○|"), section);
     assertTrue(
@@ -134,6 +145,22 @@ class FunctionTableUsageTemplatesTest {
             "(current_user) は、スキーマ修飾が無く、実行者権限（AUTHID CURRENT_USER）のため実行するユーザーで決まる名前です。"),
         section);
     assertTrue(section.contains("- EMP: SCOTT"), section);
+
+    final String synonym =
+        section(
+            FunctionTableUsage.analyzed(
+                List.of(
+                    new TableUsage(
+                        List.of(table("DATA", "ORDERS", TableType.TABLE)),
+                        SchemaResolution.SYNONYM,
+                        Set.of(CrudOperation.UPDATE))),
+                List.of(),
+                false,
+                false));
+    assertTrue(synonym.contains("|1|(synonym).ORDERS|table|||○||"), synonym);
+    assertTrue(
+        synonym.contains("(synonym) は、スキーマ修飾が無く所有者のスキーマにも無いため、シノニム経由で参照している可能性がある名前です。"), synonym);
+    assertTrue(synonym.contains("- ORDERS: DATA"), synonym);
   }
 
   @Test
@@ -162,7 +189,7 @@ class FunctionTableUsageTemplatesTest {
 
         """
             .formatted(DISCLAIMER),
-        section(usage, Dbms.ORACLE));
+        section(usage));
   }
 
   @Test
@@ -175,17 +202,15 @@ class FunctionTableUsageTemplatesTest {
         言語がplpython3uのため、利用しているテーブルは抽出していません。
 
         """,
-        section(FunctionTableUsage.unsupportedLanguage("plpython3u"), Dbms.POSTGRESQL));
+        section(FunctionTableUsage.unsupportedLanguage("plpython3u")));
     assertTrue(
-        section(FunctionTableUsage.notAnalyzable(TableUsageStatus.NO_DEFINITION), Dbms.ORACLE)
+        section(FunctionTableUsage.notAnalyzable(TableUsageStatus.NO_DEFINITION))
             .contains("定義本体を取得できなかったため、利用しているテーブルは抽出していません。"));
     assertTrue(
-        section(FunctionTableUsage.notAnalyzable(TableUsageStatus.WRAPPED), Dbms.ORACLE)
+        section(FunctionTableUsage.notAnalyzable(TableUsageStatus.WRAPPED))
             .contains("定義本体がwrap（難読化）されているため、利用しているテーブルは抽出していません。"));
     assertTrue(
-        section(
-                FunctionTableUsage.notAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND),
-                Dbms.ORACLE)
+        section(FunctionTableUsage.notAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND))
             .contains("パッケージ本体からこのサブプログラムの本体を見つけられなかったため、利用しているテーブルは抽出していません。"));
   }
 
@@ -196,13 +221,15 @@ class FunctionTableUsageTemplatesTest {
     final FunctionTableUsage usage =
         FunctionTableUsage.analyzed(
             List.of(
-                new TableUsage(List.of(hostile), true, Set.of(CrudOperation.READ)),
-                new TableUsage(List.of(hostile), false, Set.of(CrudOperation.READ))),
+                new TableUsage(
+                    List.of(hostile), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ)),
+                new TableUsage(
+                    List.of(hostile), SchemaResolution.SEARCH_PATH, Set.of(CrudOperation.READ))),
             List.of(),
             false,
             false);
 
-    final String section = section(usage, Dbms.POSTGRESQL);
+    final String section = section(usage);
 
     assertTrue(section.contains("|1|s\\|x.t<br>u|table||○|||"), section);
     assertTrue(section.contains("- t u: s|x"), section);
@@ -214,9 +241,7 @@ class FunctionTableUsageTemplatesTest {
     final String file =
         ObjectDefinitionTemplates.functionFile(
             new FunctionDefinitionContent(
-                FUNCTION,
-                FunctionTableUsage.analyzed(List.of(), List.of(), false, false),
-                Dbms.POSTGRESQL),
+                FUNCTION, FunctionTableUsage.analyzed(List.of(), List.of(), false, false)),
             new BaseInfoEntity("db", "PostgreSQL", 16, LocalDate.EPOCH));
 
     final int baseInfo = file.indexOf("## 基本情報");
@@ -225,9 +250,8 @@ class FunctionTableUsageTemplatesTest {
     assertTrue(baseInfo >= 0 && baseInfo < usage && usage < definition, file);
   }
 
-  private static String section(FunctionTableUsage usage, Dbms dbms) {
-    return FunctionTableUsageTemplates.section(
-        new FunctionDefinitionContent(FUNCTION, usage, dbms));
+  private static String section(FunctionTableUsage usage) {
+    return FunctionTableUsageTemplates.section(new FunctionDefinitionContent(FUNCTION, usage));
   }
 
   private static TableEntity table(String schema, String name, TableType type) {

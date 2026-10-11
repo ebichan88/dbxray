@@ -425,11 +425,12 @@ classDiagram
 
 - 拾った名前のうち、出力対象のテーブル（ビュー・マテリアライズドビューを含む）と一致したものだけを残す。CTEの名前・変数・DUAL等はここで落ちる。
 - スキーマ修飾の無い名前は、定義から決まる場合（PostgreSQLの関数の`SET search_path`、Oracleの定義者権限の所有者）だけスキーマを決める。
-  決まらない場合は同じ名前の出力対象のテーブル（候補）をすべて持ち、スキーマを決めつけない（`TableUsage.schemaDetermined`）。
+  決まらない場合は同じ名前の出力対象のテーブル（候補）をすべて持ち、スキーマを決めつけない。何で決まるか（実行時の`search_path`・
+  Oracleの実行者・Oracleの定義者権限で所有者のスキーマに無い名前のシノニム）を`SchemaResolution`で持つ（`TableUsage.resolution`）。
 - 解析しなかった場合は、理由を状態（`TableUsageStatus`。対象外の言語・定義が無い・wrap・サブプログラムが見つからない）で表す。
   抽出を行わない実行（プレビューの機能を有効にしていない実行）の結果は`NOT_ANALYZED`で、定義書の節・参考情報を出さない。
 - 抽出はプレビューの機能（`application.PreviewFeature.FUNCTION_TABLE_USAGE`。`--preview`）で、`SchemaExportPipeline`が
-  スキーマ単位で取得した定義本体から行い、関数1つ分の出力内容（`domain.model.target.FunctionDefinitionContent`。関数・利用しているテーブル・DBMS種別）
+  スキーマ単位で取得した定義本体から行い、関数1つ分の出力内容（`domain.model.target.FunctionDefinitionContent`。関数・利用しているテーブル）
   として各`ExportSink`へ渡す。スナップショットには含めず、定義書の節と参考情報（`FunctionTableUsagesInsight`）にだけ出す。
 
 ## 主なルールと、それを持つ場所
@@ -512,7 +513,7 @@ classDiagram
 | オーバーロード | 同名の関数・プロシージャ | `FunctionEntity.isOverloaded` | 同じスキーマの同名の関数・プロシージャ。個別定義のファイル名に番号を付ける |
 | 利用しているテーブル | 利用しているテーブル（関数・プロシージャの定義書の節） | `FunctionTableUsage` / `TableUsage` / `FunctionTableUsageAnalyzer` | 関数・プロシージャの定義本体から機械的に抽出した、利用している出力対象のテーブルと操作（C・R・U・D）。呼び出し先の関数・動的SQLの中は含まない参考値 |
 | 操作 | C・R・U・D | `CrudOperation` | 利用しているテーブルへの操作（作成・読み取り・更新・削除）。`TRUNCATE`はD、`MERGE`はWHEN句の操作 |
-| スキーマが決まらない名前 | `(search_path)`・候補のスキーマ（`schemaCandidates`） | `TableUsage.schemaDetermined` / `TableUsage.schemaCandidates` | スキーマ修飾が無く、定義からはスキーマが決まらない名前（実行時の`search_path`や実行者で決まる）。同じ名前の出力対象のテーブルがあるスキーマを候補として示す |
+| スキーマが決まらない名前 | `(search_path)`・`(current_user)`・`(synonym)`・候補のスキーマ（`schemaCandidates`） | `SchemaResolution` / `TableUsage.resolution` / `TableUsage.schemaCandidates` | スキーマ修飾が無く、定義からはスキーマが決まらない名前（実行時の`search_path`・Oracleの実行者で決まる、またはOracleの定義者権限で所有者のスキーマに無くシノニム経由の可能性がある）。同じ名前の出力対象のテーブルがあるスキーマを候補として示す |
 | 動的SQL | 動的SQL（`EXECUTE`・`EXECUTE IMMEDIATE`等） | `DynamicSqlKind` | 実行時に組み立てるSQL。中の参照は抽出できないため、含むことだけを示す |
 | 一覧ドキュメント | テーブル一覧・ER図一覧・観点一覧 等 | `ListDocumentType` | 種別ごとの一覧ページ |
 | スナップショット | スキーマのスナップショット | `domain.model.snapshot` | 取得結果を構造化したJSON Lines（生成日を含まない） |

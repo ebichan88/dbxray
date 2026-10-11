@@ -11,12 +11,11 @@ import java.util.Set;
  * 関数・プロシージャが利用しているテーブル1件
  *
  * @param tables 一致した出力対象のテーブル。スキーマが決まった場合は1件、決まらない場合は同じ名前の出力対象のテーブル（候補）のすべて。空にはしない
- * @param schemaDetermined スキーマが決まったか（スキーマ修飾・関数の{@code SET search_path}・Oracleの所有者から決まる場合）。
- *     決まらない場合は、実行時の{@code search_path}（PostgreSQL）や実行者（Oracleの実行者権限）で決まる
+ * @param resolution スキーマの決まり方（決まらない場合は、何で決まるか）
  * @param operations 操作。空にはしない
  */
 public record TableUsage(
-    List<TableEntity> tables, boolean schemaDetermined, Set<CrudOperation> operations) {
+    List<TableEntity> tables, SchemaResolution resolution, Set<CrudOperation> operations) {
 
   /** 一致したテーブル・操作は変更不可な複製として保持し、操作はC・R・U・Dの順に並べる */
   public TableUsage {
@@ -25,6 +24,15 @@ public record TableUsage(
     }
     tables = List.copyOf(tables);
     operations = Set.copyOf(EnumSet.copyOf(operations));
+  }
+
+  /**
+   * スキーマが決まったか判定するメソッド
+   *
+   * @return スキーマ修飾・関数の{@code SET search_path}・Oracleの所有者から決まった場合はtrue
+   */
+  public boolean schemaDetermined() {
+    return resolution == SchemaResolution.DETERMINED;
   }
 
   /**
@@ -42,7 +50,7 @@ public record TableUsage(
    * @return スキーマ名。決まらない場合は空文字
    */
   public String schemaName() {
-    return schemaDetermined ? tables.get(0).schemaName() : "";
+    return schemaDetermined() ? tables.get(0).schemaName() : "";
   }
 
   /**
@@ -51,7 +59,7 @@ public record TableUsage(
    * @return 同じ名前の出力対象のテーブルがあるスキーマ。スキーマが決まった場合は空
    */
   public List<String> schemaCandidates() {
-    return schemaDetermined ? List.of() : tables.stream().map(TableEntity::schemaName).toList();
+    return schemaDetermined() ? List.of() : tables.stream().map(TableEntity::schemaName).toList();
   }
 
   /**

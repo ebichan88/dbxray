@@ -276,7 +276,8 @@ class TableCatalogTest {
                     "",
                     "trigger",
                     "plpgsql",
-                    "{}")),
+                    "{}",
+                    "")),
             List.of(new SequenceEntry(new ObjectKey("db1", "sales", "orders_id_seq"), null, "{}")),
             List.of(new TypeEntry(new ObjectKey("db1", "sales", "status"), "ENUM", "{}")));
 

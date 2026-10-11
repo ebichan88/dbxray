@@ -92,7 +92,8 @@ class TableDefinitionToolsTest {
                           "",
                           "trigger",
                           "plpgsql",
-                          "{}"),
+                          "{}",
+                          ""),
                       function(
                           "withhold_tax",
                           "p_price numeric",
@@ -132,18 +133,24 @@ class TableDefinitionToolsTest {
                       new FunctionTableUsageEntry(
                           new ObjectKey("testdb", "sample", "withhold_tax"),
                           "p_price numeric",
+                          "",
                           "analyzed",
                           "",
                           List.of(
-                              new UsedTable("sample", "employee", List.of(), List.of("R", "U")),
+                              new UsedTable("sample", "employee", "", List.of(), List.of("R", "U")),
                               new UsedTable(
-                                  "", "project", List.of("sample", "archive"), List.of("D"))),
+                                  "",
+                                  "project",
+                                  "synonym",
+                                  List.of("sample", "archive"),
+                                  List.of("D"))),
                           List.of("EXECUTE"),
                           true,
                           false),
                       new FunctionTableUsageEntry(
                           new ObjectKey("testdb", "sample", "withhold_tax"),
                           "p_price numeric, p_rate numeric",
+                          "",
                           "analyzed",
                           "",
                           List.of(),
@@ -152,6 +159,7 @@ class TableDefinitionToolsTest {
                           true),
                       new FunctionTableUsageEntry(
                           new ObjectKey("testdb", "sample", "log_change"),
+                          "",
                           "",
                           "unsupported_language",
                           "plpython3u",
@@ -544,7 +552,8 @@ class TableDefinitionToolsTest {
 
     assertEquals(
         "{\"tables\":[{\"table\":\"sample.employee\",\"operations\":\"RU\"},"
-            + "{\"table\":\"project\",\"schemaCandidates\":[\"sample\",\"archive\"],\"operations\":\"D\"}],"
+            + "{\"table\":\"project\",\"schemaResolution\":\"synonym\","
+            + "\"schemaCandidates\":[\"sample\",\"archive\"],\"operations\":\"D\"}],"
             + "\"dynamicSql\":[\"EXECUTE\"],\"incomplete\":true}",
         overloads.get(0).get("tableUsage").toString());
     assertEquals(
@@ -891,7 +900,7 @@ class TableDefinitionToolsTest {
 
   private static FunctionEntry function(String name, String arguments, String json) {
     return new FunctionEntry(
-        new ObjectKey("testdb", "sample", name), "FUNCTION", arguments, "void", "sql", json);
+        new ObjectKey("testdb", "sample", name), "FUNCTION", arguments, "void", "sql", json, "");
   }
 
   private CallToolResult call(String name, Map<String, Object> arguments) {

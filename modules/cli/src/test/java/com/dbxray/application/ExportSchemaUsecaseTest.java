@@ -1478,6 +1478,7 @@ public class ExportSchemaUsecaseTest {
     assertTrue(contentOf(functionFile).contains("|1|public.t1|table||||○|"));
     assertEquals(
         "{\"formatVersion\":1,\"schema\":\"public\",\"functions\":[{\"name\":\"f1\","
+            + "\"definitionHash\":\"962c4ca88574a34e5f3662b7eb120154627f490fd9dcd0aef7b6a18ee840d780\","
             + "\"status\":\"analyzed\",\"tables\":[{\"schema\":\"public\",\"name\":\"t1\","
             + "\"operations\":[\"D\"]}]}]}\n",
         contentOf(insightFile));

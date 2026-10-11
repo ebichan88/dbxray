@@ -75,8 +75,11 @@ final class FunctionTools {
                 + "定義本体は既定では返さない。includeDefinitionを指定すると返す"
                 + "（オーバーロードの本体がすべて同じ場合は1つにまとめ、長い場合は切り詰める）。"
                 + "cliを--previewで実行した参考情報がある場合は、オーバーロードごとにtableUsage（利用しているテーブルと操作C・R・U・D、動的SQLの種類）を返す。"
-                + "tableUsageは定義本体から機械的に抽出した参考値で、呼び出している関数の中と動的SQLの中の参照は含まない。"
-                + "スキーマが決まらない名前（実行時のsearch_pathや実行者で決まるもの）はtableにスキーマを付けず、"
+                + "tableUsageは定義本体から機械的に抽出した参考値で、cliの出力対象のテーブル（ビューを含む）と一致したものだけを返す。"
+                + "出力対象外のテーブル、呼び出している関数の中と動的SQLの中の参照は含まないため、tablesが空でもテーブルに触れないとは限らない。"
+                + "スキーマが決まらない名前はtableにスキーマを付けず、schemaResolutionに何で決まるか"
+                + "（search_path: 実行時のsearch_path、current_user: 実行者権限のため実行するユーザー、"
+                + "synonym: 所有者のスキーマに無くシノニム経由の可能性）を、"
                 + "schemaCandidatesに同じ名前のテーブルがあるスキーマを返す。候補が1つでもそのスキーマに決めつけないこと。"
                 + "解析しなかった場合はstatus（unsupported_language等）だけを返す",
             objectSchema(
@@ -168,6 +171,9 @@ final class FunctionTools {
       final ObjectNode tableNode = tables.addObject();
       if (table.schema().isEmpty()) {
         tableNode.put("table", table.name());
+        if (!table.schemaResolution().isEmpty()) {
+          tableNode.put("schemaResolution", table.schemaResolution());
+        }
         final ArrayNode candidates = tableNode.putArray("schemaCandidates");
         table.schemaCandidates().forEach(candidates::add);
       } else {

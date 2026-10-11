@@ -127,9 +127,9 @@ class InsightsDirectoryReaderTest {
     write(
         "insights/testdb/My~2FSchema/functionTableUsages.json",
         "{\"formatVersion\":1,\"schema\":\"My/Schema\",\"functions\":["
-            + "{\"name\":\"f\",\"arguments\":\"p integer\",\"status\":\"analyzed\","
+            + "{\"name\":\"f\",\"arguments\":\"p integer\",\"definitionHash\":\"abc\",\"status\":\"analyzed\","
             + "\"tables\":[{\"schema\":\"sample\",\"name\":\"employee\",\"operations\":[\"R\",\"U\"]},"
-            + "{\"name\":\"project\",\"schemaCandidates\":[\"sample\",\"other\"],\"operations\":[\"D\"]}],"
+            + "{\"name\":\"project\",\"schemaResolution\":\"search_path\",\"schemaCandidates\":[\"sample\",\"other\"],\"operations\":[\"D\"]}],"
             + "\"dynamicSql\":[\"EXECUTE\"],\"incomplete\":true,\"newField\":1},"
             + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"plpython3u\"}]}");
     write("insights/testdb/viewpoints.json", "{\"formatVersion\":1,\"viewpoints\":[]}");
@@ -142,16 +142,19 @@ class InsightsDirectoryReaderTest {
             new FunctionTableUsageEntry(
                 new ObjectKey("testdb", "My/Schema", "f"),
                 "p integer",
+                "abc",
                 "analyzed",
                 "",
                 List.of(
-                    new UsedTable("sample", "employee", List.of(), List.of("R", "U")),
-                    new UsedTable("", "project", List.of("sample", "other"), List.of("D"))),
+                    new UsedTable("sample", "employee", "", List.of(), List.of("R", "U")),
+                    new UsedTable(
+                        "", "project", "search_path", List.of("sample", "other"), List.of("D"))),
                 List.of("EXECUTE"),
                 true,
                 false),
             new FunctionTableUsageEntry(
                 new ObjectKey("testdb", "My/Schema", "py"),
+                "",
                 "",
                 "unsupported_language",
                 "plpython3u",

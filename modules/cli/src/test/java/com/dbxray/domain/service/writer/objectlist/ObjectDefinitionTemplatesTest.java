@@ -3,7 +3,6 @@ package com.dbxray.domain.service.writer.objectlist;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
 import com.dbxray.domain.model.schemaobject.TypeEntity;
@@ -35,7 +34,7 @@ public class ObjectDefinitionTemplatesTest {
             "CREATE OR REPLACE FUNCTION public.f_add(a integer) RETURNS integer ...");
     String file =
         ObjectDefinitionTemplates.functionFile(
-            FunctionDefinitionContent.withoutTableUsage(f, Dbms.POSTGRESQL), base);
+            FunctionDefinitionContent.withoutTableUsage(f), base);
     assertTrue(file.startsWith("# f_add"));
     assertTrue(file.contains("```sql"));
     assertTrue(file.contains("CREATE OR REPLACE FUNCTION public.f_add"));

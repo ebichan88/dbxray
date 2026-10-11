@@ -1,6 +1,7 @@
 package com.dbxray.mcp.insight;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.mcp.catalog.FunctionEntry;
@@ -35,16 +36,21 @@ class SampleFunctionTableUsagesContractTest {
   }
 
   @Test
-  @DisplayName("スナップショットのすべての関数（オーバーロードを含む）に、キーと引数で参考情報を対応付けられる")
+  @DisplayName("スナップショットのすべての関数（オーバーロードを含む）に、キーと引数で参考情報を対応付けられ、定義本体のハッシュも一致する")
   void everyFunctionHasTableUsage() {
     final List<FunctionEntry> functions =
         catalog.functions().all().stream().flatMap(f -> f.overloads().stream()).toList();
 
     assertTrue(functions.size() >= 11, "サンプルの関数が読み込まれていること");
     for (final FunctionEntry function : functions) {
-      assertTrue(
-          catalog.functionTableUsages().find(function).isPresent(),
-          () -> function.key() + "(" + function.arguments() + ")");
+      final FunctionTableUsageEntry usage =
+          catalog
+              .functionTableUsages()
+              .find(function)
+              .orElseThrow(
+                  () -> new AssertionError(function.key() + "(" + function.arguments() + ")"));
+      assertFalse(
+          usage.definitionHash().isEmpty(), () -> function.key() + ": ハッシュを照らしたうえで対応付けていること");
     }
   }
 
@@ -53,15 +59,15 @@ class SampleFunctionTableUsagesContractTest {
   void readsTablesAndDynamicSql() {
     assertEquals(
         List.of(
-            new UsedTable("sample", "audit_log", List.of(), List.of("C", "R")),
-            new UsedTable("sample", "employee", List.of(), List.of("U")),
-            new UsedTable("sample", "project", List.of(), List.of("R")),
-            new UsedTable("sample", "project_assignment", List.of(), List.of("R", "D"))),
+            new UsedTable("sample", "audit_log", "", List.of(), List.of("C", "R")),
+            new UsedTable("sample", "employee", "", List.of(), List.of("U")),
+            new UsedTable("sample", "project", "", List.of(), List.of("R")),
+            new UsedTable("sample", "project_assignment", "", List.of(), List.of("R", "D"))),
         usage("close_project").tables());
 
     final FunctionTableUsageEntry countRows = usage("count_rows");
     assertEquals(
-        List.of(new UsedTable("", "employee", List.of("sample"), List.of("R"))),
+        List.of(new UsedTable("", "employee", "search_path", List.of("sample"), List.of("R"))),
         countRows.tables());
     assertEquals(List.of("EXECUTE"), countRows.dynamicSql());
     assertEquals("analyzed", countRows.status());

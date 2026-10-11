@@ -122,12 +122,12 @@ class ObjectCatalogTest {
     private static FunctionEntry function(
         String database, String schema, String name, String arguments) {
       return new FunctionEntry(
-          new ObjectKey(database, schema, name), "FUNCTION", arguments, "void", "sql", "{}");
+          new ObjectKey(database, schema, name), "FUNCTION", arguments, "void", "sql", "{}", "");
     }
 
     private static FunctionEntry procedure(String database, String schema, String name) {
       return new FunctionEntry(
-          new ObjectKey(database, schema, name), "PROCEDURE", "", "", "plpgsql", "{}");
+          new ObjectKey(database, schema, name), "PROCEDURE", "", "", "plpgsql", "{}", "");
     }
   }
 }

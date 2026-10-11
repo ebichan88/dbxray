@@ -309,17 +309,10 @@ final class SchemaExportPipeline {
           FunctionTableUsageAnalyzer.of(targets.tables(), targets.dbms());
       contents =
           functions.stream()
-              .map(
-                  function ->
-                      new FunctionDefinitionContent(
-                          function, analyzer.analyze(function), targets.dbms()))
+              .map(function -> new FunctionDefinitionContent(function, analyzer.analyze(function)))
               .toList();
     } else {
-      contents =
-          functions.stream()
-              .map(
-                  function -> FunctionDefinitionContent.withoutTableUsage(function, targets.dbms()))
-              .toList();
+      contents = functions.stream().map(FunctionDefinitionContent::withoutTableUsage).toList();
     }
     sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, contents, targets.baseInfo()));
   }

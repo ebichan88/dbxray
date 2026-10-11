@@ -8,6 +8,7 @@ import com.dbxray.domain.model.table.Tables;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.tableusage.TableUsageStatus;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import java.util.TreeMap;
  * 関数・プロシージャの定義本体から、利用している出力対象のテーブルと操作（C・R・U・D）を抽出するクラス<br>
  * 本体を切り出し（{@link FunctionBodyLocator}）、テーブルを指す位置の名前を拾い（{@link TableReferenceScanner}）、
  * 出力対象のテーブルと照らして一致したものだけを残す。スキーマ修飾の無い名前は、定義から決まる場合（PostgreSQLの{@code SET
- * search_path}、Oracleの定義者権限）だけスキーマを決め、決まらなければ同じ名前の出力対象のテーブルを候補として持つ。
+ * search_path}、Oracleの定義者権限の所有者のスキーマ）だけスキーマを決め、決まらなければ同じ名前の出力対象のテーブルを候補として持つ。
  * インスタンスはスキーマごとに作る（Oracleのパッケージの字句をスキーマの処理の間だけ使い回すため）
  */
 public final class FunctionTableUsageAnalyzer {
@@ -90,6 +91,7 @@ public final class FunctionTableUsageAnalyzer {
     final Map<TableKey, Set<CrudOperation>> determined =
         new TreeMap<>(Comparator.comparing(TableKey::schema).thenComparing(TableKey::table));
     final Map<String, Set<CrudOperation>> undetermined = new TreeMap<>();
+    final SchemaResolution unqualified = unqualifiedResolution(body);
     for (final TableReference reference : references) {
       final Optional<TableKey> key = determineSchema(reference, function, body);
       if (key.isPresent()) {
@@ -97,7 +99,7 @@ public final class FunctionTableUsageAnalyzer {
             .computeIfAbsent(key.get(), k -> EnumSet.noneOf(CrudOperation.class))
             .add(reference.operation());
       } else if (reference.schema().isEmpty()
-          && !isSchemaDeterminable(body)
+          && unqualified != SchemaResolution.DETERMINED
           && tablesByName.containsKey(reference.table())) {
         undetermined
             .computeIfAbsent(reference.table(), k -> EnumSet.noneOf(CrudOperation.class))
@@ -107,10 +109,14 @@ public final class FunctionTableUsageAnalyzer {
     final List<TableUsage> usages = new ArrayList<>();
     determined.forEach(
         (key, operations) ->
-            usages.add(new TableUsage(List.of(tables.find(key).orElseThrow()), true, operations)));
+            usages.add(
+                new TableUsage(
+                    List.of(tables.find(key).orElseThrow()),
+                    SchemaResolution.DETERMINED,
+                    operations)));
     undetermined.forEach(
         (name, operations) ->
-            usages.add(new TableUsage(tablesByName.get(name), false, operations)));
+            usages.add(new TableUsage(tablesByName.get(name), unqualified, operations)));
     return usages;
   }
 
@@ -125,7 +131,7 @@ public final class FunctionTableUsageAnalyzer {
       return existing(TableKey.of(reference.schema(), reference.table()));
     }
     if (dbms == Dbms.ORACLE) {
-      // 定義者権限では、修飾の無い名前は所有者のスキーマで解決する（所有者のスキーマに無ければシノニム経由で、照らさない）
+      // 定義者権限では、修飾の無い名前はまず所有者のスキーマで解決する
       return body.invokerRights()
           ? Optional.empty()
           : existing(TableKey.of(function.schemaName(), reference.table()));
@@ -136,9 +142,18 @@ public final class FunctionTableUsageAnalyzer {
         .findFirst();
   }
 
-  /** 定義からスキーマを決められる（決まらない名前を候補として持たない）か */
-  private boolean isSchemaDeterminable(FunctionBody body) {
-    return dbms == Dbms.ORACLE ? !body.invokerRights() : !body.searchPath().isEmpty();
+  /**
+   * スキーマ修飾の無い名前が{@link #determineSchema}で決まらなかった場合の扱いを求めるメソッド
+   *
+   * @return 候補を示す場合はその決まり方。{@link SchemaResolution#DETERMINED}は候補を示さない（関数の{@code SET
+   *     search_path}のどのスキーマにも無い名前は、出力対象外のスキーマ・{@code pg_catalog}のもの）
+   */
+  private SchemaResolution unqualifiedResolution(FunctionBody body) {
+    if (dbms == Dbms.ORACLE) {
+      // 定義者権限で所有者のスキーマに無い名前は、シノニム経由の参照の可能性がある（シノニムは解決しない）
+      return body.invokerRights() ? SchemaResolution.CURRENT_USER : SchemaResolution.SYNONYM;
+    }
+    return body.searchPath().isEmpty() ? SchemaResolution.SEARCH_PATH : SchemaResolution.DETERMINED;
   }
 
   private Optional<TableKey> existing(TableKey key) {

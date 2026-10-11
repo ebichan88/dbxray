@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeyGroup;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.table.TableEntity;
@@ -12,6 +11,7 @@ import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.viewpoint.Viewpoint;
@@ -151,7 +151,8 @@ class InsightWriterTest {
   }
 
   @Test
-  @DisplayName("writeFunctionTableUsages: スキーマごとのファイルへ、関数の識別（名前・引数）と抽出結果を、値の無い項目を除いて出力する")
+  @DisplayName(
+      "writeFunctionTableUsages: スキーマごとのファイルへ、関数の識別（名前・引数）・定義本体のSHA-256（空白だけの本体は除く）と抽出結果を、値の無い項目を除いて出力する")
   void testWriteFunctionTableUsages() {
     final TableEntity employee =
         new TableEntity("testdb", "sample", "", "employee", TableType.TABLE, "");
@@ -163,27 +164,32 @@ class InsightWriterTest {
             functionContent(
                 "raise_salary",
                 "p_id integer",
+                "BEGIN NULL; END;",
                 FunctionTableUsage.analyzed(
                     List.of(
                         new TableUsage(
                             List.of(employee),
-                            true,
+                            SchemaResolution.DETERMINED,
                             Set.of(CrudOperation.UPDATE, CrudOperation.READ)),
                         new TableUsage(
-                            List.of(employee, otherEmployee), false, Set.of(CrudOperation.DELETE))),
+                            List.of(employee, otherEmployee),
+                            SchemaResolution.SEARCH_PATH,
+                            Set.of(CrudOperation.DELETE))),
                     List.of(DynamicSqlKind.EXECUTE),
                     false,
                     false)),
             functionContent(
-                "broken", "", FunctionTableUsage.analyzed(List.of(), List.of(), true, true)),
-            functionContent("py", "", FunctionTableUsage.unsupportedLanguage("plpython3u"))),
+                "broken", "", "  ", FunctionTableUsage.analyzed(List.of(), List.of(), true, true)),
+            functionContent("py", "", "", FunctionTableUsage.unsupportedLanguage("plpython3u"))),
         ROOT);
 
     assertEquals(
         "{\"formatVersion\":1,\"schema\":\"sample\",\"functions\":["
-            + "{\"name\":\"raise_salary\",\"arguments\":\"p_id integer\",\"status\":\"analyzed\","
+            + "{\"name\":\"raise_salary\",\"arguments\":\"p_id integer\","
+            + "\"definitionHash\":\"a99f4c7a268ec9a9036157c2e7466dc7483aca400f7407ea3db9a1ed97784fe3\","
+            + "\"status\":\"analyzed\","
             + "\"tables\":[{\"schema\":\"sample\",\"name\":\"employee\",\"operations\":[\"R\",\"U\"]},"
-            + "{\"name\":\"employee\",\"schemaCandidates\":[\"sample\",\"other\"],\"operations\":[\"D\"]}],"
+            + "{\"name\":\"employee\",\"schemaResolution\":\"search_path\",\"schemaCandidates\":[\"sample\",\"other\"],\"operations\":[\"D\"]}],"
             + "\"dynamicSql\":[\"EXECUTE\"]},"
             + "{\"name\":\"broken\",\"status\":\"analyzed\",\"incomplete\":true,\"overloadsMerged\":true},"
             + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"plpython3u\"}]}\n",
@@ -196,17 +202,17 @@ class InsightWriterTest {
   @DisplayName("writeFunctionTableUsages: 抽出を行わない実行では、ファイル自体を出力しない")
   void testWriteFunctionTableUsagesNotAnalyzedWritesNothing() {
     writer.writeFunctionTableUsages(
-        "sample", List.of(functionContent("f", "", FunctionTableUsage.notAnalyzed())), ROOT);
+        "sample", List.of(functionContent("f", "", "", FunctionTableUsage.notAnalyzed())), ROOT);
     writer.writeFunctionTableUsages("sample", List.of(), ROOT);
 
     assertTrue(fileRepository.files.isEmpty());
   }
 
   private static FunctionDefinitionContent functionContent(
-      String name, String arguments, FunctionTableUsage usage) {
+      String name, String arguments, String definition, FunctionTableUsage usage) {
     return new FunctionDefinitionContent(
-        new FunctionEntity("testdb", "sample", name, 1, 1, "FUNCTION", arguments, "", "sql", ""),
-        usage,
-        Dbms.POSTGRESQL);
+        new FunctionEntity(
+            "testdb", "sample", name, 1, 1, "FUNCTION", arguments, "", "sql", definition),
+        usage);
   }
 }

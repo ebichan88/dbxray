@@ -3,11 +3,11 @@ package com.dbxray.domain.service.writer.objectlist;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
-import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.tableusage.CrudOperation;
 import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
+import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
@@ -50,12 +50,11 @@ public final class FunctionTableUsageTemplates {
       paragraphs.add(DISCLAIMER);
       paragraphs.addAll(notes(usage));
       if (!usage.tables().isEmpty()) {
-        paragraphs.add(table(usage.tables(), content.dbms()));
+        paragraphs.add(table(usage.tables()));
       }
-      final String candidates = schemaCandidates(usage.schemaUndeterminedTables(), content.dbms());
-      if (!candidates.isEmpty()) {
-        paragraphs.add(candidates);
-      }
+      usage
+          .schemaUndeterminedTables()
+          .forEach((resolution, rows) -> paragraphs.add(schemaCandidates(resolution, rows)));
     }
     return HEADING
         + LINE_SEPARATOR_DOUBLE
@@ -105,7 +104,7 @@ public final class FunctionTableUsageTemplates {
   }
 
   /** 利用しているテーブルの表（末尾の改行を含まない） */
-  private static String table(List<TableUsage> tables, Dbms dbms) {
+  private static String table(List<TableUsage> tables) {
     final StringBuilder sb = new StringBuilder(TABLE_HEADER);
     for (int i = 0; i < tables.size(); i++) {
       if (i > 0) {
@@ -115,7 +114,7 @@ public final class FunctionTableUsageTemplates {
       sb.append(
           MarkdownTemplateSupport.row(
               i + 1,
-              MarkdownTemplateSupport.escapeTableCell(displayName(usage, dbms)),
+              MarkdownTemplateSupport.escapeTableCell(displayName(usage)),
               usage.tableType().map(TableType::getName).orElse(""),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.CREATE)),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.READ)),
@@ -125,33 +124,32 @@ public final class FunctionTableUsageTemplates {
     return sb.toString();
   }
 
-  /** 表に示す名前（スキーマが決まらない名前は、スキーマの代わりにプレースホルダーを付ける） */
-  private static String displayName(TableUsage usage, Dbms dbms) {
-    return (usage.schemaDetermined() ? usage.schemaName() : placeholder(dbms))
+  /** 表に示す名前（スキーマが決まらない名前は、スキーマの代わりに決まり方のプレースホルダーを付ける） */
+  private static String displayName(TableUsage usage) {
+    return (usage.schemaDetermined() ? usage.schemaName() : placeholder(usage.resolution()))
         + "."
         + usage.tableName();
   }
 
   /**
-   * スキーマが決まらない名前の候補のスキーマを示す段落
+   * スキーマが決まらない名前の候補のスキーマを示す段落（決まり方1つ分）
    *
-   * @param undetermined スキーマが決まらない名前の行
-   * @return スキーマが決まらない名前が無い場合は空文字
+   * @param rows その決まり方の行
    */
-  private static String schemaCandidates(List<TableUsage> undetermined, Dbms dbms) {
-    if (undetermined.isEmpty()) {
-      return "";
-    }
+  private static String schemaCandidates(SchemaResolution resolution, List<TableUsage> rows) {
     final String explanation =
-        dbms == Dbms.POSTGRESQL
-            ? "は、スキーマ修飾が無く、実行時のsearch_pathで決まる名前です。"
-            : "は、スキーマ修飾が無く、実行者権限（AUTHID CURRENT_USER）のため実行するユーザーで決まる名前です。";
-    return placeholder(dbms)
+        switch (resolution) {
+          case SEARCH_PATH -> "は、スキーマ修飾が無く、実行時のsearch_pathで決まる名前です。";
+          case CURRENT_USER -> "は、スキーマ修飾が無く、実行者権限（AUTHID CURRENT_USER）のため実行するユーザーで決まる名前です。";
+          case SYNONYM -> "は、スキーマ修飾が無く所有者のスキーマにも無いため、シノニム経由で参照している可能性がある名前です。";
+          case DETERMINED -> "";
+        };
+    return placeholder(resolution)
         + " "
         + explanation
         + "出力対象で同じ名前のテーブルがあるスキーマは次のとおりです。"
         + LINE_SEPARATOR_DOUBLE
-        + undetermined.stream()
+        + rows.stream()
             .map(
                 usage ->
                     "- "
@@ -162,8 +160,8 @@ public final class FunctionTableUsageTemplates {
             .collect(Collectors.joining(LINE_SEPARATOR));
   }
 
-  /** スキーマが決まらない名前に、スキーマの代わりに付けるプレースホルダー */
-  private static String placeholder(Dbms dbms) {
-    return dbms == Dbms.POSTGRESQL ? "(search_path)" : "(current_user)";
+  /** スキーマが決まらない名前に、スキーマの代わりに付けるプレースホルダー（{@code (search_path)}等） */
+  private static String placeholder(SchemaResolution resolution) {
+    return "(" + resolution.id() + ")";
   }
 }

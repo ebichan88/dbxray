@@ -105,7 +105,8 @@ class FunctionTableUsageAnalyzerTest {
       final List<String> names = new ArrayList<>();
       for (final String item : expected.split(" \\[")[0].split(", ")) {
         if (item.contains(":")) {
-          names.add(item.substring(0, item.indexOf(':')).replace("?.", ""));
+          final String name = item.substring(0, item.indexOf(':'));
+          names.add(name.startsWith("(") ? name.substring(name.indexOf(").") + 2) : name);
         }
       }
       return names;
@@ -156,8 +157,8 @@ class FunctionTableUsageAnalyzerTest {
             "",
             "SELECT * FROM sample.nothing, pg_catalog.pg_class, information_schema.tables;",
             "-"),
-        pg("修飾が無い名前は候補を持つ", "", "SELECT * FROM department;", "?.department:R{sample}"),
-        pg("候補が複数", "", "DELETE FROM employee;", "?.employee:D{sample,other}"),
+        pg("修飾が無い名前は候補を持つ", "", "SELECT * FROM department;", "(search_path).department:R{sample}"),
+        pg("候補が複数", "", "DELETE FROM employee;", "(search_path).employee:D{sample,other}"),
         pg("候補が無ければ載せない", "", "SELECT * FROM nothing, dual;", "-"),
         pg(
             "search_pathの先頭から出力対象のあるスキーマに決める",
@@ -173,7 +174,7 @@ class FunctionTableUsageAnalyzerTest {
             "search_pathが$userだけなら決めない",
             " SET search_path TO '$user', 'pg_catalog'\n",
             "SELECT * FROM employee;",
-            "?.employee:R{sample,other}"),
+            "(search_path).employee:R{sample,other}"),
         pg(
             "ビュー・マテリアライズドビュー",
             "",
@@ -189,8 +190,8 @@ class FunctionTableUsageAnalyzerTest {
             "",
             "DELETE FROM project; UPDATE sample.employee SET x = 1; INSERT INTO other.audit_log"
                 + " VALUES (1); SELECT * FROM department; SELECT * FROM sample.department;",
-            "other.audit_log:C, sample.department:R, sample.employee:U, ?.department:R{sample},"
-                + " ?.project:D{sample,other}"),
+            "other.audit_log:C, sample.department:R, sample.employee:U, (search_path).department:R{sample},"
+                + " (search_path).project:D{sample,other}"),
         pg(
             "動的SQL",
             "",
@@ -223,19 +224,19 @@ class FunctionTableUsageAnalyzerTest {
   static List<AnalyzerCase> oracleCases() {
     return List.of(
         ora(
-            "定義者権限では修飾の無い名前を所有者のスキーマに決め、無ければ載せない",
+            "定義者権限では修飾の無い名前を所有者のスキーマに決め、無ければシノニム経由の候補とする",
             "P",
             "",
             "CREATE OR REPLACE PROCEDURE p IS v NUMBER; BEGIN UPDATE emp SET sal = 0; SELECT 1"
                 + " INTO v FROM jobs; INSERT INTO hr.jobs VALUES (1); END;",
-            "HR.JOBS:C, SCOTT.EMP:U"),
+            "HR.JOBS:C, SCOTT.EMP:U, (synonym).JOBS:R{HR}"),
         ora(
             "実行者権限では修飾の無い名前を決めず候補を持つ",
             "P",
             "",
             "CREATE OR REPLACE PROCEDURE p AUTHID CURRENT_USER IS v NUMBER; BEGIN DELETE FROM emp;"
                 + " SELECT 1 INTO v FROM jobs; SELECT 1 INTO v FROM scott.dept; END;",
-            "SCOTT.DEPT:R, ?.EMP:D{SCOTT,HR}, ?.JOBS:R{HR}"),
+            "SCOTT.DEPT:R, (current_user).EMP:D{SCOTT,HR}, (current_user).JOBS:R{HR}"),
         ora(
             "DUAL・DBリンク・引数の型は載せない",
             "F",
@@ -396,7 +397,7 @@ class FunctionTableUsageAnalyzerTest {
 
   /**
    * 解析の結果を短い記法にするメソッド<br>
-   * 行は{@code スキーマ.テーブル:操作}、スキーマが決まらない行は{@code ?.テーブル:操作{候補,…}}。解析しなかった場合は状態（と言語）
+   * 行は{@code スキーマ.テーブル:操作}、スキーマが決まらない行は{@code (決まり方).テーブル:操作{候補,…}}。解析しなかった場合は状態（と言語）
    */
   static String describe(FunctionTableUsage usage) {
     if (usage.status() != TableUsageStatus.ANALYZED) {
@@ -408,7 +409,7 @@ class FunctionTableUsageAnalyzerTest {
         usage.tables().stream()
             .map(
                 row ->
-                    (row.schemaDetermined() ? row.schemaName() : "?")
+                    (row.schemaDetermined() ? row.schemaName() : "(" + row.resolution().id() + ")")
                         + "."
                         + row.tableName()
                         + ":"
