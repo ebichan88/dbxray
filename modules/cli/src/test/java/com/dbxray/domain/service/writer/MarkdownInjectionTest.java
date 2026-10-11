@@ -3,6 +3,7 @@ package com.dbxray.domain.service.writer;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.DiagramNeighborhood;
@@ -55,7 +56,7 @@ public class MarkdownInjectionTest {
       "x<img src=x onerror=alert(1)>\n```\n<script>alert(2)</script>\n# h|z";
 
   private static final BaseInfoEntity BASE_INFO =
-      new BaseInfoEntity(HOSTILE, "PostgreSQL", 16, LocalDate.EPOCH);
+      new BaseInfoEntity(HOSTILE, Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
 
   /** 表のセルの改行（{@code <br>}）以外の、生のHTMLの開始 */
   private static final Pattern RAW_HTML = Pattern.compile("<(?!br>)");

@@ -3,6 +3,7 @@ package com.dbxray.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.DatabaseEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.relation.RelationType;
@@ -264,7 +265,7 @@ public class ExportSchemaUsecaseTest {
 
   private void setUp() {
     fileRepository = new InMemoryFileRepository();
-    repository = new RecordingRepository(new DatabaseEntity("testdb", "pg", 16));
+    repository = new RecordingRepository(new DatabaseEntity("testdb", Dbms.POSTGRESQL, 16));
     final DefaultOutputPathResolver pathResolver = new DefaultOutputPathResolver();
     final PagedSectionWriter pagedSectionWriter =
         new PagedSectionWriter(fileRepository, pathResolver);
@@ -1202,9 +1203,10 @@ public class ExportSchemaUsecaseTest {
 
     assertTrue(
         contentOf(dbFile(DEFAULT_OUT, "tableList_testdb.md"))
-            .contains("|pg 16|testdb|2031/12/31|"));
+            .contains("|PostgreSQL 16|testdb|2031/12/31|"));
     assertTrue(
-        contentOf(tableDefFile(DEFAULT_OUT, "public", "t1")).contains("|pg 16|testdb|2031/12/31|"));
+        contentOf(tableDefFile(DEFAULT_OUT, "public", "t1"))
+            .contains("|PostgreSQL 16|testdb|2031/12/31|"));
   }
 
   @Test
@@ -1278,7 +1280,7 @@ public class ExportSchemaUsecaseTest {
 
     assertTrue(fileExists(tableDefFile(DEFAULT_OUT, "public", "t1")));
     assertEquals(
-        "{\"formatVersion\":1,\"name\":\"testdb\",\"dbms\":\"pg\",\"majorVersion\":16}\n",
+        "{\"formatVersion\":1,\"name\":\"testdb\",\"dbms\":\"PostgreSQL\",\"majorVersion\":16}\n",
         contentOf(DEFAULT_OUT.resolve("snapshot").resolve("testdb").resolve("database.json")));
     assertTrue(
         contentOf(snapshotFile("public", "tables.jsonl"))

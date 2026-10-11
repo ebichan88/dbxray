@@ -3,6 +3,7 @@ package com.dbxray.infrastructure.path;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.snapshot.SnapshotKind;
 import com.dbxray.domain.model.table.TableEntity;
@@ -22,7 +23,7 @@ public class DefaultOutputPathResolverTest {
   private final DefaultOutputPathResolver resolver = new DefaultOutputPathResolver();
   private final Path baseDir = Path.of("output");
   private final BaseInfoEntity baseInfo =
-      new BaseInfoEntity("testdb", "unused", 16, LocalDate.EPOCH);
+      new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
   private final OutputRoot root = new OutputRoot(baseDir, baseInfo);
 
   private TableEntity table(String schema, String physical, String tableType) {
@@ -86,7 +87,7 @@ public class DefaultOutputPathResolverTest {
   @DisplayName("resolveTableDefinitionFile: DB名・スキーマ名・テーブル名のパスの区切りは置き換える")
   void testResolveTableDefinitionFileEncodesNames() {
     final OutputRoot hostileRoot =
-        new OutputRoot(baseDir, new BaseInfoEntity("..", "unused", 16, LocalDate.EPOCH));
+        new OutputRoot(baseDir, new BaseInfoEntity("..", Dbms.POSTGRESQL, 16, LocalDate.EPOCH));
     Path result =
         resolver.resolveTableDefinitionFile(hostileRoot, table("/tmp/evil", "../x", "table"));
     assertEquals(Path.of("output", "~2E~2E", "~2Ftmp~2Fevil", "table", "..~2Fx.md"), result);

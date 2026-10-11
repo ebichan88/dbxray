@@ -4,6 +4,7 @@ import static com.dbxray.testsupport.MarkdownAssert.assertMarkdownEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.relation.NodeLimit;
@@ -96,7 +97,7 @@ public class ViewpointWriterTest {
 
   private OutputRoot outputRoot() {
     return new OutputRoot(
-        OUT, new BaseInfoEntity("testdb", "PostgreSQL", 16, LocalDate.of(2025, 1, 1)));
+        OUT, new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1)));
   }
 
   private TableEntity table(String physical, String logical) {

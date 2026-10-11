@@ -4,6 +4,7 @@ import static com.dbxray.testsupport.MarkdownAssert.assertMarkdownEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.DiagramNeighborhood;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
@@ -50,14 +51,14 @@ public class TableDefinitionTemplatesTest {
   @Test
   @DisplayName("baseInfo: RDBMS・DB名・作成日の表を出力する")
   void testBaseInfo() {
-    var base = new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    var base = new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
     assertMarkdownEquals(
         """
         ## 基本情報
 
         | RDBMS | データベース名 | 作成日 |
         |:---|:---|:---|
-        |pg 16|TEST_DB|2025/01/01|
+        |PostgreSQL 16|TEST_DB|2025/01/01|
 
         """,
         TableDefinitionTemplates.baseInfo(base));
@@ -632,7 +633,7 @@ public class TableDefinitionTemplatesTest {
   @Test
   @DisplayName("footer: 区切り線とテーブル一覧へのリンクを出力する")
   void testFooter() {
-    var base = new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    var base = new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
     assertMarkdownEquals(
         """
         ___
@@ -816,14 +817,14 @@ public class TableDefinitionTemplatesTest {
   @Test
   @DisplayName("viewpoints: 所属する観点が無い場合はセクションごと出力しない（観点を導入しても定義書は変わらない）")
   void testViewpointsEmpty() {
-    var base = new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    var base = new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
     assertEquals("", TableDefinitionTemplates.viewpoints(List.of(), base));
   }
 
   @Test
   @DisplayName("viewpoints: 所属する観点の表示名と、観点ページへの相対リンクを宣言順に出力する")
   void testViewpoints() {
-    var base = new BaseInfoEntity("TEST_DB", "pg", 16, LocalDate.of(2025, 1, 1));
+    var base = new BaseInfoEntity("TEST_DB", Dbms.POSTGRESQL, 16, LocalDate.of(2025, 1, 1));
     assertMarkdownEquals(
         """
         ## 所属する観点

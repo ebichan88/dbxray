@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.ForeignKeys;
 import com.dbxray.domain.model.sidecar.Annotations;
 import com.dbxray.domain.model.sidecar.TableAnnotation;
@@ -38,7 +39,7 @@ public class TableDefinitionContentTest {
   @Test
   @DisplayName("assemble: 対象テーブルに属する情報のみを抽出し、他テーブルの情報は含まれない")
   void testAssembleExtractsOnlyTargetTableInformation() {
-    var baseInfo = new BaseInfoEntity("testdb", "unused", 16, LocalDate.EPOCH);
+    var baseInfo = new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
     var target = newTable("public", "orders");
 
     var ownColumn = EntityFixtures.column("public", "orders", "id", "int", true);
@@ -110,7 +111,7 @@ public class TableDefinitionContentTest {
   @Test
   @DisplayName("assemble: 関連する情報が存在しない場合は空リストになる")
   void testAssembleWithNoRelatedInformationReturnsEmptyLists() {
-    var baseInfo = new BaseInfoEntity("testdb", "unused", 16, LocalDate.EPOCH);
+    var baseInfo = new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
     var target = newTable("public", "empty_table");
 
     TableDefinitionContent content =
@@ -147,7 +148,7 @@ public class TableDefinitionContentTest {
 
     var content =
         TableDefinitionContent.assemble(
-            new BaseInfoEntity("testdb", "unused", 16, LocalDate.EPOCH),
+            new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH),
             new TableDetail(table, List.of(), List.of(), List.of()),
             foreignKeys,
             Triggers.of(List.of()),
@@ -163,7 +164,7 @@ public class TableDefinitionContentTest {
   @Test
   @DisplayName("assemble: パーティション表には自テーブルのパーティションのみが設定される")
   void testAssembleExtractsOwnPartitions() {
-    var baseInfo = new BaseInfoEntity("testdb", "unused", 16, LocalDate.EPOCH);
+    var baseInfo = new BaseInfoEntity("testdb", Dbms.POSTGRESQL, 16, LocalDate.EPOCH);
     var sales =
         new TableEntity("testdb", "public", "", "sales", TableType.TABLE, "", "RANGE (sold_on)");
     var own =

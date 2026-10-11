@@ -3,6 +3,7 @@ package com.dbxray.infrastructure.db.repository;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.DatabaseEntity;
+import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.relation.Cardinality;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
@@ -57,7 +58,7 @@ class OracleCatalogRepositoryIT {
   @DisplayName("selectDatabase: DB名（接続先のPDB名）・RDBMS名・メジャーバージョンを取得する")
   void testSelectDatabase() {
     assertEquals(
-        new DatabaseEntity(OracleSampleDatabase.DATABASE_NAME, "Oracle", 23),
+        new DatabaseEntity(OracleSampleDatabase.DATABASE_NAME, Dbms.ORACLE, 23),
         repository.selectDatabase());
   }
 
