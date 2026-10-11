@@ -30,6 +30,20 @@ public class TablesTest {
   }
 
   @Test
+  @DisplayName("byTableName: 物理テーブル名でまとめ、同じ名前のテーブル（スキーマ違い）は取得順に並べる")
+  void testByTableName() {
+    var salesOrders = table("sales", "orders");
+    var customers = table("public", "customers");
+    var publicOrders = table("public", "orders");
+    Tables tables = Tables.of(List.of(salesOrders, customers, publicOrders));
+
+    var byTableName = tables.byTableName();
+
+    assertEquals(List.of("orders", "customers"), List.copyOf(byTableName.keySet()));
+    assertEquals(List.of(salesOrders, publicOrders), byTableName.get("orders"));
+  }
+
+  @Test
   @DisplayName("contains/find: テーブルキーで出力対象のテーブルを引ける")
   void testContainsAndFind() {
     var orders = table("public", "orders");

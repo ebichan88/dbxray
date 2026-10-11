@@ -89,4 +89,20 @@ public final class Tables {
             bySchema.computeIfAbsent(table.schemaName(), schema -> new ArrayList<>()).add(table));
     return bySchema;
   }
+
+  /**
+   * テーブルを物理テーブル名でまとめるメソッド<br>
+   * 同じ名前のテーブルは取得順に並べる。返却するマップは{@link #bySchema()}と同じく呼び出しのたびに構築する
+   *
+   * @return 物理テーブル名をキー、当該名前のテーブル（スキーマ違い）のリストを値とするマップ
+   */
+  public Map<String, List<TableEntity>> byTableName() {
+    final Map<String, List<TableEntity>> byName = new LinkedHashMap<>();
+    list.forEach(
+        table ->
+            byName
+                .computeIfAbsent(table.physicalTableName(), name -> new ArrayList<>())
+                .add(table));
+    return byName;
+  }
 }
