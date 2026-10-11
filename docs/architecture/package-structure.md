@@ -52,6 +52,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | `application` | `ExportSchemaUsecase` | DBドキュメント出力（通常実行）のユースケース。MarkdownとスナップショットのExportSinkを渡して`SchemaExportPipeline`に取得・書き出しさせる（`exportSchema`）。`--rm-dist`の削除は取得の成功後に行う（削除してよい出力先かは、入口の`OutputDirectoryValidator`が検証済み） |
 | | `CheckDocumentDiffUsecase` | DB vs ドキュメントの差分検知（`--check`モード）のユースケース。スナップショットの`ExportSink`のみで一時ディレクトリへ出力し、`SnapshotDiff`で`output.path`配下の`snapshot/`と比較する（`checkDocumentDiff`） |
 | | `ExportSchemaRequest`, `CheckDocumentDiffRequest` | 各ユースケースメソッドへの入力をまとめたrecord。エントリーポイント→コントローラー→ユースケースを分解・再構築せず通過する。`CheckDocumentDiffRequest`はMarkdownの描画・ER図の生成を行わないため`erDiagramMaxNodes`・`rmDist`を持たない |
+| | `PreviewFeature` | `--preview`で有効にするプレビューの機能のenum（現在は関数・プロシージャの利用しているテーブル）。`ExportSchemaRequest`が有効にした機能の集合を持つ |
 | | `TargetSelection` | 両requestが持つ出力対象の絞り込み条件（`TableScope`・`OutputObjectType`の集合）のrecord。`of()`で設定値の文字列を入口で型へ変換・検証する（テーブル名パターンと出力対象オブジェクト種別の誤りはまとめて報告する） |
 | | `SchemaExportPipeline`（パッケージプライベート） | 両ユースケースが共有する、DBからの取得（一括取得・スキーマ単位・チャンク単位）と書き出しの段取り。取得（`fetchTargets`）と出力（`export`）を分け、書き出しは出力形式ごとの`ExportSink`に、取得した情報同士の突き合わせは`ExportTargetConsistency`に委ね、返された通知（`ConsistencyNotice`）を重要度に応じてログへ出力する。ドキュメントの生成日は`Clock`から与える |
 
@@ -80,7 +81,9 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `Cardinality`, `RelationType` | 多重度（1対1／1対多等。判定と、論理リレーションの既定値を持つ）、関連の由来（物理／論理）のenum |
 | `domain.model.schemaobject` | `FunctionEntity`, `SequenceEntity`, `TypeEntity` | テーブルに属さないスキーマ直下のオブジェクト（関数・プロシージャ／シーケンス／ユーザー定義型）のrecord。`FunctionEntity`は同名関数（オーバーロード）内の番号を持つ |
 | | `Functions`, `Sequences`, `Types` | 上記エンティティのファーストクラスコレクション（取得順のリストを保持する。テーブルキーでは引かない） |
-| `domain.model.database` | `DatabaseEntity` | DBのカタログから取得するデータベースの情報（DB名・DBMS種別・メジャーバージョン）のrecord |
+| `domain.model.tableusage` | `FunctionTableUsage`, `TableUsage` | 関数・プロシージャ1つ分の利用しているテーブル（状態・テーブルごとの操作・動的SQLの種類・不完全／オーバーロードの和の印）と、1テーブル分の利用（一致した出力対象のテーブル。スキーマが決まらない名前は候補のすべて） |
+| | `CrudOperation`, `DynamicSqlKind`, `TableUsageStatus`, `SchemaResolution` | 操作（C・R・U・D）、動的SQLの種類、解析の状態（抽出しなかった・解析した・対象外の言語・定義が無い・wrap・サブプログラムが見つからない）、名前のスキーマの決まり方（決まった・実行時のsearch_path・実行者・シノニムの可能性）のenum |
+| `domain.model.database` | `DatabaseEntity`, `Dbms` | DBのカタログから取得するデータベースの情報（DB名・DBMS種別・メジャーバージョン）のrecordと、DBMS種別のenum（表示名を持つ。関数の定義本体の字句の規則の切り替えにも使う） |
 | | `BaseInfoEntity` | 各ドキュメントに掲載する基本情報（`DatabaseEntity`の情報＋生成日）のrecord |
 | `domain.model.sidecar` | `Sidecar` | サイドカーYAMLの読み込み結果全体（手動付帯情報＋論理リレーション＋観点）を束ねるrecord |
 | | `Annotations`, `TableAnnotation` | サイドカーYAML由来の手動付帯情報（テーブルキーごとの集合とその1件分） |
@@ -90,12 +93,14 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `OutputObjectType` | 追加オブジェクト（テーブル以外）の出力対象の種別のenum。`parse()`で設定値を解釈する（未指定なら全種別、未知の種別名は例外） |
 | | `ExportTargets` | 一括取得する軽量な出力対象の情報（基本情報・テーブル一覧・関連・トリガー・パーティション・関数/シーケンス/型の一覧・手動付帯情報・観点）と、取得した追加オブジェクトの種別の組 |
 | | `TableDefinitionContent` | 1テーブル分の出力内容を束ねるrecord（`assemble()`で`TableDetail`と一括取得分から組み立て）。出力先は持たない |
+| | `FunctionDefinitionContent` | 関数・プロシージャ1つ分の出力内容（定義本体を含む関数・利用しているテーブル）のrecord。抽出を行わない実行では利用しているテーブルを`NOT_ANALYZED`とする |
 | | `ConsistencyNotice` | 出力対象のテーブルと関連・付帯情報・観点を突き合わせた通知1件分の値オブジェクト（種類・メッセージ。重要度は種類が決める） |
 | `domain.model.metrics` | `DatabaseMetrics`, `SchemaMetrics` | 出力対象の集計（READMEに載せる、スキーマごとのオブジェクトの数・論理名の記述状況・関連と読み解きの状況）。`DatabaseMetrics.builder(ExportTargets)`が一括取得分から数え、`collectColumns(TableDetail)`でチャンクごとにカラムを足す。取得しなかった種別は`isCounted`で判定する |
 | `domain.model.snapshot` | `DatabaseSnapshot`, `TableSnapshot`, `FunctionSnapshot`, `SequenceSnapshot`, `TypeSnapshot` | スキーマのスナップショット（JSON Lines）の1行分を表すrecord群。エンティティからの変換時に、値が無いこと（空文字）をnullへ正規化する（パッケージプライベートの`SnapshotValues`） |
 | | `SnapshotKind` | スキーマ単位のJSON Linesファイルに出力するオブジェクト種別（テーブル/関数/シーケンス/型）のenum。行をオブジェクトとして識別する名前（`identify`）を持つ |
 | | `DiffResult` | 生成したスキーマのスナップショットとコミット済みのものの比較結果（追加/削除/内容不一致の対象一覧）を表すrecord。対象はオブジェクト（例: `table sample.employee`）またはファイル（例: `database.json`）の識別名 |
 | | `ContentDiff` | 内容が一致しないオブジェクト（またはファイル）1件分の差分（対象の表示名 + unified diff形式の行リスト）を表すrecord |
+| `domain.model.insight` | `ViewpointsInsight`, `FunctionTableUsagesInsight` | 参考情報（`insights`。スナップショットの事実とは別にAIへ渡す情報）の1ファイル分のrecord群。観点（DBごと）と、関数・プロシージャが利用しているテーブル（スキーマごと。プレビューの機能）。`formatVersion`を持つ |
 | `domain.model.document` | `ListDocumentType` | 一覧ドキュメント（テーブル／ER図／関数・プロシージャ／シーケンス／ユーザー定義型／トリガー／観点）の種別のenum。一覧ファイル名・個別定義ディレクトリ名の接頭辞とタイトルを持つ |
 
 ### domain.repository（インターフェースのみ。実装はinfrastructure層）
@@ -104,7 +109,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 |---|---|
 | `CatalogRepository` | データベースの情報（`selectDatabase`）・テーブル一覧・外部キー・トリガー・パーティション・関数・シーケンス・型のDB取得IF（DB種別ごとに実装が分かれる）。カラム・インデックス・制約は、指定したテーブル分をテーブルごとの`TableDetail`に組み立てて返す（`selectTableDetails`）。ER図の関連カラム用に、指定したテーブルのカラムだけも取得できる（`selectColumnList`） |
 | `SidecarRepository` | サイドカーYAML（手動付帯情報・論理リレーション・観点）読み込みIF |
-| `FileRepository` | ファイル操作IF（`writeFile`/`appendFile`/`createDirectory`、パスの状態の問い合わせ用の`exists`/`isDirectory`に加え、差分検知用の`listFiles`/`readFile`、一時ディレクトリ操作用の`createTempDirectory`/`deleteDirectory`を持つ） |
+| `FileRepository` | ファイル操作IF（`writeFile`/`appendFile`/`createDirectory`、パスの状態の問い合わせ用の`exists`/`isDirectory`に加え、差分検知用の`listFiles`/`readFile`、一時ディレクトリ操作用の`createTempDirectory`/`deleteDirectory`、前回の参考情報を消す`deleteFile`を持つ） |
 
 ### domain.service
 
@@ -119,6 +124,13 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `SnapshotLocations` | スナップショットのディレクトリ名・ファイル名と相対パスの規則を一元的に定める。`OutputPathResolver`の実装と、比較時のファイル種別の判定の双方がこの規則を参照する |
 | | `PathSegments` | DB由来の名前（DB名・スキーマ名・テーブル名等）を、パスの1要素として安全な形（区切り・`..`・Windowsで使えない文字を`~2F`等に置き換えたもの）にする。`*Locations`がパスに名前を使うときは必ず通す |
 | | `OutputRoot` | 出力先ベースディレクトリと基本情報の組を表す値オブジェクト（Writer・`OutputPathResolver`へそのまま渡す） |
+| `domain.service.tableusage` | `SqlLexer`, `SqlToken`, `SqlTokenKind` | 関数・プロシージャの定義本体を字句に分ける（DBごとのコメント・文字列・ドル引用符・`q'[...]'`の規則。正規表現を使わず1文字ずつ読み、閉じていない要素があっても例外にしない。正規表現を使わないことは`ArchitectureTest`が検査する） |
+| | `FunctionTableUsageAnalyzer` | 関数・プロシージャの定義本体から利用しているテーブルを抽出する入口（スキーマごとに生成する）。本体の切り出し・位置の判定の結果の名前を、出力対象のテーブルと照らして解決する（スキーマ修飾・`SET search_path`・Oracleの所有者／実行者権限） |
+| | `FunctionBodyLocator`, `PostgresBodyLocator`, `OracleBodyLocator`, `PackageSubprograms` | 定義から解析する本体を切り出す（`FunctionBodyLocator`がDBMSごとの実装を選ぶ。PostgreSQLはドル引用符の中身を字句に分け直す。Oracleはパッケージ本体の最上位のサブプログラムの範囲を`BEGIN`・`CASE`（文と式を区別する）と`END`の対応で求め、条件付きコンパイルの各分岐は分岐の前の状態から読み、オーバーロードを引数名で対応付ける。同じパッケージの字句を使い回す。仕様部の字句が閉じない場合は本体の始まりから分け直す） |
+| | `TableReferenceScanner` | 本体の字句から、テーブルを指す位置（`INSERT INTO`・`FROM`の並び・`JOIN`等）の名前と操作、動的SQLを拾う。完全な構文解析はせず、きっかけのキーワードと前後の字句で判定し、`;`で文の状態（`StatementState`）を作り直す |
+| | `SqlTokens` | 字句の列に対する、位置を指定した判定（キーワード・記号・名前）と`スキーマ.名前`の読み取り。範囲の外の位置は偽・nullにし、前後を覗く処理で位置の検査を繰り返さない |
+| | `SqlNames` | 字句からカタログでの名前を求める（引用符の無い名前はPostgreSQLは小文字・Oracleは大文字へ、ASCIIの英字だけ畳み込む） |
+| `domain.service.insight` | `InsightWriter` | 参考情報の書き込み（`snapshot`の兄弟の`insights/`へ。`--check`では使わない）。対象が無い場合はファイル自体を出力しない |
 | `domain.service.snapshot` | `SchemaSnapshotWriter` | スキーマのスナップショット（JSON Lines）の書き込み。テーブルはスキーマ単位のファイルへ1行ずつ追記する |
 | | `SnapshotDiff` | 生成したスナップショットとコミット済みスナップショットを、オブジェクト単位（追加/削除/内容不一致）で比較する（`--check`モードで使用）。内容が一致しないものは、`SnapshotSerializer.formatForDiff`で整形した上で`UnifiedDiffGenerator`によりunified diffを付ける |
 | | `SnapshotSerializer` | スナップショットのrecordとJSON文字列の変換IF（実装はインフラ層）。差分表示用に1項目1行へ整形する`formatForDiff`も持つ |
@@ -132,6 +144,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | `domain.service.writer.erdiagram` | `ErDiagramWriter`, `ErDiagramTemplates` | スキーマ別ER図（全体ER図）とその索引の書き込みとテンプレート。連結成分ごとのグループ分割・描画するか省くかの結果（`RenderingPlan`）に従った出力を含む |
 | `domain.service.writer.viewpoint` | `ViewpointWriter`, `ViewpointTemplates` | 観点ページ（所属テーブル同士のER図・所属テーブル・観点外のテーブルとの関連）と観点一覧の書き込みとテンプレート。ER図の描画は`erdiagram`のテンプレートを使う |
 | `domain.service.writer.objectlist` | `ObjectListWriter`, `ObjectListTemplates`, `ObjectDefinitionTemplates` | トリガー・関数/プロシージャ・シーケンス・ユーザー定義型の一覧および個別定義の書き込みとテンプレート |
+| | `FunctionTableUsageTemplates` | 関数・プロシージャの個別定義の「利用しているテーブル」セクションのテンプレート（抽出の限界を示す文・表・スキーマが決まらない名前の候補） |
 | `domain.service.writer.readme` | `ReadmeWriter`, `ReadmeTemplates` | データベース単位ディレクトリ（`{DB名}/`）のREADMEの書き込みとテンプレート。出力される一覧ドキュメントへのリンクと、出力対象の集計（`DatabaseMetrics`）をまとめる |
 | `domain.service.writer` | `PagedSectionWriter` | 行数の多い表をページ分割して出力する共通処理。分割ページは本体ページと同じディレクトリに置き、ページ間のリンクはファイル名から導く |
 | `domain.service.writer.template` | `MarkdownTemplateSupport`, `MermaidSupport`, `PagedSectionTemplates` | 複数の種別が共有するテンプレート部品（Markdown共通部品、Mermaid記法変換、ページ分割の見出し・リンク） |

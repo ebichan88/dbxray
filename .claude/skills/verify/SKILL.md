@@ -117,6 +117,41 @@ docker rm -f dbxray-verify-db
 
 継続して何度も試す場合はコンテナを残しておいてよい（次回はステップ1で作り直せばよい）。
 
+### 7. プレビューの機能の差分のベースライン（`--preview`）
+
+`--preview`で変わる・増えるファイル（関数・プロシージャの定義書、`insights/{DB名}/{スキーマ名}/functionTableUsages.json`）だけを、
+既定のベースラインとは別の差分のベースライン（`docs/sample/postgres/output-preview`）に置いている。結合テストは、既定のベースラインに
+差分のベースラインを重ねたものと`--preview`の出力を比べる（`ExportBaseline.assertMatches(baseline, overlay, outputDir)`）。
+プレビューの機能の出力や、サンプルの関数を変えた場合は、手順5で既定のベースラインを出力し直した後に、次で差分のベースラインを作り直す。
+
+```bash
+# 手順3の設定ファイルのoutput.pathだけを一時ディレクトリに変えて、--previewを付けて出力する
+sed "s|path: .*|path: /tmp/preview-out|" /tmp/verify-postgres.yml > /tmp/verify-postgres-preview.yml
+rm -rf /tmp/preview-out
+java -jar modules/cli/build/libs/dbxray.jar --config=/tmp/verify-postgres-preview.yml --preview \
+  --db-driver=org.postgresql.Driver --db-url=jdbc:postgresql://localhost:15432/testdb \
+  --db-username=postgres --db-password=postgres
+# 既定のベースラインと（作成日を除いて）内容が異なる・既定に無いファイルだけを、差分のベースラインへ写す
+python3 - /tmp/preview-out docs/sample/postgres/output docs/sample/postgres/output-preview <<'PY'
+import os, re, shutil, sys
+gen, base, overlay = sys.argv[1:]
+norm = lambda t: re.sub(r'\|\d{4}/\d{2}/\d{2}\|', '|<date>|', t)
+shutil.rmtree(overlay, ignore_errors=True)
+for root, _, files in os.walk(gen):
+    for name in files:
+        rel = os.path.relpath(os.path.join(root, name), gen)
+        text = open(os.path.join(gen, rel), encoding='utf-8').read()
+        b = os.path.join(base, rel)
+        if os.path.isfile(b) and norm(open(b, encoding='utf-8').read()) == norm(text):
+            continue
+        os.makedirs(os.path.dirname(os.path.join(overlay, rel)), exist_ok=True)
+        shutil.copyfile(os.path.join(gen, rel), os.path.join(overlay, rel))
+PY
+```
+
+差分のベースラインにスナップショット（`snapshot/`）が入った場合は、プレビューの機能がスナップショットを変えている（仕様に反する）ので、出力側を直す。
+MCPサーバーの契約テスト（`SampleFunctionTableUsagesContractTest`）も差分のベースラインを読む。Oracleも同じ手順で`docs/sample/oracle/output-preview`を作る。
+
 ## Oracleの場合
 
 Oracle用mapper（`mapper/oracle/catalogMapper.xml`）を変えた場合は、まず`./gradlew oracleIntegrationTest`を実行する

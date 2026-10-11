@@ -87,12 +87,15 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
    - `--rm-dist`指定時は、ここまでの取得に成功してから出力先を削除する（取得に失敗した場合に既存の出力だけが消えないようにするため）。
      削除してよい出力先かは、ユースケースを呼ぶ前に入口（2.）で検証済みである
    - `SchemaExportPipeline.export()`：取得した情報を、出力形式ごとの `ExportSink`（`domain.service.export`）へ渡して書き出す
+     - `--preview`（`ExportSchemaRequest.previewFeatures`）で関数・プロシージャの利用しているテーブルを有効にした場合は、
+       スキーマ単位で取得した定義本体から`FunctionTableUsageAnalyzer`（`domain.service.tableusage`）で抽出し、
+       関数1つ分の出力内容（`FunctionDefinitionContent`）に持たせる。有効でなければ解析自体を行わない
      - Markdown（`MarkdownExportSinkFactory`）: `TableDefinitionWriter` / `ErDiagramWriter` / `ViewpointWriter` /
        `ObjectListWriter` / `ReadmeWriter`（いずれも `domain.service.writer`配下の種別ごとのサブパッケージ。Writerとテンプレートを同居させている）がMarkdownを組み立てて `FileRepository` 経由で出力
      - スナップショット（`SnapshotExportSinkFactory`）: `SchemaSnapshotWriter`（`domain.service.snapshot`）が、
        同じ取得結果から常にスキーマのスナップショット（JSON Lines）を出力
      - 参考情報（`InsightExportSinkFactory`）: `InsightWriter`（`domain.service.insight`）が、`writeOverview`時点の
-       一括取得データ（観点等）だけから参考情報を出力（[参考情報（insights）](#参考情報insights)を参照）。
+       一括取得データ（観点等）と、スキーマ単位の関数の出力内容（プレビューの機能の利用しているテーブル）から参考情報を出力（[参考情報（insights）](#参考情報insights)を参照）。
        `--check`（`CheckDocumentDiffUsecase`）はこのSinkを使わないため、参考情報は`--check`の比較対象に一切現れない
 
 ## 例外の扱いと終了コード
@@ -330,7 +333,9 @@ MCPサーバーからAIが引けるよう、参考情報としては出力する
 - MCPサーバー（[mcp-server.md](./mcp-server.md)）は、起動引数`--snapshot`に渡されたスナップショットのディレクトリの
   **親の兄弟**として参考情報のディレクトリを自前で求めて読む。新しい起動引数は増やさない。参考情報のディレクトリ・
   DBごとのファイルが無い場合は0件として扱う（観点を1つも宣言していない場合等）
-- 現時点の内容は観点（所属テーブルを含む。`ViewpointContent`から変換）のみ。参考情報の種類が増える場合も、
+- 内容は観点（DBごとの`viewpoints.json`。所属テーブルを含む。`ViewpointContent`から変換）と、関数・プロシージャが利用しているテーブル
+  （スキーマごとの`{スキーマ名}/functionTableUsages.json`。プレビューの機能で、`--preview`を付けた場合だけ出力し、付けない実行は前回のファイルを削除する。
+  関数の定義本体をスキーマ単位で取得・破棄するため、ファイルもスキーマ単位にする）。参考情報の種類が増える場合も、
   この仕組み（配置・`--check`から独立したSink・`formatVersion`）をそのまま使う想定
 
 ## DB vs ドキュメントの差分検知（`--check`モード）

@@ -171,6 +171,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
   誤りの報告は`FailureReporter`がログファイルにも残す）。
 - **削除**：ディレクトリの削除は`--rm-dist`の出力先だけで行い、削除してよいかは`OutputPathResolver.isRemovableOutputDir`で判定する。
   削除の対象を広げる変更をしない。
+  ファイルの削除は、`--preview`を付けない実行が、プレビューの機能が出力した前回の参考情報`functionTableUsages.json`を消す1箇所だけ（`InsightWriter`。パスは`OutputPathResolver`で解決したもの）。
 - **依存ライブラリ**：更新はDependabot（`.github/dependabot.yml`）が提案する。依存を足す・上げるときは、既知の脆弱性
   （GitHub Advisory Database等）が無い版を選ぶ。
 - **デシリアライズ・SQL**：YAMLは`SafeConstructor`で読み、JSONのデシリアライズで型情報からクラスを生成する設定
@@ -264,7 +265,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 | 変えたもの | 同じ変更で行うこと |
 |---|---|
 | `catalogMapper.xml`・ドメイン層（エンティティ・テンプレート・ER図生成ロジック等） | `./gradlew integrationTest`を実行する。mapperのSQLを変えた場合は、変えた取得結果を確かめるテストを`PostgresCatalogRepositoryIT`に足す |
-| 出力（ベースライン`docs/sample/postgres/output`との差分が出る） | `verify`スキルに従って出力結果を確認し、意図した変更であればベースラインを出力し直す。READMEの「出力例」（観点「人事管理」のER図・employeeのカラム情報）に貼ったものが出力と食い違っていないかも見る |
+| 出力（ベースライン`docs/sample/postgres/output`との差分が出る） | `verify`スキルに従って出力結果を確認し、意図した変更であればベースラインを出力し直す。READMEの「出力例」（観点「人事管理」のER図・employeeのカラム情報）に貼ったものが出力と食い違っていないかも見る。プレビューの機能（`--preview`）の出力やサンプルの関数が変わる場合は、差分のベースライン`docs/sample/{postgres,oracle}/output-preview`も作り直す（`verify`スキルの手順7） |
 | Oracle用mapper、またはOracleの出力が変わりうるドメイン層 | `./gradlew oracleIntegrationTest`（メモリを2GB程度使う）を実行し、変えた取得結果を確かめるテストを`OracleCatalogRepositoryIT`に足す。ベースラインは`docs/sample/oracle/output`（`verify`スキルのOracleの節） |
 | 片方のDBのmapper | もう片方のmapperも確認し、挙動を揃える |
 | スナップショットの形式（`domain.model.snapshot`のrecord） | `./gradlew :mcp-server:test`を実行する（`SampleSnapshotContractTest`がベースラインを読む）。互換性の無い変更なら`DatabaseSnapshot.FORMAT_VERSION`を上げ、`SnapshotDirectoryReader.SUPPORTED_FORMAT_VERSION`を追従させる |

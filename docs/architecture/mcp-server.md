@@ -37,13 +37,14 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | | `ClusterDetector`・`TableClusters`・`TableCluster` | 関連のつながりだけから推測するテーブルのまとまり（`list_table_clusters`の元）。連結成分を1つのまとまりとし、上限を超えるまとまりは被参照の最も多いテーブル（`TableClusters.HUB_MIN_INCOMING`以上から参照される共通のマスタ）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルは、被参照の最も多いハブごとにまとめる。呼び出しのたびに求める（範囲・上限が引数で変わるため） |
 | | `SqlNames`・`TableColumn` | カラムの型・デフォルト値（`nextval`）・トリガーの関数名に現れるオブジェクトの名前の判定（相互参照に使う）と、カラムとそれを持つテーブル |
 | | `TableEntry`・`ColumnEntry`・`RelationEntry`・`TriggerEntry`・`ObjectKey`・`DatabaseEntry` | スナップショットの1行のうち、検索・一覧・逆引き・関連のたどりに使う項目 |
+| | `FunctionTableUsageEntry`・`FunctionTableUsages` | 関数・プロシージャが利用しているテーブルの参考情報1件（cliの`--preview`で出力する。状態・テーブルごとの操作・スキーマが決まらない名前の決まり方と候補・動的SQL・抽出元の定義本体のハッシュ）と、スナップショットの関数（キーと引数）から引く窓口（`SchemaCatalog#functionTableUsages`。定義本体のハッシュが`FunctionEntry`と異なる古い参考情報は返さない） |
 | | `ViewpointEntry` | 観点の参考情報1件（識別子・表示名・説明・所属テーブル）。スキーマを持たないため`SchemaObject`は実装しない。テーブルから所属する観点は`ViewpointCatalog#containing`で逆引きする（読み込み済みの観点を引くだけで、索引は持たない） |
-| | `FunctionEntry`・`FunctionOverloads`・`SequenceEntry`・`TypeEntry` | 関数・シーケンス・ユーザー定義型の1行。関数は同名のもの（オーバーロード）を`FunctionOverloads`にまとめて名前の解決の単位にする |
+| | `FunctionEntry`・`FunctionOverloads`・`SequenceEntry`・`TypeEntry` | 関数・シーケンス・ユーザー定義型の1行。関数は同名のもの（オーバーロード）を`FunctionOverloads`にまとめて名前の解決の単位にする。関数は参考情報と照らすため、定義本体のハッシュ（読み込み時に`SnapshotDirectoryReader`が求める）を持つ |
 | | `NameFilter` | 関数・シーケンス・型の一覧を、名前の部分一致で絞り込む条件 |
 | | `TableFilter`・`TableType` | テーブルの一覧・検索の絞り込み（DB・スキーマ・区分・観点）を1回組み立てて`matches`で問い合わせる値オブジェクトと、テーブルの区分（table/view/materialized_view）。区分の値はツールの入力スキーマの`enum`にも使う |
 | | `SchemaSummary` | スキーマごとのオブジェクトの数（`list_schemas`の元）。集計は`SchemaSummary.summarize`が行う。数え方（オーバーロードはそれぞれ・トリガーはテーブルに属するもの）はcliのREADMEの集計（`DatabaseMetrics`）に揃える |
 | `mcp.snapshot` | `SnapshotDirectoryReader` | スナップショットのディレクトリ（`tables.jsonl`・`functions.jsonl`・`sequences.jsonl`・`types.jsonl`）を読み込み`SchemaCatalog`を組み立てる。未知の項目は無視し、無いファイルは0件とする（cliの`target.objects`で外せるため） |
-| `mcp.insight` | `InsightsDirectoryReader` | 参考情報のディレクトリ（`{DB名}/viewpoints.json`）を読み込み`ViewpointEntry`のリストを組み立てる。渡されたスナップショットのディレクトリの親の兄弟を自前で求めるため、起動引数は増えない。ディレクトリ・ファイルが無い場合は0件とする |
+| `mcp.insight` | `InsightsDirectoryReader` | 参考情報のディレクトリ（`{DB名}/viewpoints.json`・`{DB名}/{スキーマ名}/functionTableUsages.json`）を読み込み`ViewpointEntry`・`FunctionTableUsageEntry`のリストを組み立てる。渡されたスナップショットのディレクトリの親の兄弟を自前で求めるため、起動引数は増えない。ディレクトリ・ファイルが無い場合は0件とする |
 | `mcp.tool` | `TableDefinitionTools` | MCPサーバーへ登録するツールの一覧。ツールは関心ごとのクラス（`SchemaTools`・`ViewpointTools`・`ClusterTools`・`TableTools`・`RelationTools`・`DiagramTools`・`FunctionTools`・`SequenceTools`・`TypeTools`・`TriggerTools`）に分けて定義する |
 | | `ToolSpecifications`・`ToolResults`・`ObjectResolver`・`Page` | ツールの定義の組み立て、結果のJSON化、名前の解決とエラーの文言、一覧の範囲（`offset`・`limit`と、一覧の件数の既定値・上限） |
 | | `TableOutputBuilder` | `get_table`の1テーブル分の結果の組み立て（スナップショットの1行に、`sections`・`columns`の絞り込みと、参照しているビュー・所属する観点を反映する） |
@@ -66,7 +67,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `get_related_tables` | `table`、`depth`（1〜3）・`direction`（outgoing/incoming/both）等（任意） | 関連（どのカラム同士か・外部キーか論理リレーションか・多重度・段数）と、関連に現れたテーブルの概要 |
 | `find_join_path` | `from`・`to`、`maxLength`（1〜6）・`limit`等（任意） | 2つのテーブルをつなぐ最短の経路（たどる順のテーブルと、各段の関連）。同じ長さの経路はすべて（`limit`まで）返す |
 | `get_er_diagram` | `table`か`viewpoint`（どちらか一方）、`depth`・`direction`（`table`のときだけ）等（任意） | ER図のMermaid記法（`erDiagram`）と、図に描いたテーブル。`table`は`get_related_tables`と同じ範囲を、`viewpoint`は所属テーブルと所属テーブル同士の関連（`RelationGraph#among`）を描く。描くテーブルは`DiagramTools.MAX_NODES`（cliの`erDiagramMaxNodes`の既定値）まで |
-| `list_functions`・`get_function` | `query`等（任意）／`function`、`includeDefinition`（任意） | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）。`get_function`はオーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める） |
+| `list_functions`・`get_function` | `query`等（任意）／`function`、`includeDefinition`（任意） | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）。`get_function`はオーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。参考情報がある場合はオーバーロードごとに利用しているテーブル（`tableUsage`）も返す |
 | `list_sequences`・`get_sequence` | `query`等（任意）／`sequence` | シーケンスの名前・所有カラム／スナップショットの1行と、採番に使うカラム（`usedByColumns`） |
 | `list_types`・`get_type` | `query`・`category`等（任意）／`type` | ユーザー定義型の名前・種別／スナップショットの1行（ENUMの値の一覧等）と、型を使うカラム（`usedByColumns`） |
 | `list_triggers` | `schema`・`database`等（任意） | テーブルをまたいだトリガーの一覧（テーブル・タイミング・イベント・実行単位・関数） |
@@ -170,11 +171,19 @@ mcp-serverはcliのスナップショットのrecordを共有せず、読み込�
 
 - `InsightsDirectoryReader`が、渡された`--snapshot`のディレクトリの**親の兄弟**（`{親}/insights/`）を自前で求めて読む。
   cliの出力先（`output.path`）配下で`snapshot/`と`insights/`が常に兄弟になる配置規則に依存する
-- `McpServerMain`が`SnapshotDirectoryReader`で組み立てた`SchemaCatalog`に、`withViewpoints`で観点を合成する
+- `McpServerMain`が`SnapshotDirectoryReader`で組み立てた`SchemaCatalog`に、`withViewpoints`で観点を、
+  `withFunctionTableUsages`で関数・プロシージャが利用しているテーブル（cliの`--preview`で出力するスキーマごとのファイル）を合成する。
+  後者はスナップショットの関数とキー（DB名・スキーマ名・名前）と引数で対応付ける。DB名・スキーマ名はディレクトリ名（パスに使えない文字を置き換えたもの）ではなくファイルの中の値を使う
+  （ファイルにDB名が無い場合だけ、DBのディレクトリ名）。
+  cliは`--preview`を付けない実行で前回の参考情報を削除するが、`--rm-dist`を付けずに対象のスキーマを減らした場合等は参考情報だけが前回のまま残る。
+  そのため、参考情報の`definitionHash`（抽出元の定義本体のSHA-256）がスナップショットの定義本体のハッシュと異なるものは対応付けない
+  （定義本体が無い関数は、両方のハッシュが空文字で一致する。`definitionHash`を持たない参考情報を定義本体のある関数に対応付けることはしない）
 - ディレクトリ・DBごとのファイルが無い場合は0件とする（観点を1つも宣言していない場合、cliの版が古く参考情報を
   まだ出力しない場合等）。起動時の誤りにはしない（スナップショットが1つも無い場合とは扱いが異なる）
 - 互換性はスナップショットと同じ仕組み（`SampleInsightsContractTest`によるベースラインの確認、
-  cliの`ViewpointsInsight.FORMAT_VERSION`とmcp-serverの`InsightsDirectoryReader.SUPPORTED_FORMAT_VERSION`の追従）に乗せる
+  cliの`ViewpointsInsight.FORMAT_VERSION`・`FunctionTableUsagesInsight.FORMAT_VERSION`とmcp-serverの`InsightsDirectoryReader.SUPPORTED_FORMAT_VERSION`の追従）に乗せる。
+  関数・プロシージャが利用しているテーブルはプレビューの機能のため、既定のベースラインではなく`--preview`で出力した差分のベースライン
+  （`docs/sample/postgres/output-preview`）で確かめる
 
 ## テスト
 

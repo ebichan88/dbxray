@@ -14,7 +14,7 @@ AIが正しいテーブル名・カラム・JOINの条件（外部キーと、�
 
 ## 準備
 
-1. このツールでテーブル定義書を出力し、`output.path`配下の`snapshot/`（観点を宣言している場合は`insights/`も）をGit等で共有する（テーブル定義書と一緒にコミットしておく等）
+1. このツールでテーブル定義書を出力し、`output.path`配下の`snapshot/`（観点を宣言している場合や`--preview`を付けた場合は`insights/`も）をGit等で共有する（テーブル定義書と一緒にコミットしておく等）
 2. AIを使う人が、そのリポジトリを手元にcloneし、zipを展開しておく
 
 ## 起動方法
@@ -76,7 +76,7 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 | `find_join_path` | `from`・`to`（必須。`スキーマ名.テーブル名`も可）、`database`・`maxLength`（1〜6、既定4）・`limit`（1〜20、既定5） | 2つのテーブルをつなぐ最短のJOIN経路を、外部キーと論理リレーションを向きを問わずたどって返す。同じ長さの経路が複数ある場合はすべて（`limit`まで）返す |
 | `get_er_diagram` | `table`か`viewpoint`（観点のid）のどちらか一方（必須）、`database`。`table`を指定した場合は`schema`・`depth`（1〜3、既定1）・`direction`（`outgoing`／`incoming`／`both`、既定`both`）も使える | ER図をMermaid記法（`erDiagram`）で返す（`mermaid`）。`table`を指定すると、`get_related_tables`と同じ範囲（たどった関連と、関連に現れたテーブル）を描く。`viewpoint`を指定すると、観点の所属テーブルと、所属テーブル同士の関連を描く（観点の外のテーブルとの関連は描かない。関連の無い所属テーブルも箱だけ描く）。表記は定義書のER図と同じで、箱は「テーブル名（論理テーブル名）」と関連をつなぐカラム、外部キーは実線・論理リレーションは破線。図に描くテーブルが80件を超える場合はエラーを返す。Mermaidを描画できるMCPクライアント（チャットの画面等）では、AIがコードブロックに入れて示すと図として表示される |
 | `list_functions` | `query`・`schema`・`database`・`limit`（既定100、最大500）・`offset` | 関数・プロシージャの名前・種別・引数・戻り値・言語を返す（定義本体は返さない）。`query`は名前の部分一致 |
-| `get_function` | `function`（必須）、`schema`・`database`・`includeDefinition` | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）を、同名のもの（オーバーロード）をまとめて返す。関数を実行するトリガー（`calledByTriggers`）も返す。`includeDefinition`を指定すると定義本体も返す（既定false。オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める） |
+| `get_function` | `function`（必須）、`schema`・`database`・`includeDefinition` | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）を、同名のもの（オーバーロード）をまとめて返す。関数を実行するトリガー（`calledByTriggers`）も返す。`includeDefinition`を指定すると定義本体も返す（既定false。オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。cliを`--preview`付きで実行した参考情報がある場合は、オーバーロードごとに利用しているテーブル（`tableUsage`。後述）も返す |
 | `list_sequences` | `query`・`schema`・`database`・`limit`（既定100、最大500）・`offset` | シーケンスの名前と所有カラムを返す |
 | `get_sequence` | `sequence`（必須）、`schema`・`database` | シーケンスの定義（増分・最小値・最大値・キャッシュ・開始値・循環の有無・所有カラム）と、デフォルト値（`nextval`）で採番に使うカラム（`usedByColumns`）を返す |
 | `list_types` | `query`・`category`（PostgreSQLは`ENUM`／`COMPOSITE`／`DOMAIN`／`RANGE`、Oracleは`OBJECT`／`VARRAY`／`NESTED TABLE`）・`schema`・`database`・`limit`（既定100、最大500）・`offset` | ユーザー定義型の名前と種別を返す |
@@ -90,6 +90,26 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 * 一覧を返すツールは、件数が`limit`を超える場合に続きの`offset`（`nextOffset`）を返します。
 * `target.objects`で出力対象から外した種別は0件になります。
 * 関数・プロシージャの定義本体は、AIのコンテキストを圧迫するため既定では返しません（`get_function`の`includeDefinition`で返します）。
+* `get_function`の`tableUsage`は、cliの[プレビューの機能](./cli.md#関数プロシージャが利用しているテーブルプレビュー)（`--preview`）で出力した参考情報`functionTableUsages.json`から返します。
+  参考情報が無い関数と、参考情報の抽出元の定義本体がスナップショットの定義本体と一致しない関数（`--rm-dist`を付けずに対象のスキーマを減らした場合等で、参考情報だけが前回のまま残り、その後に定義が変わった場合）には項目ごと付けません。
+
+    ```json
+    "tableUsage": {
+      "tables": [
+        {"table": "sample.employee", "operations": "U"},
+        {"table": "project", "schemaResolution": "search_path", "schemaCandidates": ["sample"], "operations": "R"}
+      ],
+      "dynamicSql": ["EXECUTE"]
+    }
+    ```
+
+    * 定義本体から機械的に抽出した参考値で、呼び出している関数の中と動的SQLの中の参照は含みません（ツールの説明でAIにも伝えます）。
+    * スキーマが決まらない名前は、`table`にスキーマを付けず、何で決まるか（`schemaResolution`）と候補（`schemaCandidates`）を返します。候補が1つでも、そのスキーマに決めつけないようツールの説明でAIに伝えます。
+        * `search_path`: PostgreSQLで、実行時の`search_path`で決まる
+        * `current_user`: Oracleの実行者権限（`AUTHID CURRENT_USER`）で、実行するユーザーで決まる
+        * `synonym`: Oracleの定義者権限で、所有者のスキーマに無いため、シノニム経由で参照している可能性がある
+    * 返すのは出力対象のテーブルと一致したものだけです。利用しているテーブルが見つからなかった場合は`"tables": []`を返しますが、テーブルに触れないことを意味しません（出力対象外のテーブル・名前の違うシノニム・呼び出し先の関数・動的SQLの中の参照は含まないため。ツールの説明でAIにも伝えます）。定義本体を最後まで読めなかった場合は`"incomplete": true`、Oracleで同名のサブプログラムの本体をまとめて抽出した場合は`"overloadsMerged": true`を付けます。
+    * 解析しなかった場合は`{"status": "unsupported_language", "language": "plpython3u"}`のように状態だけを返します（`no_definition`・`wrapped`・`subprogram_not_found`もあります）。
 * `get_table`の`sections`を指定しても、テーブル名・論理名・区分・説明・備考・所属する観点は常に返します。`columns`を指定した場合は、`sections`に関わらず指定したカラムを返します。
 
 ## リソース（会話にテーブルの定義を添付する）
