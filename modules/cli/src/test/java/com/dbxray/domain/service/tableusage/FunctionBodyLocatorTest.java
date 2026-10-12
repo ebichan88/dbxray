@@ -202,6 +202,16 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
+    @DisplayName("locate: pg_catalog・pg_tempだけのSET search_pathは空のスキーマ名で持ち、$userを含む場合は実行時に決まるため空にする")
+    void testSystemSchemasOnlySearchPath() {
+      assertEquals(List.of(""), searchPathOf("SET search_path TO 'pg_catalog', 'pg_temp'"));
+      assertEquals(List.of(""), searchPathOf("SET search_path = pg_catalog"));
+      assertEquals(List.of(), searchPathOf("SET search_path TO '$user', 'pg_catalog'"));
+      assertEquals(List.of(), searchPathOf("SET search_path TO '$user'"));
+      assertEquals(List.of("sample"), searchPathOf("SET search_path TO 'pg_catalog', 'sample'"));
+    }
+
+    @Test
     @DisplayName("locate: TO・=の無いSET search_path（FROM CURRENT）は、後ろの語をスキーマとして読まない")
     void testSearchPathFromCurrent() {
       assertEquals(
@@ -305,6 +315,16 @@ class FunctionBodyLocatorTest {
           List.of(),
           postgres(locate("sql", "CREATE FUNCTION f(SET search_path TO 'x') AS $$ SELECT 1 $$"))
               .searchPath());
+    }
+
+    private List<String> searchPathOf(String attribute) {
+      return postgres(
+              locate(
+                  "sql",
+                  "CREATE FUNCTION f() RETURNS int LANGUAGE sql "
+                      + attribute
+                      + " AS $$ SELECT 1 $$"))
+          .searchPath();
     }
 
     private FunctionBody locate(String language, String definition) {

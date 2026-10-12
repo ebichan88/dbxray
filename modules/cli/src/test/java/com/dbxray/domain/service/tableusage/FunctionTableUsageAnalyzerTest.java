@@ -12,11 +12,13 @@ import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
 import com.dbxray.domain.model.tableusage.TableUsage;
 import com.dbxray.domain.model.tableusage.TableUsageStatus;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -194,6 +196,16 @@ class FunctionTableUsageAnalyzerTest {
             " SET search_path TO ''\n",
             "SELECT * FROM employee;",
             "-"),
+        pg(
+            "search_pathがpg_catalogとpg_tempだけなら出力対象のスキーマが無いため載せない",
+            " SET search_path TO 'pg_catalog', 'pg_temp'\n",
+            "SELECT * FROM employee;",
+            "-"),
+        pg(
+            "search_pathがpg_catalogだけでも、修飾したテーブルは決める",
+            " SET search_path TO 'pg_catalog'\n",
+            "SELECT * FROM employee, sample.department;",
+            "sample.department:R"),
         pg(
             "search_pathがDEFAULTなら指定が無いものとして候補を持つ",
             " SET search_path TO DEFAULT\n",
@@ -432,6 +444,45 @@ class FunctionTableUsageAnalyzerTest {
     assertEquals(
         "HR.JOBS:R, SCOTT.EMP:U",
         describe(analyzer.analyze(oracleFunction("PKG.LOAD", "P_ID NUMBER", PACKAGE))));
+  }
+
+  @Test
+  @DisplayName("analyze: 同じテーブルキーが重複しても、スキーマが決まらない行の候補を重複させない")
+  void testDuplicateTableKeysAreNotRepeatedAsCandidates() {
+    final Tables tables =
+        Tables.of(
+            List.of(
+                table("sample", "employee", TableType.TABLE),
+                table("sample", "employee", TableType.VIEW),
+                table("other", "employee", TableType.TABLE)));
+
+    final TableUsage usage =
+        FunctionTableUsageAnalyzer.of(tables, Dbms.POSTGRESQL)
+            .analyze(pg("", "", "SELECT * FROM employee;", "").function("SELECT * FROM employee;"))
+            .tables()
+            .get(0);
+
+    assertEquals(List.of("sample", "other"), usage.schemaCandidates());
+    assertEquals(Optional.of(TableType.TABLE), usage.tableType());
+  }
+
+  @Test
+  @DisplayName("analyze: 長いsearch_pathと大量の参照を持つ定義でも、参照の数に比例する時間で解析する")
+  void testLongSearchPathIsAnalyzedInLinearTime() {
+    final int count = 40_000;
+    final String header =
+        " SET search_path TO "
+            + IntStream.range(0, count)
+                .mapToObj(i -> "'schema" + i + "'")
+                .collect(Collectors.joining(", "))
+            + ", 'other'\n";
+    final String body = "SELECT * FROM employee;\n".repeat(count);
+    final AnalyzerCase analyzerCase = pg("", header, body, "");
+
+    final FunctionTableUsage usage =
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> analyzerCase.analyze(body));
+
+    assertEquals("other.employee:R", describe(usage));
   }
 
   @Test

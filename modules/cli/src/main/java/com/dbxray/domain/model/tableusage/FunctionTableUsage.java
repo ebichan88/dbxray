@@ -1,9 +1,9 @@
 package com.dbxray.domain.model.tableusage;
 
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 1関数・プロシージャ分の利用テーブル（定義本体から機械的に抽出した参考値）
@@ -22,27 +22,46 @@ public record FunctionTableUsage(
     boolean incomplete,
     boolean overloadsMerged) {
 
-  /** リストは変更不可な複製として保持する */
+  /**
+   * リストは変更不可な複製として保持する
+   *
+   * @throws IllegalArgumentException 状態と合わない値を持つ場合（言語の名前は{@link
+   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}だけ、テーブル・動的SQL・不完全・オーバーロードの印は{@link
+   *     TableUsageStatus#ANALYZED}だけが持てる）
+   */
   public FunctionTableUsage {
+    if (!language.isEmpty() && status != TableUsageStatus.UNSUPPORTED_LANGUAGE) {
+      throw new IllegalArgumentException("Only UNSUPPORTED_LANGUAGE has a language");
+    }
+    if (status != TableUsageStatus.ANALYZED
+        && (!tables.isEmpty() || !dynamicSql.isEmpty() || incomplete || overloadsMerged)) {
+      throw new IllegalArgumentException("Only ANALYZED has tables, dynamic SQL or flags");
+    }
     tables = List.copyOf(tables);
     dynamicSql = List.copyOf(dynamicSql);
   }
 
   /** 抽出を行わない実行の結果 */
   public static FunctionTableUsage notAnalyzed() {
-    return notAnalyzable(TableUsageStatus.NOT_ANALYZED);
+    return new FunctionTableUsage(
+        TableUsageStatus.NOT_ANALYZED, "", List.of(), List.of(), false, false);
   }
 
   /**
-   * 解析しなかった結果を生成するメソッド
+   * 解析できなかった結果を生成するメソッド
    *
-   * @param status 解析しなかった理由
-   * @throws IllegalArgumentException {@link
-   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}の場合（言語の名前を持てる{@link #unsupportedLanguage}を使う）
+   * @param status 解析できなかった理由
+   * @throws IllegalArgumentException 理由でない状態の場合（{@link
+   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}は言語の名前を持てる{@link #unsupportedLanguage}を、{@link
+   *     TableUsageStatus#NOT_ANALYZED}は{@link #notAnalyzed}を、{@link
+   *     TableUsageStatus#ANALYZED}は{@link #analyzed}を使う）
    */
   public static FunctionTableUsage notAnalyzable(TableUsageStatus status) {
     if (status == TableUsageStatus.UNSUPPORTED_LANGUAGE) {
       throw new IllegalArgumentException("Use unsupportedLanguage for UNSUPPORTED_LANGUAGE");
+    }
+    if (status == TableUsageStatus.NOT_ANALYZED || status == TableUsageStatus.ANALYZED) {
+      throw new IllegalArgumentException(status + " is not a reason for being unable to analyze");
     }
     return new FunctionTableUsage(status, "", List.of(), List.of(), false, false);
   }
@@ -70,20 +89,17 @@ public record FunctionTableUsage(
    *     #tables}の並び順）を値とするマップ。スキーマが決まらない行が無ければ空
    */
   public Map<SchemaResolution, List<TableUsage>> schemaUndeterminedTables() {
-    final Map<SchemaResolution, List<TableUsage>> byResolution =
-        new EnumMap<>(SchemaResolution.class);
-    tables.stream()
+    return tables.stream()
         .filter(table -> !table.schemaDetermined())
-        .forEach(
-            table ->
-                byResolution
-                    .computeIfAbsent(table.resolution(), resolution -> new ArrayList<>())
-                    .add(table));
-    return byResolution;
+        .collect(
+            Collectors.groupingBy(
+                TableUsage::resolution,
+                () -> new EnumMap<>(SchemaResolution.class),
+                Collectors.toList()));
   }
 
   /**
-   * 抽出を行った実行の結果か（定義書の節・参考情報を出力するか）判定するメソッド
+   * 抽出を行った実行の結果か判定するメソッド
    *
    * @return {@link TableUsageStatus#NOT_ANALYZED}以外の場合はtrue
    */

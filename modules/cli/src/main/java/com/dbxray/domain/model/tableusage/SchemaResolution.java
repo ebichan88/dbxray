@@ -18,7 +18,7 @@ public enum SchemaResolution {
   }
 
   /**
-   * 参考情報・定義書で決まり方を示す名前を取得するメソッド
+   * スキーマの決まり方を示す名前を取得するメソッド
    *
    * @return {@code search_path}・{@code current_user}・{@code synonym}。決まった場合は空文字
    */

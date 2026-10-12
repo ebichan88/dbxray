@@ -13,12 +13,14 @@ import com.dbxray.domain.model.tableusage.TableUsage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 /**
  * 関数・プロシージャの定義本体から、利用している出力対象のテーブルと操作（C・R・U・D）を抽出するクラス<br>
@@ -95,8 +97,9 @@ public final class FunctionTableUsageAnalyzer {
         new TreeMap<>(Comparator.comparing(TableKey::schema).thenComparing(TableKey::table));
     final Map<String, Set<CrudOperation>> undetermined = new TreeMap<>();
     final Optional<SchemaResolution> unqualified = unqualifiedResolution(body);
+    final Function<String, Optional<TableKey>> unqualifiedKey = unqualifiedKeyOf(function, body);
     for (final TableReference reference : references) {
-      final Optional<TableKey> key = determineSchema(reference, function, body);
+      final Optional<TableKey> key = determineSchema(reference, unqualifiedKey);
       if (key.isPresent()) {
         determined
             .computeIfAbsent(key.get(), k -> EnumSet.noneOf(CrudOperation.class))
@@ -130,22 +133,48 @@ public final class FunctionTableUsageAnalyzer {
    * @return 出力対象のテーブルのキー。スキーマが決まらない・出力対象に無い場合は空
    */
   private Optional<TableKey> determineSchema(
-      TableReference reference, FunctionEntity function, FunctionBody.Analyzed body) {
+      TableReference reference, Function<String, Optional<TableKey>> unqualifiedKey) {
     if (!reference.schema().isEmpty()) {
       return existing(TableKey.of(reference.schema(), reference.table()));
     }
+    return unqualifiedKey.apply(reference.table());
+  }
+
+  /**
+   * スキーマ修飾の無い名前から、定義で決まるスキーマの出力対象のテーブルのキーを求める関数を生成するメソッド<br>
+   * PostgreSQLの{@code search_path}は、参照のたびに並び全体を読み直さないよう、スキーマの位置を本体ごとに1回だけ求める
+   * （参照の数×並びの長さの時間がかかり、長い定義で止まるため）
+   */
+  private Function<String, Optional<TableKey>> unqualifiedKeyOf(
+      FunctionEntity function, FunctionBody.Analyzed body) {
     return switch (body) {
       // 定義者権限では、修飾の無い名前はまず所有者のスキーマで解決する
       case FunctionBody.Oracle oracle ->
-          oracle.invokerRights()
-              ? Optional.empty()
-              : existing(TableKey.of(function.schemaName(), reference.table()));
-      case FunctionBody.Postgres postgres ->
-          postgres.searchPath().stream()
-              .map(schema -> TableKey.of(schema, reference.table()))
-              .filter(tables::contains)
-              .findFirst();
+          name ->
+              oracle.invokerRights()
+                  ? Optional.empty()
+                  : existing(TableKey.of(function.schemaName(), name));
+      case FunctionBody.Postgres postgres -> {
+        final Map<String, Integer> positions = new HashMap<>();
+        final List<String> searchPath = postgres.searchPath();
+        for (int i = 0; i < searchPath.size(); i++) {
+          positions.putIfAbsent(searchPath.get(i), i);
+        }
+        yield name -> firstInSearchPath(name, positions);
+      }
     };
+  }
+
+  /**
+   * 同じ名前の出力対象のテーブルのうち、{@code search_path}の最も手前のスキーマのものを求めるメソッド
+   *
+   * @param positions {@code search_path}のスキーマ名をキー、並びの位置を値とするマップ
+   */
+  private Optional<TableKey> firstInSearchPath(String name, Map<String, Integer> positions) {
+    return tablesByName.getOrDefault(name, List.of()).stream()
+        .filter(table -> positions.containsKey(table.schemaName()))
+        .min(Comparator.comparingInt(table -> positions.get(table.schemaName())))
+        .map(TableKey::of);
   }
 
   /**
@@ -156,7 +185,8 @@ public final class FunctionTableUsageAnalyzer {
    */
   private Optional<SchemaResolution> unqualifiedResolution(FunctionBody.Analyzed body) {
     return switch (body) {
-      // 定義者権限で所有者のスキーマに無い名前は、シノニム経由の参照の可能性がある（シノニムは解決しない）
+      // 定義者権限で所有者のスキーマに無い名前は、シノニム経由の参照の可能性がある（シノニムは解決しない）。
+      // 出力対象から外した所有者のテーブルは、出力対象に無いため「所有者のスキーマに無い」ものと区別できない
       case FunctionBody.Oracle oracle ->
           Optional.of(
               oracle.invokerRights() ? SchemaResolution.CURRENT_USER : SchemaResolution.SYNONYM);

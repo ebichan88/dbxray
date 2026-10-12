@@ -53,6 +53,28 @@ class TableUsageTest {
   }
 
   @Test
+  @DisplayName("TableUsage: スキーマが決まったのに複数のテーブルを持つ・候補の物理テーブル名が揃っていないと例外にする")
+  void testRejectsInconsistentTables() {
+    final TableEntity department =
+        new TableEntity("db", "sample", "", "department", TableType.TABLE, "");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TableUsage(
+                List.of(SAMPLE_EMPLOYEE, OTHER_EMPLOYEE),
+                SchemaResolution.DETERMINED,
+                Set.of(CrudOperation.READ)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TableUsage(
+                List.of(SAMPLE_EMPLOYEE, department),
+                SchemaResolution.SEARCH_PATH,
+                Set.of(CrudOperation.READ)));
+  }
+
+  @Test
   @DisplayName("TableUsage: スキーマが決まった行はスキーマ名・区分を返し、候補は空")
   void testDetermined() {
     final TableUsage usage =
@@ -85,11 +107,93 @@ class TableUsageTest {
   }
 
   @Test
-  @DisplayName("FunctionTableUsage.notAnalyzable: 言語の名前を持てないUNSUPPORTED_LANGUAGEは渡せない")
-  void testNotAnalyzableRejectsUnsupportedLanguage() {
+  @DisplayName(
+      "FunctionTableUsage.notAnalyzable: 解析できなかった理由でない状態（UNSUPPORTED_LANGUAGE・NOT_ANALYZED・ANALYZED）は渡せない")
+  void testNotAnalyzableRejectsStatusesThatAreNotReasons() {
+    for (final TableUsageStatus status :
+        List.of(
+            TableUsageStatus.UNSUPPORTED_LANGUAGE,
+            TableUsageStatus.NOT_ANALYZED,
+            TableUsageStatus.ANALYZED)) {
+      assertThrows(IllegalArgumentException.class, () -> FunctionTableUsage.notAnalyzable(status));
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "FunctionTableUsage: 状態と合わない値は持てない（言語はUNSUPPORTED_LANGUAGEだけ、テーブル・動的SQL・印はANALYZEDだけ）")
+  void testRejectsValuesThatDoNotMatchStatus() {
+    final TableUsage usage =
+        new TableUsage(
+            List.of(SAMPLE_EMPLOYEE), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ));
+    final List<DynamicSqlKind> dynamicSql = List.of(DynamicSqlKind.EXECUTE);
+
     assertThrows(
         IllegalArgumentException.class,
-        () -> FunctionTableUsage.notAnalyzable(TableUsageStatus.UNSUPPORTED_LANGUAGE));
+        () ->
+            new FunctionTableUsage(
+                TableUsageStatus.WRAPPED, "plpython3u", List.of(), List.of(), false, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new FunctionTableUsage(
+                TableUsageStatus.NOT_ANALYZED, "", List.of(usage), List.of(), false, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new FunctionTableUsage(
+                TableUsageStatus.NO_DEFINITION, "", List.of(), dynamicSql, false, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new FunctionTableUsage(
+                TableUsageStatus.UNSUPPORTED_LANGUAGE, "JAVA", List.of(), List.of(), true, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new FunctionTableUsage(
+                TableUsageStatus.SUBPROGRAM_NOT_FOUND, "", List.of(), List.of(), false, true));
+  }
+
+  @Test
+  @DisplayName("FunctionTableUsage.schemaUndeterminedTables: スキーマが決まらない行だけを、決まり方の宣言順に、行は元の並びでまとめる")
+  void testSchemaUndeterminedTables() {
+    final TableEntity department =
+        new TableEntity("db", "sample", "", "department", TableType.TABLE, "");
+    final TableUsage determined =
+        new TableUsage(
+            List.of(SAMPLE_EMPLOYEE), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ));
+    final TableUsage synonym =
+        new TableUsage(
+            List.of(OTHER_EMPLOYEE), SchemaResolution.SYNONYM, Set.of(CrudOperation.DELETE));
+    final TableUsage searchPathEmployee =
+        new TableUsage(
+            List.of(SAMPLE_EMPLOYEE, OTHER_EMPLOYEE),
+            SchemaResolution.SEARCH_PATH,
+            Set.of(CrudOperation.READ));
+    final TableUsage searchPathDepartment =
+        new TableUsage(
+            List.of(department), SchemaResolution.SEARCH_PATH, Set.of(CrudOperation.UPDATE));
+
+    final var byResolution =
+        FunctionTableUsage.analyzed(
+                List.of(synonym, determined, searchPathEmployee, searchPathDepartment),
+                List.of(),
+                false,
+                false)
+            .schemaUndeterminedTables();
+
+    assertEquals(
+        List.of(SchemaResolution.SEARCH_PATH, SchemaResolution.SYNONYM),
+        List.copyOf(byResolution.keySet()));
+    assertEquals(
+        List.of(searchPathEmployee, searchPathDepartment),
+        byResolution.get(SchemaResolution.SEARCH_PATH));
+    assertEquals(List.of(synonym), byResolution.get(SchemaResolution.SYNONYM));
+    assertTrue(
+        FunctionTableUsage.analyzed(List.of(determined), List.of(), false, false)
+            .schemaUndeterminedTables()
+            .isEmpty());
   }
 
   @Test

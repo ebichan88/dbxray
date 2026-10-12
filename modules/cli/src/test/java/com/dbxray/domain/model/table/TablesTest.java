@@ -44,6 +44,17 @@ public class TablesTest {
   }
 
   @Test
+  @DisplayName("byTableName: 同じテーブルキーが重複しても、find と同じく先に現れたものだけを用いる")
+  void testByTableNameIgnoresDuplicateKeys() {
+    var first = table("sales", "orders");
+    var duplicate = new TableEntity("testdb", "sales", "", "orders", TableType.VIEW, "");
+    var publicOrders = table("public", "orders");
+    Tables tables = Tables.of(List.of(first, duplicate, publicOrders));
+
+    assertEquals(List.of(first, publicOrders), tables.byTableName().get("orders"));
+  }
+
+  @Test
   @DisplayName("contains/find: テーブルキーで出力対象のテーブルを引ける")
   void testContainsAndFind() {
     var orders = table("public", "orders");

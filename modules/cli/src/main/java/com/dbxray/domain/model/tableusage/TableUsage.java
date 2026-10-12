@@ -18,13 +18,23 @@ import java.util.Set;
 public record TableUsage(
     List<TableEntity> tables, SchemaResolution resolution, Set<CrudOperation> operations) {
 
-  /** 一致したテーブル・操作は変更不可な複製として保持し、操作はC・R・U・Dの順に並べる */
+  /**
+   * 一致したテーブル・操作は変更不可な複製として保持し、操作はC・R・U・Dの順に並べる
+   *
+   * @throws IllegalArgumentException テーブル・操作が空の場合、スキーマが決まったのにテーブルが1件でない場合、テーブルの物理テーブル名が揃っていない場合
+   */
   public TableUsage {
     if (tables.isEmpty() || operations.isEmpty()) {
       throw new IllegalArgumentException("tables and operations must not be empty");
     }
     tables = List.copyOf(tables);
     operations = Collections.unmodifiableSet(EnumSet.copyOf(operations));
+    if (resolution == SchemaResolution.DETERMINED && tables.size() != 1) {
+      throw new IllegalArgumentException("A determined usage must have exactly one table");
+    }
+    if (tables.stream().map(TableEntity::physicalTableName).distinct().count() != 1) {
+      throw new IllegalArgumentException("All tables must have the same physical table name");
+    }
   }
 
   /**
