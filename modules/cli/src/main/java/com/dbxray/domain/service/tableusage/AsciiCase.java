@@ -9,6 +9,11 @@ final class AsciiCase {
 
   private AsciiCase() {}
 
+  /** 2つの文字列が、ASCIIの英字の大文字小文字を区別せずに等しいか */
+  static boolean equalsIgnoreCase(String value, String other) {
+    return regionEqualsIgnoreCase(value, 0, value.length(), other);
+  }
+
   /** 文字列の一部の範囲が、ASCIIの英字の大文字小文字を区別せずに別の文字列と等しいか（部分文字列を作らずに比べる） */
   static boolean regionEqualsIgnoreCase(String source, int start, int end, String other) {
     if (end - start != other.length()) {
