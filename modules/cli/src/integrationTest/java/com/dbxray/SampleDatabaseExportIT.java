@@ -12,6 +12,7 @@ import com.dbxray.testsupport.ExportBaseline;
 import com.dbxray.testsupport.SampleDatabase;
 import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -92,6 +93,7 @@ class SampleDatabaseExportIT {
               chunkSize: %s
             annotations: '%s'
             """
-                .formatted(outputPath, chunkSize, ANNOTATION_PATH)));
+                .formatted(outputPath, chunkSize, ANNOTATION_PATH)),
+        Map.of());
   }
 }

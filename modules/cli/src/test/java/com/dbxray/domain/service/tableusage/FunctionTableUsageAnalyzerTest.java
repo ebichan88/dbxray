@@ -97,7 +97,7 @@ class FunctionTableUsageAnalyzerTest {
     /** 変形した定義を、このケースの関数の定義として解析する */
     FunctionTableUsage analyzeDefinition(String transformedDefinition) {
       final Tables tables = dbms == Dbms.POSTGRESQL ? POSTGRES_TABLES : ORACLE_TABLES;
-      return FunctionTableUsageAnalyzer.of(tables, dbms)
+      return AnalyzerFixtures.analyzerOf(tables, dbms)
           .analyze(functionEntity(transformedDefinition));
     }
 
@@ -379,7 +379,7 @@ class FunctionTableUsageAnalyzerTest {
   @DisplayName("analyze: 言語が対象外・定義が無い・wrap・サブプログラムが見つからない場合は、その状態を返す")
   void testNotAnalyzable() {
     final FunctionTableUsageAnalyzer postgres =
-        FunctionTableUsageAnalyzer.of(POSTGRES_TABLES, Dbms.POSTGRESQL);
+        AnalyzerFixtures.analyzerOf(POSTGRES_TABLES, Dbms.POSTGRESQL);
     final FunctionTableUsage python =
         postgres.analyze(function("sample", "f", "", "plpython3u", "CREATE ..."));
     assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, python.status());
@@ -388,7 +388,7 @@ class FunctionTableUsageAnalyzerTest {
         "no_definition", describe(postgres.analyze(function("sample", "f", "", "sql", ""))));
 
     final FunctionTableUsageAnalyzer oracle =
-        FunctionTableUsageAnalyzer.of(ORACLE_TABLES, Dbms.ORACLE);
+        AnalyzerFixtures.analyzerOf(ORACLE_TABLES, Dbms.ORACLE);
     assertEquals(
         "wrapped",
         describe(oracle.analyze(oracleFunction("F", "CREATE OR REPLACE FUNCTION f wrapped\na0"))));
@@ -407,7 +407,7 @@ class FunctionTableUsageAnalyzerTest {
   @DisplayName("analyze: 字句を最後まで読めなかった定義は、読めた範囲の結果に不完全の印を付ける")
   void testIncomplete() {
     final FunctionTableUsage usage =
-        FunctionTableUsageAnalyzer.of(POSTGRES_TABLES, Dbms.POSTGRESQL)
+        AnalyzerFixtures.analyzerOf(POSTGRES_TABLES, Dbms.POSTGRESQL)
             .analyze(
                 function(
                     "sample",
@@ -423,7 +423,7 @@ class FunctionTableUsageAnalyzerTest {
   @DisplayName("analyze: 同じインスタンスで同じパッケージの複数のサブプログラムを解析しても、それぞれの本体から抽出する")
   void testSamePackageSubprograms() {
     final FunctionTableUsageAnalyzer analyzer =
-        FunctionTableUsageAnalyzer.of(ORACLE_TABLES, Dbms.ORACLE);
+        AnalyzerFixtures.analyzerOf(ORACLE_TABLES, Dbms.ORACLE);
 
     assertEquals(
         "SCOTT.DEPT:D",
@@ -446,7 +446,7 @@ class FunctionTableUsageAnalyzerTest {
     final AnalyzerCase analyzerCase = pg("", "", "SELECT * FROM employee;", "");
 
     final TableUsage usage =
-        FunctionTableUsageAnalyzer.of(tables, Dbms.POSTGRESQL)
+        AnalyzerFixtures.analyzerOf(tables, Dbms.POSTGRESQL)
             .analyze(analyzerCase.functionEntity(analyzerCase.definition()))
             .tables()
             .get(0);
@@ -478,7 +478,7 @@ class FunctionTableUsageAnalyzerTest {
   @DisplayName("analyze: 出力対象のテーブルが無くても、動的SQLだけを返す")
   void testNoTables() {
     final FunctionTableUsage usage =
-        FunctionTableUsageAnalyzer.of(Tables.of(List.of()), Dbms.ORACLE)
+        AnalyzerFixtures.analyzerOf(Tables.of(List.of()), Dbms.ORACLE)
             .analyze(
                 oracleFunction(
                     "P",

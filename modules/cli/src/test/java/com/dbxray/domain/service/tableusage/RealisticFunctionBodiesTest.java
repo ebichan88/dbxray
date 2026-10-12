@@ -102,7 +102,7 @@ class RealisticFunctionBodiesTest {
 
   /** 本番と同じく、パッケージのサブプログラムを1つのインスタンスで続けて解析する */
   private static final FunctionTableUsageAnalyzer BILLING_ANALYZER =
-      FunctionTableUsageAnalyzer.of(BILLING_TABLES, Dbms.ORACLE);
+      AnalyzerFixtures.analyzerOf(BILLING_TABLES, Dbms.ORACLE);
 
   static List<String> billingSubprograms() {
     return BILLING_KEYS;
@@ -138,7 +138,7 @@ class RealisticFunctionBodiesTest {
             definition -> {
               // 変形した定義ごとに、サブプログラムを1つのインスタンスで続けて解析する
               final FunctionTableUsageAnalyzer analyzer =
-                  FunctionTableUsageAnalyzer.of(BILLING_TABLES, Dbms.ORACLE);
+                  AnalyzerFixtures.analyzerOf(BILLING_TABLES, Dbms.ORACLE);
               for (final String key : BILLING_KEYS) {
                 assertEquals(
                     BILLING_EXPECTED.get(key), analyzeBilling(analyzer, key, definition), key);
@@ -165,7 +165,7 @@ class RealisticFunctionBodiesTest {
 
   private static String analyzeMonthlyClosing(String definition) {
     return FunctionTableUsageAnalyzerTest.describe(
-        FunctionTableUsageAnalyzer.of(SALES_TABLES, Dbms.POSTGRESQL)
+        AnalyzerFixtures.analyzerOf(SALES_TABLES, Dbms.POSTGRESQL)
             .analyze(
                 function(
                     "sales", "monthly_closing", "IN p_target_month date", "plpgsql", definition)));

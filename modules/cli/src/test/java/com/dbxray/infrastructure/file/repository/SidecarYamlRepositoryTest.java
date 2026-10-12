@@ -31,7 +31,7 @@ public class SidecarYamlRepositoryTest {
   private final SidecarYamlRepository repository = new SidecarYamlRepository();
 
   private TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   private Path writeYaml(Path dir, String content) throws IOException {

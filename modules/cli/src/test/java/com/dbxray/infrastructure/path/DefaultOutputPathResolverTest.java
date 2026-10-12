@@ -27,7 +27,7 @@ public class DefaultOutputPathResolverTest {
   private final OutputRoot root = new OutputRoot(baseDir, baseInfo);
 
   private TableEntity table(String schema, String physical, String tableType) {
-    return new TableEntity("testdb", schema, "", physical, TableType.fromId(tableType), "");
+    return new TableEntity("testdb", schema, "", physical, TableType.fromId(tableType), "", "");
   }
 
   @Test

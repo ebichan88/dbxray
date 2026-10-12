@@ -33,7 +33,7 @@ public class TableDefinitionTemplatesTest {
 
   private TableEntity newTable(
       String schema, String physical, String logical, String type, String def) {
-    return new TableEntity("TEST_DB", schema, logical, physical, TableType.fromId(type), def);
+    return new TableEntity("TEST_DB", schema, logical, physical, TableType.fromId(type), def, "");
   }
 
   @Test

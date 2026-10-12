@@ -53,7 +53,7 @@ class GeneratedPackagesTest {
     for (int p = 0; p < PACKAGES; p++) {
       final Generated generated = new Generator(random).packageDefinition();
       final FunctionTableUsageAnalyzer analyzer =
-          FunctionTableUsageAnalyzer.of(Tables.of(generated.tables), Dbms.ORACLE);
+          AnalyzerFixtures.analyzerOf(Tables.of(generated.tables), Dbms.ORACLE);
       for (final Expected expected : generated.expected) {
         final String actual =
             FunctionTableUsageAnalyzerTest.describe(

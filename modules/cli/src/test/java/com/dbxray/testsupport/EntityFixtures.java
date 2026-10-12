@@ -81,7 +81,7 @@ public final class EntityFixtures {
    * @return テーブル
    */
   public static TableEntity table(String schema, String name, TableType tableType) {
-    return new TableEntity("db", schema, "", name, tableType, "");
+    return new TableEntity("db", schema, "", name, tableType, "", "");
   }
 
   /**

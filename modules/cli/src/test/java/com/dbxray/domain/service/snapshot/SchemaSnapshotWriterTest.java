@@ -107,7 +107,7 @@ public class SchemaSnapshotWriterTest {
   private TableDefinitionContent tableContent(String schema, String table, String column) {
     return new TableDefinitionContent(
         BASE_INFO,
-        new TableEntity("testdb", schema, "", table, TableType.TABLE, ""),
+        new TableEntity("testdb", schema, "", table, TableType.TABLE, "", ""),
         List.of(EntityFixtures.column(schema, table, column, "integer", true)),
         List.of(),
         List.of(),

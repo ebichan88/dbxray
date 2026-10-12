@@ -106,7 +106,7 @@ public class ViewpointWriterTest {
   }
 
   private TableEntity table(String physical, String logical) {
-    return new TableEntity("testdb", "sales", logical, physical, TableType.TABLE, "");
+    return new TableEntity("testdb", "sales", logical, physical, TableType.TABLE, "", "");
   }
 
   private final TableEntity orders = table("orders", "受注");

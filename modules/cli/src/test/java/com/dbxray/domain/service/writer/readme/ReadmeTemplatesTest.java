@@ -123,7 +123,7 @@ class ReadmeTemplatesTest {
   }
 
   private static TableEntity table(String schema, String name, String logicalName) {
-    return new TableEntity("testdb", schema, logicalName, name, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, logicalName, name, TableType.TABLE, "", "");
   }
 
   private static FunctionEntity function(String schema, String name) {

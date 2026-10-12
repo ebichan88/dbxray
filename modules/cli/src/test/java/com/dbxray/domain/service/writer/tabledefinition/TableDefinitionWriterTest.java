@@ -107,7 +107,7 @@ public class TableDefinitionWriterTest {
   }
 
   private TableEntity table(String physical) {
-    return new TableEntity("testdb", "public", "受注", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", "public", "受注", physical, TableType.TABLE, "", "");
   }
 
   @BeforeEach
@@ -257,7 +257,7 @@ public class TableDefinitionWriterTest {
   void testWriteTableDefinitionPartitionSection() {
     var partitioned =
         new TableEntity("testdb", "public", "売上", "sales", TableType.TABLE, "", "RANGE (sold_on)");
-    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "");
+    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "", "");
     var partition =
         new PartitionEntity(
             "public",

@@ -12,6 +12,7 @@ import com.dbxray.testsupport.ExportBaseline;
 import com.dbxray.testsupport.OracleSampleDatabase;
 import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -84,6 +85,7 @@ class OracleSampleDatabaseExportIT {
             output:
               path: '%s'
             """
-                .formatted(OracleSampleDatabase.SCHEMA, outputPath)));
+                .formatted(OracleSampleDatabase.SCHEMA, outputPath)),
+        Map.of());
   }
 }

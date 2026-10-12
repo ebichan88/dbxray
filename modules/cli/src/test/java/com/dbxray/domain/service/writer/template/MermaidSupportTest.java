@@ -108,7 +108,7 @@ public class MermaidSupportTest {
     var customers = TableKey.of("public", "customers");
     var boxes =
         DiagramBoxesFixtures.of(
-            List.of(new TableEntity("testdb", "public", "受注", "orders", TableType.TABLE, "")),
+            List.of(new TableEntity("testdb", "public", "受注", "orders", TableType.TABLE, "", "")),
             List.of(),
             List.of());
 

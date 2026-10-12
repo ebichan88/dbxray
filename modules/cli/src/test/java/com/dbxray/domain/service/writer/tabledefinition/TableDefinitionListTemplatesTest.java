@@ -24,7 +24,7 @@ public class TableDefinitionListTemplatesTest {
   }
 
   private TableEntity newEntity(String schema, String physical, String logical) {
-    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "", "");
   }
 
   @Test

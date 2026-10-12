@@ -58,7 +58,7 @@ public class TableSnapshotTest {
   @Test
   @DisplayName("of: テーブル・カラムの各項目を個別の値として保持し、サイドカーの付帯情報をマージする")
   void testOfConvertsTableAndColumns() {
-    var table = new TableEntity("testdb", "public", "受注", "orders", TableType.TABLE, "");
+    var table = new TableEntity("testdb", "public", "受注", "orders", TableType.TABLE, "", "");
     var id = new ColumnEntity("public", "orders", "受注ID", "id", "integer", "", true, true, " ");
     var amount =
         new ColumnEntity(
@@ -95,7 +95,7 @@ public class TableSnapshotTest {
   @Test
   @DisplayName("of: インデックス・制約・外部キー・論理リレーション・トリガーを構造化して保持する")
   void testOfConvertsRelatedObjects() {
-    var table = new TableEntity("testdb", "public", "", "orders", TableType.TABLE, "");
+    var table = new TableEntity("testdb", "public", "", "orders", TableType.TABLE, "", "");
     var index =
         new IndexEntity(
             "public", "orders", "orders_pkey", "btree", true, true, "CREATE UNIQUE INDEX ...", "");
@@ -194,7 +194,7 @@ public class TableSnapshotTest {
   void testOfKeepsViewDefinition() {
     var view =
         new TableEntity(
-            "testdb", "public", "", "v_orders", TableType.VIEW, " SELECT id FROM orders;");
+            "testdb", "public", "", "v_orders", TableType.VIEW, " SELECT id FROM orders;", "");
 
     TableSnapshot snapshot =
         TableSnapshot.of(
@@ -215,7 +215,7 @@ public class TableSnapshotTest {
   @Test
   @DisplayName("of: ビューが参照するテーブルを、スキーマ名・テーブル名・区分で保持する。参照しているビューは保持しない")
   void testOfKeepsReferencedTables() {
-    var view = new TableEntity("testdb", "public", "", "v_orders", TableType.VIEW, "SELECT 1");
+    var view = new TableEntity("testdb", "public", "", "v_orders", TableType.VIEW, "SELECT 1", "");
     var toOrders =
         new ViewReferenceEntity(
             "public", "v_orders", TableType.VIEW, "public", "orders", TableType.TABLE);
@@ -249,7 +249,7 @@ public class TableSnapshotTest {
   void testOfKeepsPartitionKeyOnlyForPartitionedTable() {
     var partitioned =
         new TableEntity("testdb", "public", "", "sales", TableType.TABLE, "", "RANGE (sold_on)");
-    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "");
+    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "", "");
 
     assertEquals(
         "RANGE (sold_on)",

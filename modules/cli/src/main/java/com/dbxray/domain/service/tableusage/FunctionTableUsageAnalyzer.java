@@ -47,16 +47,6 @@ public final class FunctionTableUsageAnalyzer {
   }
 
   /**
-   * スキーマ1つ分の関数・プロシージャを解析するインスタンスを生成する静的ファクトリメソッド<br>
-   * 出力対象のテーブルの全件からテーブル名ごとの索引を求める。スキーマごとに作り直したくない場合は{@link #of(Tables, Map, Dbms)}を使う
-   *
-   * @param tables 出力対象のテーブル（全スキーマ分。他のスキーマのテーブルへの参照も照らすため）
-   */
-  public static FunctionTableUsageAnalyzer of(Tables tables, Dbms dbms) {
-    return of(tables, tables.byTableName(), dbms);
-  }
-
-  /**
    * テーブル名ごとの索引を受け取り、スキーマ1つ分の関数・プロシージャを解析するインスタンスを生成する静的ファクトリメソッド
    *
    * @param tables 出力対象のテーブル（全スキーマ分。他のスキーマのテーブルへの参照も照らすため）

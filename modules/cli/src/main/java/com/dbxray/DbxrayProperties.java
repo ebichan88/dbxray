@@ -103,15 +103,6 @@ final class DbxrayProperties {
   }
 
   /**
-   * CLI引数による上書きをせず、設定ファイルの値だけから組み立てる
-   *
-   * @throws InvalidConfigurationException 設定に誤りがある場合（見つかった誤りをすべて示す）
-   */
-  static DbxrayProperties of(ConfigFile configFile) {
-    return of(configFile, Map.of());
-  }
-
-  /**
    * 誤りの報告には、どの値を上書きしたか（指定元のCLI引数名）を添える。誤った値が設定ファイルではなく
    * CLI引数から来ている場合に、設定ファイルだけを見直して原因が見つからない、とならないようにするため
    *

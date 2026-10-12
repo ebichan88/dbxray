@@ -17,16 +17,6 @@ public record TableEntity(
     String definition,
     String partitionKey) {
 
-  public TableEntity(
-      String dbName,
-      String schemaName,
-      String logicalTableName,
-      String physicalTableName,
-      TableType tableType,
-      String definition) {
-    this(dbName, schemaName, logicalTableName, physicalTableName, tableType, definition, "");
-  }
-
   /**
    * {@code スキーマ.テーブル}形式の名称を取得するメソッド
    */

@@ -60,7 +60,7 @@ public class OutputPathContainmentTest {
           (base, name) ->
               new OutputRoot(base, new BaseInfoEntity(name, Dbms.POSTGRESQL, 16, LocalDate.EPOCH)),
           TableEntity.class,
-          (base, name) -> new TableEntity(name, name, name, name, TableType.TABLE, ""),
+          (base, name) -> new TableEntity(name, name, name, name, TableType.TABLE, "", ""),
           String.class,
           (base, name) -> name,
           ListDocumentType.class,

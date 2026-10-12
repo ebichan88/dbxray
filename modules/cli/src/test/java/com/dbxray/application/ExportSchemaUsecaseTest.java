@@ -333,7 +333,7 @@ public class ExportSchemaUsecaseTest {
   }
 
   private TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   private String contentOf(Path path) {
@@ -850,9 +850,9 @@ public class ExportSchemaUsecaseTest {
     setUp();
     repository.tables.add(table("public", "orders"));
     repository.tables.add(
-        new TableEntity("testdb", "public", "", "v_orders", TableType.VIEW, "SELECT 1"));
+        new TableEntity("testdb", "public", "", "v_orders", TableType.VIEW, "SELECT 1", ""));
     repository.tables.add(
-        new TableEntity("testdb", "public", "", "v_skip", TableType.VIEW, "SELECT 1"));
+        new TableEntity("testdb", "public", "", "v_skip", TableType.VIEW, "SELECT 1", ""));
     repository.viewReferences.add(
         new ViewReferenceEntity(
             "public", "v_orders", TableType.VIEW, "public", "orders", TableType.TABLE));
@@ -1024,8 +1024,10 @@ public class ExportSchemaUsecaseTest {
   @DisplayName("ER図の箱には論理テーブル名と、関連をつなぐカラム（関連カラム）だけが表示される")
   void testErDiagramShowsLogicalNamesAndRelationColumns() {
     setUp();
-    repository.tables.add(new TableEntity("testdb", "public", "部署", "dept", TableType.TABLE, ""));
-    repository.tables.add(new TableEntity("testdb", "public", "社員", "emp", TableType.TABLE, ""));
+    repository.tables.add(
+        new TableEntity("testdb", "public", "部署", "dept", TableType.TABLE, "", ""));
+    repository.tables.add(
+        new TableEntity("testdb", "public", "社員", "emp", TableType.TABLE, "", ""));
     repository.columns.add(
         new ColumnEntity("public", "dept", "部署ID", "dept_id", "integer", "", true, true, ""));
     repository.columns.add(

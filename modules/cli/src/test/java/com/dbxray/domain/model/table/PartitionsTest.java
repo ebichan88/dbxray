@@ -14,7 +14,7 @@ public class PartitionsTest {
   }
 
   private TableEntity table(String schema, String name) {
-    return new TableEntity("testdb", schema, "", name, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", name, TableType.TABLE, "", "");
   }
 
   @Test

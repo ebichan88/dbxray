@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 public class ViewpointTest {
 
   private static TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   @Test

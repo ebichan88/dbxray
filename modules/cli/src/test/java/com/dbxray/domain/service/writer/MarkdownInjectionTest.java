@@ -84,7 +84,7 @@ public class MarkdownInjectionTest {
 
   private static Map<String, Supplier<String>> renderedDocuments() {
     final TableEntity table =
-        new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.VIEW, HOSTILE);
+        new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.VIEW, HOSTILE, "");
     final ColumnEntity column =
         new ColumnEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, HOSTILE, HOSTILE, true, true, HOSTILE);
     final ForeignKeyEntity fk =
@@ -176,7 +176,7 @@ public class MarkdownInjectionTest {
             ObjectDefinitionTemplates.functionFile(
                 FunctionDefinitionContent.withoutTableUsage(function), BASE_INFO));
     final TableEntity hostileTable =
-        new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.TABLE, HOSTILE);
+        new TableEntity(HOSTILE, HOSTILE, HOSTILE, HOSTILE, TableType.TABLE, HOSTILE, "");
     final FunctionTableUsage tableUsage =
         FunctionTableUsage.analyzed(
             Arrays.stream(SchemaResolution.values())
@@ -218,7 +218,7 @@ public class MarkdownInjectionTest {
                         ExportTargetsFixtures.of(
                             List.of(
                                 table,
-                                new TableEntity("db", "other", "", "t", TableType.TABLE, "")),
+                                new TableEntity("db", "other", "", "t", TableType.TABLE, "", "")),
                             List.of(),
                             List.of(function),
                             EnumSet.allOf(OutputObjectType.class)))
