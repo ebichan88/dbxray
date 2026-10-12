@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 /**
- * テーブル定義および一覧出力用のパス生成戦略インタフェース <br>
+ * 出力先のパス（Markdownのドキュメント・スナップショット・参考情報）を解決するインタフェース<br>
  * 物理レイアウト（ディレクトリ構造・ファイル命名規則）を抽象化する。Markdownドキュメントのファイル名・配置の規則自体は、
  * ドキュメント間の相対リンクと共有するため{@link DocumentLocations}に定める
  */

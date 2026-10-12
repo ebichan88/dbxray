@@ -37,10 +37,9 @@ public record TableEntity(
   }
 
   /**
-   * 論理テーブル名（物理テーブル名） 形式の名称を取得するメソッド
+   * テーブル定義書の見出しに使う名称を取得するメソッド
    *
-   * @return 物理テーブル名（論理テーブル名） 形式の名称を返却。<br>
-   *     論理テーブル名が存在しない場合は 物理テーブル名 形式の名称を返却
+   * @return {@code 物理テーブル名（論理テーブル名）}。論理テーブル名が無い場合は物理テーブル名だけ
    */
   public String getHeaderTableName() {
     if (logicalTableName == null || logicalTableName.isBlank()) {

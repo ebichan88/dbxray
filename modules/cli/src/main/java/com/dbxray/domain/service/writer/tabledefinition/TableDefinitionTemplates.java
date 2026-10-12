@@ -225,7 +225,7 @@ public class TableDefinitionTemplates {
   }
 
   /** 外部キー情報セクション（DBに実在する外部キー制約のみ） */
-  public static String foreignKeys(List<ForeignKeyEntity> foreignkeys) {
+  public static String foreignKeys(List<ForeignKeyEntity> foreignKeys) {
     String header =
         """
                 ## 外部キー情報
@@ -233,7 +233,7 @@ public class TableDefinitionTemplates {
                 | No. | 外部キー名 | カラムリスト | 参照先 | 参照先カラムリスト | 多重度 |
                 |:---|:---|:---|:---|:---|:---|
                 """;
-    return tableSection(foreignkeys, header, TableDefinitionTemplates::physicalRelationTableLine);
+    return tableSection(foreignKeys, header, TableDefinitionTemplates::physicalRelationTableLine);
   }
 
   /**

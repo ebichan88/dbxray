@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * テーブル定義出力対象の範囲（スキーマ名リスト＋テーブル名パターン）を表す値オブジェクト<br>
- * 実行設定（{@code schema=}・{@code table=}）から1回だけ生成し、以降は{@link #matches(TableEntity)}で各テーブルを判定する。
+ * 設定（{@code target.schemas}・{@code target.tables}。CLI引数の{@code --schema}・{@code --table}）から1回だけ生成し、以降は{@link #matches(TableEntity)}で各テーブルを判定する。
  * {@link TableNamePatterns}はテーブル名パターンのみを扱うため、スキーマ名リストとの組み合わせ判定（どちらか一方のみ指定・両方指定・両方未指定）はこのクラスが担う
  */
 public final class TableScope {

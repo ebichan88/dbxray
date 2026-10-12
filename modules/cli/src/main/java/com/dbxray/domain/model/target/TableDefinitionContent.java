@@ -56,7 +56,7 @@ public record TableDefinitionContent(
    * 被参照側（{@code incomingRelations}）は「被参照情報」セクションの1つの表に「区分」列で由来を示して掲載するため、由来を分けない（物理外部キーと論理リレーションの双方を含む）
    *
    * @param detail 当該テーブルの詳細情報（カラム・インデックス・制約）
-   * @param foreignkeys 対象範囲全体の外部キー（論理リレーションを含む。当該テーブル分を抽出して保持する）
+   * @param foreignKeys 対象範囲全体の外部キー（論理リレーションを含む。当該テーブル分を抽出して保持する）
    * @param triggers 対象範囲全体のトリガー情報（当該テーブル分を抽出して保持する）
    * @param partitions 対象範囲全体のパーティション情報（当該テーブル分を抽出して保持する）
    * @param viewReferences 対象範囲全体のビューが参照するテーブル（当該テーブルが参照するもの・当該テーブルを参照するものを抽出して保持する）
@@ -67,7 +67,7 @@ public record TableDefinitionContent(
   public static TableDefinitionContent assemble(
       BaseInfoEntity baseInfo,
       TableDetail detail,
-      ForeignKeys foreignkeys,
+      ForeignKeys foreignKeys,
       Triggers triggers,
       Partitions partitions,
       ViewReferences viewReferences,
@@ -80,9 +80,9 @@ public record TableDefinitionContent(
         detail.columns(),
         detail.indexes(),
         detail.constraints(),
-        foreignkeys.physicalBelongingTo(table),
-        foreignkeys.logicalBelongingTo(table),
-        foreignkeys.referencingTo(table),
+        foreignKeys.physicalBelongingTo(table),
+        foreignKeys.logicalBelongingTo(table),
+        foreignKeys.referencingTo(table),
         viewReferences.belongingTo(table),
         viewReferences.referencingTo(table),
         triggers.belongingTo(table),

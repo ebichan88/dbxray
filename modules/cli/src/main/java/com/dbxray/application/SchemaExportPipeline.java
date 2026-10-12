@@ -173,7 +173,7 @@ final class SchemaExportPipeline {
   /**
    * トリガーを取得するメソッド<br>
    * テーブルに属する軽量な情報のため、外部キーと同様にチャンク化せず対象範囲全体を一括取得し、テーブル定義書内のセクションとトリガー一覧の両方で利用する。
-   * {@code outputObjectList}で対象外とされた場合は取得自体を行わず、一覧・テーブル定義書双方から除外する
+   * {@code target.objects}で外した場合は取得自体を行わず、一覧・テーブル定義書双方から除外する
    */
   private Triggers fetchTriggers(
       List<String> targetSchemaList, Set<OutputObjectType> outputObjectTypes) {
@@ -187,7 +187,7 @@ final class SchemaExportPipeline {
    * スキーマレベルのオブジェクト（関数/シーケンス/型）を取得するメソッド<br>
    * テーブルフィルタの対象外で、スキーマフィルタのみ適用する。
    * 関数一覧は定義本体を含まない軽量情報のみ取得する（定義本体はスキーマ単位で{@link #exportSchemaFunctionDefinitions}が別途取得する）。{@link #fetchTriggers}と同様、
-   * {@code outputObjectList}で対象外とされた種別は取得自体を行わない（一覧・個別定義とも出力されなくなる）
+   * {@code target.objects}で外した種別は取得自体を行わない（一覧・個別定義とも出力されなくなる）
    */
   private SchemaObjects fetchSchemaObjects(
       List<String> targetSchemaList, Set<OutputObjectType> outputObjectTypes) {

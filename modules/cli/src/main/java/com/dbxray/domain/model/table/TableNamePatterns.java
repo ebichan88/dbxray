@@ -6,13 +6,12 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * テーブル名パターン（{@code table=}の記法）のリストを判定する値オブジェクト<br>
- * 出力対象の範囲（{@code table=}。
- * {@link com.dbxray.domain.model.target.TableScope}）と、
+ * テーブル名パターン（設定ファイルの{@code target.tables}・CLI引数の{@code --table}の記法）のリストを判定する値オブジェクト<br>
+ * 出力対象の範囲（{@link com.dbxray.domain.model.target.TableScope}）と、
  * 観点に所属するテーブルの指定（サイドカーYAMLの{@code viewpoints}）で共通に用いる。以下の記法に対応する。
  *
  * <ul>
- *   <li>完全一致（従来どおり）: {@code employee}
+ *   <li>完全一致: {@code employee}
  *   <li>ワイルドカード（{@code *}は0文字以上の任意文字列）: {@code *_bk}, {@code *_20240101}
  *   <li>除外（先頭に{@code !}）: {@code !flyway_schema_history}
  *   <li>スキーマ修飾（同名テーブルが複数スキーマに存在する場合に対象スキーマを限定）: {@code sample.employee}

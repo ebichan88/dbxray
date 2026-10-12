@@ -46,8 +46,8 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       } else if (depth > 0) {
         continue;
       } else if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
-        final int name = i + 1;
-        searchPath = readSearchPath(tokens, name + 1);
+        final int searchPathIndex = i + 1;
+        searchPath = readSearchPath(tokens, searchPathIndex + 1);
       } else if (token.isWord("AS")
           && tokens.at(i + 1) != null
           && tokens.at(i + 1).kind() == SqlTokenKind.DOLLAR_STRING) {

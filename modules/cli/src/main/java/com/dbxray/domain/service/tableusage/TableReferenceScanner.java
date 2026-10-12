@@ -694,17 +694,18 @@ final class TableReferenceScanner {
       return false;
     }
 
-    /** MERGE文の中の、MERGEと同じ括弧の深さにいるか（{@code MERGE INTO}を読んだ後の{@code USING}を判定する） */
+    /** {@code MERGE INTO}を読んだ括弧の深さを覚える（その後の{@code USING}を{@link #isMergeLevel}で判定する） */
     void enterMerge() {
       mergeDepth = depth();
     }
 
+    /** MERGE文の中の、MERGEと同じ括弧の深さにいるか */
     boolean isMergeLevel() {
       return depth() == mergeDepth;
     }
 
     /**
-     * DELETE文の中の、DELETEと同じ括弧の深さにいるか（{@code DELETE … USING}を判定する）
+     * DELETEを読んだ括弧の深さを覚える（{@code DELETE … USING}を{@link #isDeleteLevel}で判定する）
      *
      * @param consumedFrom 対象の名前まで読み済みの{@code FROM}の位置。{@code FROM}が無ければ{@link #NONE}
      */
@@ -713,6 +714,7 @@ final class TableReferenceScanner {
       consumedDeleteFrom = consumedFrom;
     }
 
+    /** DELETE文の中の、DELETEと同じ括弧の深さにいるか */
     boolean isDeleteLevel() {
       return depth() == deleteDepth;
     }
@@ -722,11 +724,12 @@ final class TableReferenceScanner {
       return index == consumedDeleteFrom;
     }
 
-    /** {@code INSERT ALL/FIRST}の各{@code INTO}を判定する */
+    /** {@code INSERT ALL/FIRST}を読んだ括弧の深さを覚える（各{@code INTO}を{@link #isMultiInsertLevel}で判定する） */
     void enterMultiInsert() {
       multiInsertDepth = depth();
     }
 
+    /** {@code INSERT ALL/FIRST}と同じ括弧の深さにいるか */
     boolean isMultiInsertLevel() {
       return depth() == multiInsertDepth;
     }
