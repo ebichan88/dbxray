@@ -179,6 +179,8 @@ class TableReferenceScannerTest {
   static List<ScanCase> selectCases() {
     final List<ScanCase> cases = new ArrayList<>();
     cases.addAll(both("SELECT * FROM a, b, c WHERE a.id = b.id", "a:R, b:R, c:R"));
+    cases.addAll(both("SELECT 1 - 2 FROM t", "t:R"));
+    cases.addAll(both("SELECT a - -1 FROM t WHERE x = - 1", "t:R"));
     cases.addAll(both("SELECT * FROM a x, b y", "a:R, b:R"));
     cases.addAll(both("SELECT * FROM sample.employee", "sample.employee:R"));
     cases.addAll(both("SELECT * FROM db.sample.employee", "sample.employee:R"));
@@ -424,6 +426,12 @@ class TableReferenceScannerTest {
 
   static List<ScanCase> nonDmlKeywordCases() {
     final List<ScanCase> cases = new ArrayList<>();
+    // ıとſ（ASCIIの英字ではない）は、i・sに畳み込まれずキーワードにならない
+    cases.addAll(both("\u0131nsert into t values (1)", "-"));
+    cases.addAll(both("insert \u0131nto t values (1)", "-"));
+    cases.addAll(
+        both("merge into t u\u017Fing u on (1) when matched then update set a = 1", "t:U"));
+    cases.addAll(both("select * from a jo\u0131n b on a.x = b.x", "a:R"));
     cases.addAll(both("GRANT SELECT, INSERT, UPDATE, DELETE ON t TO u", "-"));
     cases.addAll(both("GRANT INSERT ON t TO u", "-"));
     cases.addAll(both("REVOKE DELETE ON t FROM u", "-"));

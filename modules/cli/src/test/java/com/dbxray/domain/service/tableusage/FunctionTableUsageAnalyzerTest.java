@@ -1,10 +1,11 @@
 package com.dbxray.domain.service.tableusage;
 
+import static com.dbxray.testsupport.EntityFixtures.function;
+import static com.dbxray.testsupport.EntityFixtures.table;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.Dbms;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
-import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.table.Tables;
 import com.dbxray.domain.model.tableusage.CrudOperation;
@@ -57,7 +58,7 @@ class FunctionTableUsageAnalyzerTest {
    *
    * @param overloadCount カタログ上の同名の関数・プロシージャ（オーバーロード）の数
    * @param header PostgreSQLの見出しに足す行（{@code SET search_path}等）。Oracleでは使わない
-   * @param body PostgreSQLはドル引用符の中身、Oracleは定義全体
+   * @param body PostgreSQLはドル引用符の中身、Oracleは定義全体（{@link #definition}は、PostgreSQLでは見出しを加えた定義全体）
    * @param expected {@link #describe}の記法
    */
   record AnalyzerCase(
@@ -75,42 +76,40 @@ class FunctionTableUsageAnalyzerTest {
       return (dbms == Dbms.POSTGRESQL ? "PG: " : "ORA: ") + title;
     }
 
-    FunctionTableUsage analyze(String transformedBody) {
-      final Tables tables = dbms == Dbms.POSTGRESQL ? POSTGRES_TABLES : ORACLE_TABLES;
-      return FunctionTableUsageAnalyzer.of(tables, dbms).analyze(function(transformedBody));
+    /** 変形していない定義（PostgreSQLは見出しとドル引用符で囲んだ本体を含む定義全体、Oracleは本体と同じ） */
+    String definition() {
+      if (dbms == Dbms.POSTGRESQL) {
+        return "CREATE OR REPLACE FUNCTION sample."
+            + functionName
+            + "()\n RETURNS void\n LANGUAGE plpgsql\n"
+            + header
+            + "AS $function$\n"
+            + body
+            + "\n$function$\n";
+      }
+      return body;
     }
 
-    private FunctionEntity function(String transformedBody) {
-      if (dbms == Dbms.POSTGRESQL) {
-        return new FunctionEntity(
-            "db",
-            "sample",
-            functionName,
-            1,
-            overloadCount,
-            "FUNCTION",
-            arguments,
-            "void",
-            "plpgsql",
-            "CREATE OR REPLACE FUNCTION sample."
-                + functionName
-                + "()\n RETURNS void\n LANGUAGE plpgsql\n"
-                + header
-                + "AS $function$\n"
-                + transformedBody
-                + "\n$function$\n");
-      }
-      return new FunctionEntity(
-          "db",
-          "SCOTT",
+    FunctionTableUsage analyze() {
+      return analyzeDefinition(definition());
+    }
+
+    /** 変形した定義を、このケースの関数の定義として解析する */
+    FunctionTableUsage analyzeDefinition(String transformedDefinition) {
+      final Tables tables = dbms == Dbms.POSTGRESQL ? POSTGRES_TABLES : ORACLE_TABLES;
+      return FunctionTableUsageAnalyzer.of(tables, dbms)
+          .analyze(functionEntity(transformedDefinition));
+    }
+
+    /** 変形した定義を持つ、このケースの関数 */
+    FunctionEntity functionEntity(String transformedDefinition) {
+      return function(
+          dbms == Dbms.POSTGRESQL ? "sample" : "SCOTT",
           functionName,
-          1,
           overloadCount,
-          "PROCEDURE",
           arguments,
-          "",
-          "PL/SQL",
-          transformedBody);
+          dbms == Dbms.POSTGRESQL ? "plpgsql" : "PL/SQL",
+          transformedDefinition);
     }
 
     /** 期待値に現れるテーブルの名前（変形テストで、コメント・文字列の中に書くDMLの対象に使う） */
@@ -344,15 +343,13 @@ class FunctionTableUsageAnalyzerTest {
   @MethodSource("allCases")
   @DisplayName("analyze: 名前を解決し、出力対象のテーブルと一致したものだけを操作とともに返す")
   void testAnalyze(AnalyzerCase analyzerCase) {
-    assertEquals(analyzerCase.expected(), describe(analyzerCase.analyze(analyzerCase.body())));
+    assertEquals(analyzerCase.expected(), describe(analyzerCase.analyze()));
   }
 
   @Test
   @DisplayName("analyze: スキーマが決まらない行は、候補・区分（候補の区分がばらつくなら空）を持つ")
   void testUndeterminedRow() {
-    final FunctionTableUsage usage =
-        pg("", "", "SELECT * FROM project, department;", "")
-            .analyze("SELECT * FROM project, department;");
+    final FunctionTableUsage usage = pg("", "", "SELECT * FROM project, department;", "").analyze();
 
     final TableUsage department = usage.tables().get(0);
     assertFalse(department.schemaDetermined());
@@ -369,7 +366,7 @@ class FunctionTableUsageAnalyzerTest {
   @DisplayName("analyze: スキーマが決まった行は、出力対象のテーブル（区分を含む）を持つ")
   void testDeterminedRow() {
     final TableUsage row =
-        pg("", "", "", "").analyze("UPDATE sample.employee_view SET x = 1;").tables().get(0);
+        pg("", "", "UPDATE sample.employee_view SET x = 1;", "").analyze().tables().get(0);
 
     assertTrue(row.schemaDetermined());
     assertEquals("sample", row.schemaName());
@@ -384,16 +381,11 @@ class FunctionTableUsageAnalyzerTest {
     final FunctionTableUsageAnalyzer postgres =
         FunctionTableUsageAnalyzer.of(POSTGRES_TABLES, Dbms.POSTGRESQL);
     final FunctionTableUsage python =
-        postgres.analyze(
-            new FunctionEntity(
-                "db", "sample", "f", 1, 1, "FUNCTION", "", "int", "plpython3u", "CREATE ..."));
+        postgres.analyze(function("sample", "f", "", "plpython3u", "CREATE ..."));
     assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, python.status());
     assertEquals("plpython3u", python.language());
     assertEquals(
-        "no_definition",
-        describe(
-            postgres.analyze(
-                new FunctionEntity("db", "sample", "f", 1, 1, "FUNCTION", "", "", "sql", ""))));
+        "no_definition", describe(postgres.analyze(function("sample", "f", "", "sql", ""))));
 
     final FunctionTableUsageAnalyzer oracle =
         FunctionTableUsageAnalyzer.of(ORACLE_TABLES, Dbms.ORACLE);
@@ -417,14 +409,9 @@ class FunctionTableUsageAnalyzerTest {
     final FunctionTableUsage usage =
         FunctionTableUsageAnalyzer.of(POSTGRES_TABLES, Dbms.POSTGRESQL)
             .analyze(
-                new FunctionEntity(
-                    "db",
+                function(
                     "sample",
                     "f",
-                    1,
-                    1,
-                    "FUNCTION",
-                    "",
                     "",
                     "plpgsql",
                     "CREATE FUNCTION f() AS $function$ BEGIN DELETE FROM sample.employee; /* x"));
@@ -456,9 +443,11 @@ class FunctionTableUsageAnalyzerTest {
                 table("sample", "employee", TableType.VIEW),
                 table("other", "employee", TableType.TABLE)));
 
+    final AnalyzerCase analyzerCase = pg("", "", "SELECT * FROM employee;", "");
+
     final TableUsage usage =
         FunctionTableUsageAnalyzer.of(tables, Dbms.POSTGRESQL)
-            .analyze(pg("", "", "SELECT * FROM employee;", "").function("SELECT * FROM employee;"))
+            .analyze(analyzerCase.functionEntity(analyzerCase.definition()))
             .tables()
             .get(0);
 
@@ -480,7 +469,7 @@ class FunctionTableUsageAnalyzerTest {
     final AnalyzerCase analyzerCase = pg("", header, body, "");
 
     final FunctionTableUsage usage =
-        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> analyzerCase.analyze(body));
+        assertTimeoutPreemptively(Duration.ofSeconds(10), analyzerCase::analyze);
 
     assertEquals("other.employee:R", describe(usage));
   }
@@ -548,11 +537,6 @@ class FunctionTableUsageAnalyzerTest {
   }
 
   private static FunctionEntity oracleFunction(String name, String arguments, String definition) {
-    return new FunctionEntity(
-        "db", "SCOTT", name, 1, 1, "PROCEDURE", arguments, "", "PL/SQL", definition);
-  }
-
-  private static TableEntity table(String schema, String name, TableType type) {
-    return new TableEntity("db", schema, "", name, type, "");
+    return function("SCOTT", name, arguments, "PL/SQL", definition);
   }
 }
