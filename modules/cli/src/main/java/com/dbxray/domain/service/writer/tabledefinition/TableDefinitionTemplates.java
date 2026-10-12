@@ -440,7 +440,6 @@ public class TableDefinitionTemplates {
           .append(LINE_SEPARATOR_DOUBLE);
     }
     final TableKey selfKey = TableKey.of(table);
-    final String selfId = MermaidSupport.mermaidId(selfKey);
     final Set<TableKey> nodeKeys = new LinkedHashSet<>();
     nodeKeys.add(selfKey);
     drawnRelations.forEach(
@@ -448,19 +447,18 @@ public class TableDefinitionTemplates {
           nodeKeys.add(fk.referenceTableKey());
           nodeKeys.add(fk.tableKey());
         });
+    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(nodeKeys);
     final Map<TableKey, String> labels = MermaidSupport.assignLabels(nodeKeys, boxes);
     sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
-    nodeKeys.forEach(
-        key -> sb.append(MermaidSupport.aliasLine(MermaidSupport.mermaidId(key), labels.get(key))));
+    nodeKeys.forEach(key -> sb.append(MermaidSupport.aliasLine(ids.get(key), labels.get(key))));
     drawnRelations.forEach(
         fk ->
             sb.append(
                 MermaidSupport.relationLine(
-                    MermaidSupport.mermaidId(fk.referenceTableKey()),
-                    fk,
-                    MermaidSupport.mermaidId(fk.tableKey()))));
+                    ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
     sb.append(
-        MermaidSupport.attributeBlock(selfId, DiagramColumn.of(selfKey, columns, drawnRelations)));
+        MermaidSupport.attributeBlock(
+            ids.get(selfKey), DiagramColumn.of(selfKey, columns, drawnRelations)));
     final Map<TableKey, List<DiagramColumn>> relationColumns =
         boxes.relationColumnsOf(drawnRelations);
     nodeKeys.stream()
@@ -469,8 +467,7 @@ public class TableDefinitionTemplates {
             key ->
                 sb.append(
                     MermaidSupport.attributeBlock(
-                        MermaidSupport.mermaidId(key),
-                        relationColumns.getOrDefault(key, List.of()))));
+                        ids.get(key), relationColumns.getOrDefault(key, List.of()))));
     return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
   }
 
