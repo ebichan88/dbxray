@@ -26,11 +26,11 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
     final String language = function.languageName();
     if (SUPPORTED_LANGUAGES.stream()
         .noneMatch(name -> AsciiCase.equalsIgnoreCase(name, language))) {
-      return FunctionBody.unsupportedLanguage(language);
+      return new FunctionBody.UnsupportedLanguage(language);
     }
     final String definition = function.definition();
     if (definition.isBlank()) {
-      return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
+      return new FunctionBody.NotAnalyzable(TableUsageStatus.NO_DEFINITION);
     }
     final SqlLexResult lexed = SqlLexer.lex(definition, Dbms.POSTGRESQL);
     final List<SqlToken> all = lexed.tokens();
@@ -55,17 +55,18 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
         final SqlLexResult inner =
             SqlLexer.lex(
                 definition, body.contentStart(), body.contentEnd(), body.line(), Dbms.POSTGRESQL);
-        return FunctionBody.postgres(
+        return new FunctionBody.Postgres(
             inner.tokens(), lexed.incomplete() || inner.incomplete(), searchPath);
       } else if (tokens.isAfterDot(i)) {
         continue;
       } else if ((token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC"))
           || token.isWord("RETURN")) {
-        return FunctionBody.postgres(all.subList(i, all.size()), lexed.incomplete(), searchPath);
+        return new FunctionBody.Postgres(
+            all.subList(i, all.size()), lexed.incomplete(), searchPath);
       }
     }
     // 本体の区切りが無い定義の字句は見出しのため、本体と誤らないよう解析しない
-    return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
+    return new FunctionBody.NotAnalyzable(TableUsageStatus.NO_DEFINITION);
   }
 
   private static boolean isSearchPathAt(SqlTokens tokens, int i) {

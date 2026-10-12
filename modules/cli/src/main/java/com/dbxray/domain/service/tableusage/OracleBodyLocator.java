@@ -44,11 +44,11 @@ final class OracleBodyLocator implements FunctionBodyLocator {
   public FunctionBody locate(FunctionEntity function) {
     final String definition = function.definition();
     if (definition.isBlank()) {
-      return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
+      return new FunctionBody.NotAnalyzable(TableUsageStatus.NO_DEFINITION);
     }
     return switch (parsedDefinition(function)) {
       case OracleDefinition.Unanalyzable unanalyzable ->
-          FunctionBody.notAnalyzable(unanalyzable.status());
+          new FunctionBody.NotAnalyzable(unanalyzable.status());
       case OracleDefinition.Standalone standalone -> locateStandalone(standalone);
       case OracleDefinition.PackageBody packageBody -> locateSubprogram(function, packageBody);
     };
@@ -82,10 +82,10 @@ final class OracleBodyLocator implements FunctionBodyLocator {
 
   private static FunctionBody locateStandalone(OracleDefinition.Standalone standalone) {
     if (!standalone.callSpecLanguage().isEmpty()) {
-      return FunctionBody.unsupportedLanguage(standalone.callSpecLanguage());
+      return new FunctionBody.UnsupportedLanguage(standalone.callSpecLanguage());
     }
     final List<SqlToken> tokens = standalone.lexed().tokens();
-    return FunctionBody.oracle(
+    return new FunctionBody.Oracle(
         List.of(tokens.subList(standalone.bodyStart(), tokens.size())),
         standalone.lexed().incomplete(),
         false,
@@ -105,7 +105,7 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     final List<Subprogram> sameName =
         packageBody.subprograms().stream().filter(s -> s.name().equals(name)).toList();
     if (sameName.isEmpty()) {
-      return FunctionBody.notAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND);
+      return new FunctionBody.NotAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND);
     }
     final List<Subprogram> chosen = narrowByParameterNames(sameName, function.functionArguments());
     final List<SqlToken> tokens = packageBody.lexed().tokens();
@@ -115,9 +115,9 @@ final class OracleBodyLocator implements FunctionBodyLocator {
             .map(s -> tokens.subList(s.bodyStart(), s.bodyEnd()))
             .toList();
     if (segments.isEmpty()) {
-      return FunctionBody.unsupportedLanguage(chosen.get(0).language());
+      return new FunctionBody.UnsupportedLanguage(chosen.get(0).language());
     }
-    return FunctionBody.oracle(
+    return new FunctionBody.Oracle(
         segments, false, chosen.size() > 1 && function.isOverloaded(), packageBody.invokerRights());
   }
 

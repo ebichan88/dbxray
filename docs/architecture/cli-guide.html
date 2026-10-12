@@ -1773,8 +1773,8 @@ erDiagram
       <text x="546" y="144" class="d-t-s">incomplete：閉じていない要素があったか</text>
       <rect x="530" y="172" width="360" height="64" rx="6" class="d-box-soft"/>
       <text x="546" y="192" class="d-t-b">FunctionBody</text>
-      <text x="546" y="210" class="d-t-s">status・segments（字句）・searchPath</text>
-      <text x="546" y="226" class="d-t-s">invokerRights・overloadsMerged</text>
+      <text x="546" y="210" class="d-t-s">解析しない理由 or 本体の字句（segments）</text>
+      <text x="546" y="226" class="d-t-s">PostgreSQL：searchPath／Oracle：invokerRights</text>
       <rect x="530" y="254" width="360" height="64" rx="6" class="d-box-soft"/>
       <text x="546" y="274" class="d-t-b">ScanResult</text>
       <text x="546" y="292" class="d-t-s">references：スキーマ・名前・操作（C/R/U/D）</text>
@@ -1805,7 +1805,7 @@ erDiagram
       <line x1="502" y1="467" x2="528" y2="467" class="d-line-muted" marker-end="url(#g12a)"/>
     </svg>
   </div>
-  <figcaption><b>図12 利用しているテーブルの抽出。</b>点線の枠が<code>FunctionTableUsageAnalyzer.analyze</code>の中で、右の列は各段が次の段へ渡す値です。どの段も、解析できない場合は例外ではなく<code>FunctionBody</code>・<code>FunctionTableUsage</code>の<code>status</code>（解析しなかった理由）で返します。抽出しない実行（<code>--preview</code>なし・<code>--check</code>）では、この枠の中を一切通りません。</figcaption>
+  <figcaption><b>図12 利用しているテーブルの抽出。</b>点線の枠が<code>FunctionTableUsageAnalyzer.analyze</code>の中で、右の列は各段が次の段へ渡す値です。どの段も、解析できない場合は例外ではなく、<code>FunctionBody</code>の解析しない結果（<code>NotAnalyzable</code>・<code>UnsupportedLanguage</code>）・<code>FunctionTableUsage</code>の<code>status</code>（解析しなかった理由）で返します。抽出しない実行（<code>--preview</code>なし・<code>--check</code>）では、この枠の中を一切通りません。</figcaption>
 </figure>
 
 <ol class="steps">
@@ -2144,7 +2144,7 @@ erDiagram
     <tr><td class="file">SqlNames<br>AsciiCase</td><td>字句からカタログ上の名前（引用符を外し、引用符の無い名前はASCIIの英字だけ畳み込む）を求める／ASCIIの英字だけを対象にした大文字小文字の比較・変換（<code>ı</code>が<code>I</code>になる等を避ける）</td><td>← <code>TableReferenceScanner</code>・各<code>BodyLocator</code></td></tr>
     <tr><td class="file">FunctionBodyLocator<span class="sub">パッケージプライベート</span><br>PostgresBodyLocator<br>OracleBodyLocator</td><td>定義から解析する本体を切り出すインタフェース（<code>of(dbms)</code>で実装を選ぶ）と、DBMSごとの実装。PostgreSQLはドル引用符の中身・SQL標準の本体、Oracleは単独の関数は見出しの<code>IS</code>・<code>AS</code>の後ろ、パッケージのサブプログラムは<code>PackageSubprograms</code>で求めた範囲。言語が対象外・wrap・定義が無い場合は理由を持つ結果を返す</td><td>← <code>FunctionTableUsageAnalyzer</code>／→ <code>SqlLexer</code>・<code>PackageSubprograms</code></td></tr>
     <tr><td class="file">PackageSubprograms<span class="sub">パッケージプライベート</span></td><td>Oracleのパッケージ本体から、最上位のサブプログラムの範囲を求める。<code>BEGIN</code>・<code>CASE</code>と<code>END</code>の対応をスタックで数え（<code>CASE</code>は文と式を区別）、条件付きコンパイルは分岐ごとに読む。範囲がずれると後ろのサブプログラムすべてに波及するため、テストが厚い</td><td>← <code>OracleBodyLocator</code></td></tr>
-    <tr><td class="file">FunctionBody<span class="sub">パッケージプライベート</span></td><td>切り出した本体（状態・字句・<code>incomplete</code>・<code>overloadsMerged</code>・<code>searchPath</code>・<code>invokerRights</code>）</td><td>← 各<code>BodyLocator</code>／→ <code>FunctionTableUsageAnalyzer</code></td></tr>
+    <tr><td class="file">FunctionBody<span class="sub">パッケージプライベート</span></td><td>切り出した結果。解析しない場合（<code>NotAnalyzable</code>・<code>UnsupportedLanguage</code>）と、DBMSごとの解析する本体（<code>Postgres</code>：字句・<code>incomplete</code>・<code>searchPath</code>／<code>Oracle</code>：字句・<code>incomplete</code>・<code>overloadsMerged</code>・<code>invokerRights</code>）を型で分ける（sealed interface）</td><td>← 各<code>BodyLocator</code>／→ <code>FunctionTableUsageAnalyzer</code></td></tr>
     <tr><td class="file">TableReferenceScanner<span class="sub">パッケージプライベート</span></td><td>字句から、テーブルを指す位置の名前と操作（C・R・U・D）・動的SQLを拾う。きっかけの語と前後の字句だけで判定し、完全な構文解析はしない。<code>;</code>と最上位の<code>LOOP</code>で文の状態を作り直す</td><td>← <code>FunctionTableUsageAnalyzer</code>／→ <code>SqlTokens</code></td></tr>
     <tr><td class="file">TableReference<br>ScanResult<span class="sub">パッケージプライベート</span></td><td>拾った名前1件（スキーマ・テーブル・操作。出力対象と照らす前）／拾った結果（名前の列と動的SQLの種類）</td><td>← <code>TableReferenceScanner</code>／→ <code>FunctionTableUsageAnalyzer</code></td></tr>
 

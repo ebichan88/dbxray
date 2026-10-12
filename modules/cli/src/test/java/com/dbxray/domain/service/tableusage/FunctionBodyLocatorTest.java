@@ -16,9 +16,29 @@ import org.junit.jupiter.params.provider.ValueSource;
 /** FunctionBodyLocator の定義からの本体の切り出しのテスト */
 class FunctionBodyLocatorTest {
 
+  /** 解析した結果として取り出す（解析しない結果ならテストを失敗させる） */
+  static FunctionBody.Analyzed analyzed(FunctionBody body) {
+    return assertInstanceOf(FunctionBody.Analyzed.class, body);
+  }
+
+  /** PostgreSQLの解析結果として取り出す */
+  static FunctionBody.Postgres postgres(FunctionBody body) {
+    return assertInstanceOf(FunctionBody.Postgres.class, body);
+  }
+
+  /** Oracleの解析結果として取り出す */
+  static FunctionBody.Oracle oracle(FunctionBody body) {
+    return assertInstanceOf(FunctionBody.Oracle.class, body);
+  }
+
+  /** 言語が対象外のため解析しない結果の言語名 */
+  static String language(FunctionBody body) {
+    return assertInstanceOf(FunctionBody.UnsupportedLanguage.class, body).language();
+  }
+
   /** 本体の字句をつないだ文字列（区別できなかった本体は「 || 」で区切る） */
   static String text(FunctionBody body) {
-    return body.segments().stream()
+    return analyzed(body).segments().stream()
         .map(tokens -> tokens.stream().map(SqlToken::text).collect(Collectors.joining(" ")))
         .collect(Collectors.joining(" || "));
   }
@@ -48,9 +68,9 @@ class FunctionBodyLocatorTest {
       assertEquals(TableUsageStatus.ANALYZED, body.status());
       assertEquals(
           "BEGIN RETURN QUERY SELECT * FROM sample . employee WHERE id = p_id ; END ;", text(body));
-      assertFalse(body.incomplete());
-      assertEquals(List.of(), body.searchPath());
-      assertEquals(5, body.segments().get(0).get(0).line(), "行番号は定義全体での行番号のまま");
+      assertFalse(analyzed(body).incomplete());
+      assertEquals(List.of(), postgres(body).searchPath());
+      assertEquals(5, analyzed(body).segments().get(0).get(0).line(), "行番号は定義全体での行番号のまま");
     }
 
     @Test
@@ -132,7 +152,7 @@ class FunctionBodyLocatorTest {
               AS $function$ SELECT 1 $function$
               """);
 
-      assertEquals(List.of("MySchema", "it's", "public"), body.searchPath());
+      assertEquals(List.of("MySchema", "it's", "public"), postgres(body).searchPath());
     }
 
     @Test
@@ -140,21 +160,24 @@ class FunctionBodyLocatorTest {
     void testHandWrittenSearchPath() {
       assertEquals(
           List.of("sample", "Other"),
-          locate(
-                  "sql",
-                  "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path = Sample,"
-                      + " \"Other\", pg_temp_3 AS $$ SELECT 1 $$")
+          postgres(
+                  locate(
+                      "sql",
+                      "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path = Sample,"
+                          + " \"Other\", pg_temp_3 AS $$ SELECT 1 $$"))
               .searchPath());
       assertEquals(
           List.of(),
-          locate(
-                  "sql",
-                  "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path TO DEFAULT AS $$"
-                      + " SELECT 1 $$")
+          postgres(
+                  locate(
+                      "sql",
+                      "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path TO DEFAULT AS $$"
+                          + " SELECT 1 $$"))
               .searchPath());
       assertEquals(
           List.of(),
-          locate("sql", "CREATE FUNCTION f() SET search_path AS $$ SELECT 1 $$").searchPath(),
+          postgres(locate("sql", "CREATE FUNCTION f() SET search_path AS $$ SELECT 1 $$"))
+              .searchPath(),
           "値の無いSET search_pathは指定が無いものとする");
       assertEquals(
           TableUsageStatus.NO_DEFINITION,
@@ -170,10 +193,11 @@ class FunctionBodyLocatorTest {
     void testEmptySearchPath() {
       assertEquals(
           List.of(""),
-          locate(
-                  "sql",
-                  "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path TO '' AS $$ SELECT 1"
-                      + " $$")
+          postgres(
+                  locate(
+                      "sql",
+                      "CREATE FUNCTION f() RETURNS int LANGUAGE sql SET search_path TO '' AS $$ SELECT 1"
+                          + " $$"))
               .searchPath());
     }
 
@@ -182,10 +206,11 @@ class FunctionBodyLocatorTest {
     void testSearchPathFromCurrent() {
       assertEquals(
           List.of(),
-          locate(
-                  "sql",
-                  "CREATE FUNCTION f() RETURNS int SET search_path FROM CURRENT LANGUAGE sql AS $$"
-                      + " SELECT 1 $$")
+          postgres(
+                  locate(
+                      "sql",
+                      "CREATE FUNCTION f() RETURNS int SET search_path FROM CURRENT LANGUAGE sql AS $$"
+                          + " SELECT 1 $$"))
               .searchPath());
     }
 
@@ -194,19 +219,21 @@ class FunctionBodyLocatorTest {
     void testSearchPathInBodyIsIgnored() {
       assertEquals(
           List.of("sample"),
-          locate(
-                  "plpgsql",
-                  "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql SET search_path TO 'sample' AS"
-                      + " $$ BEGIN SET LOCAL search_path TO 'other';"
-                      + " PERFORM set_config('search_path', v_schema, true);"
-                      + " EXECUTE 'SET search_path TO ' || v_schema; END $$")
+          postgres(
+                  locate(
+                      "plpgsql",
+                      "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql SET search_path TO 'sample' AS"
+                          + " $$ BEGIN SET LOCAL search_path TO 'other';"
+                          + " PERFORM set_config('search_path', v_schema, true);"
+                          + " EXECUTE 'SET search_path TO ' || v_schema; END $$"))
               .searchPath());
       assertEquals(
           List.of(),
-          locate(
-                  "plpgsql",
-                  "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql AS $$ BEGIN SET search_path"
-                      + " TO 'other'; END $$")
+          postgres(
+                  locate(
+                      "plpgsql",
+                      "CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql AS $$ BEGIN SET search_path"
+                          + " TO 'other'; END $$"))
               .searchPath());
     }
 
@@ -218,7 +245,7 @@ class FunctionBodyLocatorTest {
           locate(language, "CREATE OR REPLACE FUNCTION f() RETURNS int LANGUAGE c AS 'obj', 'sym'");
 
       assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, body.status());
-      assertEquals(language, body.language());
+      assertEquals(language, language(body));
     }
 
     @Test
@@ -241,14 +268,15 @@ class FunctionBodyLocatorTest {
     void testIncomplete() {
       final FunctionBody unterminatedBody =
           locate("plpgsql", "CREATE FUNCTION f() AS $function$ BEGIN DELETE FROM t;");
-      assertTrue(unterminatedBody.incomplete());
+      assertTrue(analyzed(unterminatedBody).incomplete());
       assertEquals("BEGIN DELETE FROM t ;", text(unterminatedBody));
 
       final FunctionBody unterminatedString =
           locate("plpgsql", "CREATE FUNCTION f() AS $function$ DELETE FROM t; RAISE 'x $function$");
-      assertTrue(unterminatedString.incomplete());
+      assertTrue(analyzed(unterminatedString).incomplete());
 
-      assertFalse(locate("plpgsql", "CREATE FUNCTION f() AS $$ SELECT 'x' $$").incomplete());
+      assertFalse(
+          analyzed(locate("plpgsql", "CREATE FUNCTION f() AS $$ SELECT 'x' $$")).incomplete());
     }
 
     @Test
@@ -260,7 +288,7 @@ class FunctionBodyLocatorTest {
       final FunctionBody header =
           locate("sql", "CREATE FUNCTION sample.f() RETURNS SETOF sample.employee LANGUAGE sql");
       assertEquals(TableUsageStatus.NO_DEFINITION, header.status());
-      assertEquals(List.of(), header.segments(), "見出しの型のテーブル名を拾わない");
+      assertInstanceOf(FunctionBody.NotAnalyzable.class, header, "見出しの型のテーブル名を拾わない");
     }
 
     @Test
@@ -275,7 +303,7 @@ class FunctionBodyLocatorTest {
                       + " RETURN)) RETURNS int AS $$ SELECT 1 $$")));
       assertEquals(
           List.of(),
-          locate("sql", "CREATE FUNCTION f(SET search_path TO 'x') AS $$ SELECT 1 $$")
+          postgres(locate("sql", "CREATE FUNCTION f(SET search_path TO 'x') AS $$ SELECT 1 $$"))
               .searchPath());
     }
 
@@ -346,8 +374,8 @@ class FunctionBodyLocatorTest {
 
       assertEquals(TableUsageStatus.ANALYZED, body.status());
       assertEquals("v NUMBER ; BEGIN SELECT 1 INTO v FROM dual ; RETURN v ; END f ;", text(body));
-      assertFalse(body.invokerRights());
-      assertFalse(body.overloadsMerged());
+      assertFalse(oracle(body).invokerRights());
+      assertFalse(analyzed(body).overloadsMerged());
     }
 
     @Test
@@ -366,10 +394,16 @@ class FunctionBodyLocatorTest {
     @DisplayName("locate: AUTHID CURRENT_USERの単独の関数は実行者権限とする")
     void testStandaloneInvokerRights() {
       assertTrue(
-          locate("P", "", "CREATE OR REPLACE PROCEDURE p AUTHID CURRENT_USER IS BEGIN NULL; END;")
+          oracle(
+                  locate(
+                      "P",
+                      "",
+                      "CREATE OR REPLACE PROCEDURE p AUTHID CURRENT_USER IS BEGIN NULL; END;"))
               .invokerRights());
       assertFalse(
-          locate("P", "", "CREATE OR REPLACE PROCEDURE p AUTHID DEFINER IS BEGIN NULL; END;")
+          oracle(
+                  locate(
+                      "P", "", "CREATE OR REPLACE PROCEDURE p AUTHID DEFINER IS BEGIN NULL; END;"))
               .invokerRights());
     }
 
@@ -402,15 +436,16 @@ class FunctionBodyLocatorTest {
               "CREATE OR REPLACE FUNCTION f RETURN VARCHAR2 AS LANGUAGE JAVA NAME 'X.y() return"
                   + " java.lang.String';");
       assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, java.status());
-      assertEquals("JAVA", java.language());
+      assertEquals("JAVA", language(java));
 
       assertEquals(
           "C",
-          locate("P", "", "CREATE OR REPLACE PROCEDURE p AS EXTERNAL LIBRARY lib NAME \"p\";")
-              .language());
+          language(
+              locate(
+                  "P", "", "CREATE OR REPLACE PROCEDURE p AS EXTERNAL LIBRARY lib NAME \"p\";")));
       assertEquals(
           "C",
-          locate("P", "", "CREATE OR REPLACE PROCEDURE p IS LANGUAGE C NAME \"p\";").language());
+          language(locate("P", "", "CREATE OR REPLACE PROCEDURE p IS LANGUAGE C NAME \"p\";")));
     }
 
     @Test
@@ -473,8 +508,8 @@ class FunctionBodyLocatorTest {
               "X NUMBER",
               "CREATE OR REPLACE FUNCTION f(x NUMBER) RETURN t%ROWTYPE AGGREGATE USING impl;");
 
+      assertInstanceOf(FunctionBody.NotAnalyzable.class, body);
       assertEquals(TableUsageStatus.NO_DEFINITION, body.status());
-      assertEquals(List.of(), body.segments());
     }
 
     @Test
@@ -488,7 +523,7 @@ class FunctionBodyLocatorTest {
       assertTrue(text.endsWith("BEGIN NULL ; END blk ;"), text);
       assertTrue(text.contains("FOR r IN ( SELECT * FROM t2 ) LOOP"), text);
       assertFalse(text.contains("g_count"), "宣言部の変数・初期化部は含めない: " + text);
-      assertFalse(body.incomplete());
+      assertFalse(analyzed(body).incomplete());
     }
 
     @Test
@@ -505,7 +540,7 @@ class FunctionBodyLocatorTest {
       final FunctionBody second = locate("PKG.OVER", "P_NAME VARCHAR2", PACKAGE);
 
       assertEquals("BEGIN DELETE FROM o1 ;", text(first));
-      assertFalse(first.overloadsMerged());
+      assertFalse(analyzed(first).overloadsMerged());
       assertEquals("BEGIN DELETE FROM o2 ;", text(second));
     }
 
@@ -524,7 +559,7 @@ class FunctionBodyLocatorTest {
 
       final FunctionBody body = locate("PKG.P", "A NUMBER", definition, 2);
 
-      assertTrue(body.overloadsMerged());
+      assertTrue(analyzed(body).overloadsMerged());
       assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(body));
     }
 
@@ -544,13 +579,13 @@ class FunctionBodyLocatorTest {
 
       final FunctionBody sameNames = locate("PKG.P", "A NUMBER", definition, 3);
       assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(sameNames));
-      assertTrue(sameNames.overloadsMerged());
+      assertTrue(analyzed(sameNames).overloadsMerged());
 
       final FunctionBody unmatched = locate("PKG.P", "C NUMBER", definition, 3);
       assertEquals(
           "BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ; || BEGIN DELETE FROM t3 ;",
           text(unmatched));
-      assertTrue(unmatched.overloadsMerged());
+      assertTrue(analyzed(unmatched).overloadsMerged());
     }
 
     @Test
@@ -571,8 +606,8 @@ class FunctionBodyLocatorTest {
       final FunctionBody body = locate("PKG.P", "", definition, 1);
 
       assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(body));
-      assertFalse(body.overloadsMerged());
-      assertTrue(locate("PKG.P", "", definition, 2).overloadsMerged());
+      assertFalse(analyzed(body).overloadsMerged());
+      assertTrue(analyzed(locate("PKG.P", "", definition, 2)).overloadsMerged());
     }
 
     @Test
@@ -590,8 +625,7 @@ class FunctionBodyLocatorTest {
       final FunctionBody body = locate("PKG.P", "A NUMBER", definition, 2);
 
       assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, body.status());
-      assertEquals("JAVA", body.language());
-      assertEquals(List.of(), body.segments());
+      assertEquals("JAVA", language(body));
     }
 
     @Test
@@ -617,8 +651,8 @@ class FunctionBodyLocatorTest {
           "CREATE OR REPLACE PACKAGE pkg AUTHID CURRENT_USER AS PROCEDURE p; END;\n\n"
               + "CREATE OR REPLACE PACKAGE BODY pkg AS PROCEDURE p IS BEGIN NULL; END; END;";
 
-      assertTrue(locate("PKG.P", "", definition).invokerRights());
-      assertFalse(locate("PKG.P1", "P_ID NUMBER", PACKAGE).invokerRights());
+      assertTrue(oracle(locate("PKG.P", "", definition)).invokerRights());
+      assertFalse(oracle(locate("PKG.P1", "P_ID NUMBER", PACKAGE)).invokerRights());
     }
 
     @Test
@@ -668,7 +702,7 @@ class FunctionBodyLocatorTest {
 
       assertEquals(TableUsageStatus.ANALYZED, body.status());
       assertEquals("BEGIN DELETE FROM t ;", text(body));
-      assertTrue(body.invokerRights(), "仕様部の見出しの権限はそのまま読む");
+      assertTrue(oracle(body).invokerRights(), "仕様部の見出しの権限はそのまま読む");
       assertEquals(
           TableUsageStatus.NO_DEFINITION,
           locate("PKG.P", "", "CREATE OR REPLACE PACKAGE pkg AS c VARCHAR2(1) := 'x; END;\n\n")
@@ -722,10 +756,10 @@ class FunctionBodyLocatorTest {
 
       final FunctionBody java = locate("PKG.J", "", definition);
       assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, java.status());
-      assertEquals("JAVA", java.language());
-      assertEquals("C", locate("PKG.P", "C_ARG NUMBER", definition).language());
+      assertEquals("JAVA", language(java));
+      assertEquals("C", language(locate("PKG.P", "C_ARG NUMBER", definition)));
       final FunctionBody merged = locate("PKG.P", "B DATE", definition, 2);
-      assertTrue(merged.overloadsMerged());
+      assertTrue(analyzed(merged).overloadsMerged());
       assertEquals("BEGIN DELETE FROM t ;", text(merged));
     }
 
@@ -868,7 +902,7 @@ class FunctionBodyLocatorTest {
       final FunctionBody body = locate("PKG.P", "", definition, 1);
 
       assertEquals("BEGIN DELETE FROM tp ;", text(body));
-      assertFalse(body.overloadsMerged());
+      assertFalse(analyzed(body).overloadsMerged());
     }
 
     @Test
@@ -907,7 +941,7 @@ class FunctionBodyLocatorTest {
       final FunctionBody body = locate("PKG.P", "A NUMBER, B NUMBER", definition, 2);
 
       assertEquals("BEGIN DELETE FROM t1 ;", text(body));
-      assertFalse(body.overloadsMerged());
+      assertFalse(analyzed(body).overloadsMerged());
     }
 
     @Test
@@ -950,7 +984,7 @@ class FunctionBodyLocatorTest {
           p1);
       final FunctionBody p2 = locate("PKG.P2", "", definition);
       assertEquals("BEGIN DELETE FROM e ; || BEGIN DELETE FROM f ;", text(p2));
-      assertFalse(p2.overloadsMerged(), "カタログ上はオーバーロードではない");
+      assertFalse(analyzed(p2).overloadsMerged(), "カタログ上はオーバーロードではない");
       assertEquals("BEGIN DELETE FROM g ;", text(locate("PKG.P3", "", definition)));
     }
 
@@ -970,7 +1004,7 @@ class FunctionBodyLocatorTest {
 
       final FunctionBody first = locate("PKG.F", "A NUMBER", definition);
       assertEquals("BEGIN DELETE FROM a ; RETURN 1 ;", text(first));
-      assertFalse(first.overloadsMerged());
+      assertFalse(analyzed(first).overloadsMerged());
     }
 
     @Test
