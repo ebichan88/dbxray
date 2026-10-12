@@ -802,7 +802,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
     <tr><td>Guice</td><td><code>@Inject</code>は<code>jakarta.inject</code>のもの。Guiceに依存するのはエントリーポイントとconfigだけ</td></tr>
     <tr><td>接尾辞と置き場所</td><td><code>…Entity</code>→<code>domain.model</code>、<code>…Dto</code>→<code>infrastructure.db.repository.dto</code>か<code>presentation.dto</code>、<code>…Templates</code>→<code>domain.service.writer</code>、<code>…Writer</code>→<code>domain.service</code>、<code>…Locations</code>→<code>domain.service.path</code>、<code>…Usecase</code>・<code>…Request</code>→<code>application</code></td></tr>
     <tr><td>リポジトリ</td><td><code>domain.repository</code>には<code>…Repository</code>のインタフェースだけ。実装は<code>infrastructure..repository</code></td></tr>
-    <tr><td>定義本体を読むパッケージ</td><td><code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>は正規表現を使わない（<code>java.util.regex</code>と、<code>String.matches</code>・<code>replaceAll</code>・<code>replaceFirst</code>・<code>split</code>）。定義本体はDBでCREATEの権限を持つ人が書ける入力で、正規表現はバックトラックで入力の長さに比例しない時間がかかり得る（ReDoS）ため、1文字ずつ読む（9.9節）</td></tr>
+    <tr><td>定義本体を読むパッケージ</td><td><code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>は正規表現を使わない（<code>java.util.regex</code>と、<code>String.matches</code>・<code>replaceAll</code>・<code>replaceFirst</code>・<code>split</code>・<code>splitWithDelimiters</code>と、<code>java.util.Scanner</code>）。定義本体はDBでCREATEの権限を持つ人が書ける入力で、正規表現はバックトラックで入力の長さに比例しない時間がかかり得る（ReDoS）ため、1文字ずつ読む（9.9節）</td></tr>
   </tbody>
 </table>
 </div>

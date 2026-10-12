@@ -36,7 +36,7 @@ cli（`modules/cli/`）とMCPサーバー（`modules/mcp-server/`）のコード
   [overview.mdの「レイヤー構成」](../architecture/overview.md#レイヤー構成)を参照。
   `ArchitectureTest`は、依存方向に加えて、`shared.exception`の制約、`domain.model`配下のパッケージの循環
   （向きそのものは[domain-model.md](../architecture/domain-model.md)に従う）、`java.nio.file.Files`・引数なしの`now()`・Guiceへの依存、
-  接尾辞とパッケージの対応を検査する。
+  接尾辞とパッケージの対応、関数の定義本体を読むパッケージ（`domain.service.tableusage`・`domain.model.tableusage`）で正規表現を使わないことを検査する。
 - クラス名の接尾辞は[package-structure.mdの「命名」](../architecture/package-structure.md#命名)の表に揃える。
   名前の本体は[domain-model.mdの用語集](../architecture/domain-model.md)の用語（利用者向けのドキュメントで使っている呼び方）に揃え、
   同じものに別の名前を付けない。
@@ -169,6 +169,10 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 - **秘密情報**：パスワードは環境変数（または`--db-password`）でだけ受け取り、設定ファイルには書かせない（`url`への埋め込みも誤りにする）。
   例外のメッセージ・ログ・画面の表示に、CLI引数・設定値・接続URL等の**値**をそのまま含めない（書き誤りの引数にパスワードが入りうる。
   誤りの報告は`FailureReporter`がログファイルにも残す）。
+- **正規表現**：関数・プロシージャの定義本体を読む`domain.service.tableusage`・`domain.model.tableusage`では、正規表現を使わない
+  （`java.util.regex`、`String`の`matches`・`replaceAll`・`replaceFirst`・`split`・`splitWithDelimiters`、`Scanner`）。
+  定義本体はDBでCREATEの権限を持つ人が書ける入力で、バックトラックにより入力の長さに比例しない時間がかかりうる（ReDoS）ため、
+  `SqlLexer`のように1文字ずつ読む。`ArchitectureTest`が違反を検知する。
 - **削除**：ディレクトリの削除は`--rm-dist`の出力先だけで行い、削除してよいかは`OutputPathResolver.isRemovableOutputDir`で判定する。
   削除の対象を広げる変更をしない。
   ファイルの削除は、`--preview`を付けない実行が、プレビューの機能が出力した前回の参考情報`functionTableUsages.json`を消す1箇所だけ（`InsightWriter`。パスは`OutputPathResolver`で解決したもの）。
@@ -190,6 +194,12 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 - **集合の操作はファーストクラスコレクションに持たせる。** エンティティの`List`を受け取って同じ検索・振り分けを各所で書かず、
   `Tables`・`ForeignKeys`等の複数形のクラスにメソッドを足す（[命名](../architecture/package-structure.md#命名)）。
 - **時刻は`Clock`から求める。** 引数なしの`now()`を使わない（[責務の分け方](#責務の分け方)）。
+- **意味の読めない数字・文字を式に埋めない。** `pos += 2`・`repeat(2)`・`length() - open >= 2`のように、何の長さ・位置かが
+  式から読めないものは、名前を付けた変数・定数にするか、`"q'".length()`のように長さの元の文字列で書く。
+  添字の0・1のような自明なものは対象外。
+- **`boolean`を返すメソッドは状態を変えない。** 位置の更新や`incomplete`の記録のような副作用を伴うなら、判定（`has…`・`is…`）と
+  実行（`scan…`・`skip…`）に分ける（例: `SqlLexer#hasAlternativeQuoteDelimiter`と`scanAlternativeQuote`）。
+- **テストのためだけの口を本番コードに入れない。** 検証用の引数・フラグ・メソッドを本番のクラスに足さず、テスト側のヘルパーで包む。
 
 ## テスト
 
