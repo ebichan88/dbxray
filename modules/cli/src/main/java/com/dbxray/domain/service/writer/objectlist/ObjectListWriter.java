@@ -80,7 +80,7 @@ public class ObjectListWriter {
         outputRoot);
   }
 
-  /** 行数がMarkdownの表に表示できる最大件数を超える場合は、別ファイルへ分割する。 対象が存在しない一覧を出力しないことの判定は呼び出し側（出力する一覧の決定）が行う */
+  /** 行数がMarkdownの表に表示できる最大件数を超える場合は、別ファイルへ分割する。対象が存在しない一覧を出力しないことの判定は呼び出し側（出力する一覧の決定）が行う */
   private <T> void writeObjectList(
       ListDocumentType type,
       String tableHeader,

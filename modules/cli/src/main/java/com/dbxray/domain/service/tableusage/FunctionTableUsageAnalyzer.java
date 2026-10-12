@@ -25,8 +25,8 @@ import java.util.function.Function;
 /**
  * 関数・プロシージャの定義本体から、利用している出力対象のテーブルと操作（C・R・U・D）を抽出するクラス<br>
  * 本体を切り出し（{@link FunctionBodyLocator}）、テーブルを指す位置の名前を拾い（{@link TableReferenceScanner}）、
- * 出力対象のテーブルと照らして一致したものだけを残す。スキーマ修飾の無い名前は、定義から決まる場合（PostgreSQLの{@code SET
- * search_path}、Oracleの定義者権限の所有者のスキーマ）だけスキーマを決め、決まらなければ同じ名前の出力対象のテーブルを候補として持つ。
+ * 出力対象のテーブルと照らして一致したものだけを残す。スキーマ修飾の無い名前は、
+ * 定義から決まる場合（PostgreSQLの{@code SET search_path}、Oracleの定義者権限の所有者のスキーマ）だけスキーマを決め、決まらなければ同じ名前の出力対象のテーブルを候補として持つ。
  * インスタンスはスキーマごとに作る（Oracleのパッケージの字句をスキーマの処理の間だけ使い回すため）
  */
 public final class FunctionTableUsageAnalyzer {
@@ -194,8 +194,8 @@ public final class FunctionTableUsageAnalyzer {
   /**
    * スキーマ修飾の無い名前が{@link #determineSchema}で決まらなかった場合の、候補の示し方を求めるメソッド
    *
-   * @return 候補を示す場合はその決まり方。空は候補を示さない（関数の{@code SET search_path}のどのスキーマにも無い名前は、出力対象外のスキーマ・{@code
-   *     pg_catalog}のもの）
+   * @return 候補を示す場合はその決まり方。空は候補を示さない（関数の{@code SET search_path}のどのスキーマにも無い名前は、
+   *     出力対象外のスキーマ・{@code pg_catalog}のもの）
    */
   private Optional<SchemaResolution> unqualifiedResolution(FunctionBody.Analyzed body) {
     return switch (body) {

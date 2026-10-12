@@ -43,8 +43,8 @@ public record FunctionTableUsageEntry(
    * 利用しているテーブル1件
    *
    * @param schema スキーマ名。定義からスキーマが決まらない名前は空文字
-   * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code search_path}・{@code current_user}・{@code
-   *     synonym}）。スキーマが決まった場合は空文字
+   * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code search_path}・{@code current_user}・
+   *     {@code synonym}）。スキーマが決まった場合は空文字
    * @param schemaCandidates スキーマが決まらない名前の、同じ名前の出力対象のテーブルがあるスキーマ
    * @param operations 操作（{@code C}・{@code R}・{@code U}・{@code D}の順）
    */

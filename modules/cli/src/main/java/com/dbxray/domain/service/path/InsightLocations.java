@@ -2,10 +2,10 @@ package com.dbxray.domain.service.path;
 
 /**
  * 参考情報（{@code insights}。観点等、スナップショットの事実とは別にAIへ渡す情報）の配置を一元的に定めるクラス<br>
- * {@link SnapshotLocations}と対になるが、出力ベースディレクトリ直下では{@code snapshot}の**兄弟**に置く （{@code
- * --check}の比較対象はスナップショットのディレクトリ配下に限られるため、参考情報をその外に置くことで 比較対象から構造的に外れる）。配置は{@code
- * insights/{DB名}/viewpoints.json}・{@code
- * insights/{DB名}/{スキーマ名}/functionTableUsages.json}（DB名・スキーマ名は{@link PathSegments}で置き換える）
+ * {@link SnapshotLocations}と対になるが、出力ベースディレクトリ直下では{@code snapshot}の**兄弟**に置く
+ * （{@code --check}の比較対象はスナップショットのディレクトリ配下に限られるため、参考情報をその外に置くことで比較対象から構造的に外れる）。
+ * 配置は{@code insights/{DB名}/viewpoints.json}・
+ * {@code insights/{DB名}/{スキーマ名}/functionTableUsages.json}（DB名・スキーマ名は{@link PathSegments}で置き換える）
  */
 public final class InsightLocations {
 

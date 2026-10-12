@@ -2,8 +2,8 @@ package com.dbxray.domain.service.tableusage;
 
 /**
  * ASCIIの英字だけを対象にした大文字小文字の比較・変換<br>
- * {@link String#equalsIgnoreCase}・{@link String#toUpperCase()}は、ASCII以外の文字も変換する（{@code ı}が{@code
- * I}になる等）ため、 キーワードの判定と識別子の畳み込み（PostgreSQL・OracleともASCIIの英字だけを畳み込む）には使わない
+ * {@link String#equalsIgnoreCase}・{@link String#toUpperCase()}は、
+ * ASCII以外の文字も変換する（{@code ı}が{@code I}になる等）ため、キーワードの判定と識別子の畳み込み（PostgreSQL・OracleともASCIIの英字だけを畳み込む）には使わない
  */
 final class AsciiCase {
 

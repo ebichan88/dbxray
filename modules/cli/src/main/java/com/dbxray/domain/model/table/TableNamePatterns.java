@@ -7,9 +7,9 @@ import java.util.regex.Pattern;
 
 /**
  * テーブル名パターン（{@code table=}の記法）のリストを判定する値オブジェクト<br>
- * 出力対象の範囲（{@code table=}。{@link
- * com.dbxray.domain.model.target.TableScope}）と、観点に所属するテーブルの指定（サイドカーYAMLの{@code
- * viewpoints}）で共通に用いる。以下の記法に対応する。
+ * 出力対象の範囲（{@code table=}。
+ * {@link com.dbxray.domain.model.target.TableScope}）と、
+ * 観点に所属するテーブルの指定（サイドカーYAMLの{@code viewpoints}）で共通に用いる。以下の記法に対応する。
  *
  * <ul>
  *   <li>完全一致（従来どおり）: {@code employee}
@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  *   <li>スキーマ修飾（同名テーブルが複数スキーマに存在する場合に対象スキーマを限定）: {@code sample.employee}
  * </ul>
  *
- * 除外パターンは包含パターンより常に優先される。包含パターンが1件も指定されていない場合は、 除外パターンに一致しない限りすべてのテーブルが対象となる。
+ * 除外パターンは包含パターンより常に優先される。包含パターンが1件も指定されていない場合は、除外パターンに一致しない限りすべてのテーブルが対象となる。
  * テーブル名の部分が空のパターン（{@code !}のみ、{@code sample.}等）と、スキーマ名の部分が空のパターン（{@code .employee}等）は、
  * どのテーブルにも一致しない書き誤りのため、黙って受け入れずに誤りとする
  */
@@ -74,7 +74,7 @@ public final class TableNamePatterns {
     return includes.isEmpty() && excludes.isEmpty();
   }
 
-  /** 包含パターンが無い場合は除外に一致しない全テーブルが対象となるため、観点のように「どのテーブルを含めるか」を 明示させたい用途で、指定漏れを判定するために用いる */
+  /** 包含パターンが無い場合は除外に一致しない全テーブルが対象となるため、観点のように「どのテーブルを含めるか」を明示させたい用途で、指定漏れを判定するために用いる */
   public boolean hasInclusion() {
     return !includes.isEmpty();
   }

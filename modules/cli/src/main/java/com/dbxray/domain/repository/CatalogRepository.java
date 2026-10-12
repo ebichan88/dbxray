@@ -21,12 +21,12 @@ public interface CatalogRepository {
   DatabaseEntity selectDatabase();
 
   /**
-   * テーブル単位の絞り込みは呼び出し側（{@link com.dbxray.domain.model.target.TableScope}）がJava側で行うため、 スキーマ単位でのみ絞り込む
+   * テーブル単位の絞り込みは呼び出し側（{@link com.dbxray.domain.model.target.TableScope}）がJava側で行うため、スキーマ単位でのみ絞り込む
    */
   List<TableEntity> selectTableList(List<String> schemaList);
 
   /**
-   * テーブル数に比例して重くなる情報のため、呼び出し側はスキーマ・チャンク単位でテーブルを渡す （同一スキーマのテーブルを渡すことを想定する）
+   * テーブル数に比例して重くなる情報のため、呼び出し側はスキーマ・チャンク単位でテーブルを渡す（同一スキーマのテーブルを渡すことを想定する）
    *
    * @return テーブルごとの詳細情報のリスト（{@code tables}と同じ順）
    */
@@ -46,9 +46,9 @@ public interface CatalogRepository {
   List<TriggerEntity> selectTriggerList(List<String> schemaList);
 
   /**
-   * パーティション表の下位のパーティション（多段パーティションの中間を含む）を取得する。パーティションはテーブルとして {@link
-   * #selectTableList}に含まれないため、パーティション表の定義書にまとめるために別に取得する。 テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link
-   * #selectTableList}を参照）
+   * パーティション表の下位のパーティション（多段パーティションの中間を含む）を取得する。
+   * パーティションはテーブルとして{@link #selectTableList}に含まれないため、パーティション表の定義書にまとめるために別に取得する。
+   * テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照）
    *
    * @param schemaList パーティション表（根）のスキーマで絞り込む。パーティションは別スキーマにあってもよい
    * @return パーティション表ごとに、親から子へ階層順に並べたパーティションのリスト
@@ -56,8 +56,8 @@ public interface CatalogRepository {
   List<PartitionEntity> selectPartitionList(List<String> schemaList);
 
   /**
-   * ビュー（マテリアライズドビューを含む）が参照するテーブル（ビュー・マテリアライズドビューを含む）を取得する。 テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link
-   * #selectTableList}を参照）
+   * ビュー（マテリアライズドビューを含む）が参照するテーブル（ビュー・マテリアライズドビューを含む）を取得する。
+   * テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照）
    *
    * @param schemaList 参照する側のビューのスキーマで絞り込む。参照されるテーブルは別のスキーマにあってもよい
    * @return ビューごとに、参照されるテーブルのスキーマ名・テーブル名の順に並べたリスト。同じテーブルは1件にまとめる。

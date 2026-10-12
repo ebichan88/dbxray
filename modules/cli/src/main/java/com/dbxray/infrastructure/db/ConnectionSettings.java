@@ -28,8 +28,8 @@ public final class ConnectionSettings {
 
   /**
    * JDBC URLに埋め込んだパスワード<br>
-   * 接続プロパティ（{@code ?password=}・{@code ;password=}、{@code sslpassword=}等）と、Oracleの{@code
-   * jdbc:oracle:thin:ユーザー/パスワード@...}の形
+   * 接続プロパティ（{@code ?password=}・{@code ;password=}、{@code sslpassword=}等）と、
+   * Oracleの{@code jdbc:oracle:thin:ユーザー/パスワード@...}の形
    */
   private static final Pattern PASSWORD_IN_URL =
       Pattern.compile("(?i)password\\s*=|^jdbc:oracle:[a-z0-9]+:[^@/]*/[^@]*@");
@@ -85,7 +85,8 @@ public final class ConnectionSettings {
 
   /**
    * 未知のキーの一覧に紛れさせず、パスワードの渡し方を示して誤りとする<br>
-   * 値が空でも誤りとするのは、行が残っているとパスワードを書く場所だと誤解されるため。 URLに埋め込んだパスワードも同じく誤りとする（誤りの報告にURLの値は含めない）
+   * 値が空でも誤りとするのは、行が残っているとパスワードを書く場所だと誤解されるため。
+   * URLに埋め込んだパスワードも同じく誤りとする（誤りの報告にURLの値は含めない）
    */
   private static void requireNoPasswordInFile(Map<String, String> baseValues) {
     if (baseValues.containsKey(PASSWORD_KEY)) {
@@ -113,7 +114,7 @@ public final class ConnectionSettings {
 
   /**
    * DB接続情報を検証するメソッド<br>
-   * 必須の項目が未指定のまま接続すると、置換されないプレースホルダ（{@code ${driver}}等）で接続を試みて 原因の分かりにくい失敗になるため、接続する前に報告する
+   * 必須の項目が未指定のまま接続すると、置換されないプレースホルダ（{@code ${driver}}等）で接続を試みて原因の分かりにくい失敗になるため、接続する前に報告する
    *
    * @throws InvalidConfigurationException 未知のキーがある場合や、必須の項目が未指定の場合（見つかった誤りをすべて示す）
    */

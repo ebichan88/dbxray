@@ -18,10 +18,11 @@ import java.util.function.Predicate;
 
 /**
  * DBから生成したスキーマのスナップショットと、既にコミット済みのスナップショットを比較するドメインサービス<br>
- * スキーマ配下のオブジェクトのファイル（{@code tables.jsonl}等）は1行1オブジェクトのため、行をオブジェクト単位で突き合わせ、 追加/削除/内容不一致をオブジェクト単位（例:
- * {@code table sample.employee}）で報告する。 それ以外のファイル（{@code database.json}等）はファイル単位で比較する。
- * 内容が一致しないものは、{@link SnapshotSerializer#formatForDiff}で差分表示用に整形した上で {@link
- * UnifiedDiffGenerator}によりunified diff形式の差分を付ける
+ * スキーマ配下のオブジェクトのファイル（{@code tables.jsonl}等）は1行1オブジェクトのため、行をオブジェクト単位で突き合わせ、追加/削除/内容不一致をオブジェクト単位（例:
+ * {@code table sample.employee}）で報告する。
+ * それ以外のファイル（{@code database.json}等）はファイル単位で比較する。
+ * 内容が一致しないものは、{@link SnapshotSerializer#formatForDiff}で差分表示用に整形した上で
+ * {@link UnifiedDiffGenerator}によりunified diff形式の差分を付ける
  */
 public class SnapshotDiff {
 
@@ -83,8 +84,8 @@ public class SnapshotDiff {
 
   /**
    * unified diffの{@code ---}/{@code +++}ヘッダに用いるラベルを組み立てるメソッド<br>
-   * オブジェクト単位で比較するもの（{@code tables.jsonl}等）は{@code committed/相対パス (表示名)}、 ファイル単位で比較するもの（{@code
-   * database.json}等）は表示名がファイルパスそのものであるため{@code committed/相対パス}のみとする<br>
+   * オブジェクト単位で比較するもの（{@code tables.jsonl}等）は{@code committed/相対パス (表示名)}、
+   * ファイル単位で比較するもの（{@code database.json}等）は表示名がファイルパスそのものであるため{@code committed/相対パス}のみとする<br>
    * 相対パスは{@link Path#toString()}ではなく、OSに依らず常に{@code /}区切りで組み立てる（unified diffの慣習に合わせるため）
    */
   private String sideLabel(String side, Target target) {

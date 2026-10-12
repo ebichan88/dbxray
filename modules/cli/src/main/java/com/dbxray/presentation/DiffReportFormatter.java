@@ -65,7 +65,7 @@ final class DiffReportFormatter {
   /**
    * 内容が一致しないオブジェクトについて、unified diff本体をメッセージへ追記するメソッド<br>
    * 1オブジェクトあたり{@value #MAX_DIFF_LINES_PER_TARGET}行、全体で{@value #MAX_DIFF_LINES_TOTAL}行を上限とし、
-   * 超えた分は省略した旨のみ表示する（対象自体は{@link #format}が組み立てる「Content differs:」の一覧に すべて含まれるため、見落としにはならない）
+   * 超えた分は省略した旨のみ表示する（対象自体は{@link #format}が組み立てる「Content differs:」の一覧にすべて含まれるため、見落としにはならない）
    *
    * @param message 追記先のメッセージ
    * @param contentDiffer 内容が一致しないものの一覧

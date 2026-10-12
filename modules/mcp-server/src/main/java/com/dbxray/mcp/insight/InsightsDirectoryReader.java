@@ -19,16 +19,16 @@ import java.util.stream.Stream;
 
 /**
  * 参考情報（{@code insights}）のディレクトリを読み込むクラス<br>
- * 配置はcliの出力と同じく{@code insights/{DB名}/viewpoints.json}・{@code
- * insights/{DB名}/{スキーマ名}/functionTableUsages.json}。起動引数は{@code --snapshot}のみのため、
- * 参考情報のディレクトリは渡されたスナップショットのディレクトリの**親の兄弟**として自前で求める。 ディレクトリ・DB・ファイルが無ければ0件として扱う（cliの{@code
- * target.objects}で出力されない場合や、 観点を宣言していない場合があるため）。項目の追加に追従できるよう未知の項目は無視する
+ * 配置はcliの出力と同じく{@code insights/{DB名}/viewpoints.json}・
+ * {@code insights/{DB名}/{スキーマ名}/functionTableUsages.json}。起動引数は{@code --snapshot}のみのため、
+ * 参考情報のディレクトリは渡されたスナップショットのディレクトリの**親の兄弟**として自前で求める。
+ * ディレクトリ・DB・ファイルが無ければ0件として扱う（cliの{@code target.objects}で出力されない場合や、観点を宣言していない場合があるため）。項目の追加に追従できるよう未知の項目は無視する
  */
 public final class InsightsDirectoryReader {
 
   /**
-   * 読み込める形式のバージョンの上限（cliの{@code ViewpointsInsight.FORMAT_VERSION}・{@code
-   * FunctionTableUsagesInsight.FORMAT_VERSION}）
+   * 読み込める形式のバージョンの上限（cliの{@code ViewpointsInsight.FORMAT_VERSION}・
+   * {@code FunctionTableUsagesInsight.FORMAT_VERSION}）
    */
   static final int SUPPORTED_FORMAT_VERSION = 1;
 
@@ -89,7 +89,7 @@ public final class InsightsDirectoryReader {
 
   /**
    * スナップショットのディレクトリから、参考情報のディレクトリ（{@code snapshot}の親の兄弟）を求める<br>
-   * {@code --snapshot}は常にcliの出力先配下の{@code snapshot}ディレクトリそのものを指すため、 その親を出力ベースディレクトリとみなせる
+   * {@code --snapshot}は常にcliの出力先配下の{@code snapshot}ディレクトリそのものを指すため、その親を出力ベースディレクトリとみなせる
    */
   private static Path resolveInsightsDirectory(Path snapshotDirectory) {
     final Path outputBaseDir = snapshotDirectory.toAbsolutePath().normalize().getParent();

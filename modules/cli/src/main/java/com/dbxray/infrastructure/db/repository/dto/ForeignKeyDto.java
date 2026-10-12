@@ -18,7 +18,8 @@ public record ForeignKeyDto(
 
   /**
    * DTOからEntityへの変換メソッド<br>
-   * DBのカタログから取得した外部キー制約のため、由来は常に{@link RelationType#PHYSICAL}となる。 SQLがカンマ区切りで連結して返す列名は、ここでリストへ分解する
+   * DBのカタログから取得した外部キー制約のため、由来は常に{@link RelationType#PHYSICAL}となる。
+   * SQLがカンマ区切りで連結して返す列名は、ここでリストへ分解する
    *
    * @return ForeignKeyEntityのインスタンス
    */

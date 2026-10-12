@@ -37,8 +37,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * テーブルを探す・定義を返すツール（{@code search_tables}・{@code list_tables}・{@code get_table}・{@code
- * find_columns}）
+ * テーブルを探す・定義を返すツール（{@code search_tables}・{@code list_tables}・{@code get_table}・
+ * {@code find_columns}）
  */
 final class TableTools {
 

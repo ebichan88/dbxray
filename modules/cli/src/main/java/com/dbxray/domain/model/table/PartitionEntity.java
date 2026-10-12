@@ -7,8 +7,7 @@ package com.dbxray.domain.model.table;
  *
  * @param partitionSchemaName このパーティションのスキーマ名（根と異なるスキーマに置かれることがある）
  * @param parentSchemaName 直接の親（根、または多段パーティションの中間のパーティション表）のスキーマ名
- * @param bound パーティション境界（例: {@code FOR VALUES FROM ('2026-01-01') TO
- *     ('2026-02-01')}、DEFAULTパーティションは {@code DEFAULT}）
+ * @param bound パーティション境界（例: {@code FOR VALUES FROM ('2026-01-01') TO ('2026-02-01')}、DEFAULTパーティションは{@code DEFAULT}）
  * @param partitionKey このパーティション自身がパーティション表である場合のパーティションキー（末端のパーティションは空文字）
  */
 public record PartitionEntity(

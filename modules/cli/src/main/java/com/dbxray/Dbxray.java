@@ -20,8 +20,8 @@ import org.apache.ibatis.session.SqlSessionFactory;
 
 /**
  * DBドキュメント出力処理を呼び出すクラス<br>
- * 処理全体（入力の検証・DBへの接続・DIコンテナの組み立てを含む）で起きた例外を{@link #main}の1箇所で捕捉し、 {@link
- * FailureReporter}で報告したうえで、終了状態をプロセスの終了コードへ変換する
+ * 処理全体（入力の検証・DBへの接続・DIコンテナの組み立てを含む）で起きた例外を{@link #main}の1箇所で捕捉し、
+ * {@link FailureReporter}で報告したうえで、終了状態をプロセスの終了コードへ変換する
  */
 public class Dbxray {
 

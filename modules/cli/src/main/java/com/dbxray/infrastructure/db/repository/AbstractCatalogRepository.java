@@ -86,7 +86,7 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
 
   /**
    * {@inheritDoc}<br>
-   * スキーマ名・テーブル名をそれぞれIN句で絞り込むため、複数スキーマのテーブルを渡すと 他スキーマの同名テーブルも一致する。指定したテーブルのものだけを残す
+   * スキーマ名・テーブル名をそれぞれIN句で絞り込むため、複数スキーマのテーブルを渡すと他スキーマの同名テーブルも一致する。指定したテーブルのものだけを残す
    */
   @Override
   public List<ColumnEntity> selectColumnList(List<TableKey> tables) {
@@ -173,7 +173,7 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
 
   /**
    * SQLを実行するメソッド<br>
-   * SQLの失敗は、どのSQLで失敗したかを添えて包む。DBが返したエラー（原因）は包んだ例外の原因として残り、 エントリーポイントの境界が表示・ログ出力する
+   * SQLの失敗は、どのSQLで失敗したかを添えて包む。DBが返したエラー（原因）は包んだ例外の原因として残り、エントリーポイントの境界が表示・ログ出力する
    *
    * @param sqlId 実行するSQLのID（DB種別ごとの名前空間を除く）
    * @param query SqlSessionとSQLの完全修飾IDを受け取り、SQLを実行する処理

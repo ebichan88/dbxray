@@ -20,8 +20,8 @@ import java.util.stream.Stream;
 
 /**
  * コマンドライン引数の解析を行うクラス<br>
- * {@code --check}・{@code --rm-dist}・{@code --preview}フラグの判定と、設定ファイルのパス（{@code
- * --config}）、DB接続情報・実行時設定 （{@code conf/config.yml}の設定値）の上書き値の解決を担う。
+ * {@code --check}・{@code --rm-dist}・{@code --preview}フラグの判定と、
+ * 設定ファイルのパス（{@code --config}）、DB接続情報・実行時設定（{@code conf/config.yml}の設定値）の上書き値の解決を担う。
  * 設定ファイルの読み込みと、上書きした値の検証は含まない（{@link DbxrayProperties}・{@code ConnectionSettings}が行う）。
  * 解釈できない引数（書き誤り等）は、意図しないモード・設定で実行されないよう誤りとする（{@link #requireKnownArguments()}）
  */
@@ -101,11 +101,11 @@ final class CliArguments {
   }
 
   /**
-   * 解釈できない引数があっても例外は投げない（実行モードの判定に使えるよう解析は最後まで行い、誤りは {@link #requireKnownArguments()}で報告する）
+   * 解釈できない引数があっても例外は投げない（実行モードの判定に使えるよう解析は最後まで行い、誤りは{@link #requireKnownArguments()}で報告する）
    *
    * @param args コマンドライン引数（{@code --db-url=...}・{@code --output-path=...}のような{@code --キー=値}形式で
-   *     DB接続情報・実行時設定を上書き可能。未指定の場合は設定ファイル（{@code --config}で指定したファイル、未指定なら{@code
-   *     conf/config.yml}）の値が使用される）
+   *     DB接続情報・実行時設定を上書き可能。未指定の場合は設定ファイル（{@code --config}で指定したファイル、
+   *     未指定なら{@code conf/config.yml}）の値が使用される）
    */
   static CliArguments parse(String[] args) {
     final List<String> argList = Arrays.asList(args);

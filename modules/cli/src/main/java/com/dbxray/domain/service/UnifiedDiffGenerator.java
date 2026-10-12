@@ -7,7 +7,8 @@ import java.util.List;
 
 /**
  * 2つの行リストから、unified diff形式（{@code diff -u}やgitと同じ表記）の差分を生成するクラス<br>
- * Myers法（最短の編集手順を求めるアルゴリズム）で編集距離を求め、前後{@value #CONTEXT_LINES}行の文脈を付けたhunkを組み立てる。 外部ライブラリに依存しない
+ * Myers法（最短の編集手順を求めるアルゴリズム）で編集距離を求め、前後{@value #CONTEXT_LINES}行の文脈を付けたhunkを組み立てる。
+ * 外部ライブラリに依存しない
  */
 public class UnifiedDiffGenerator {
 
@@ -16,7 +17,8 @@ public class UnifiedDiffGenerator {
 
   /**
    * Myers法で編集距離を求める際の上限<br>
-   * 超えた場合は全行削除+全行追加のhunkにフォールバックする（出力は正しいままだが、最小の差分ではなくなる）。 比較対象は1オブジェクト分（数十〜数百行）のため、通常はこの上限に達しない
+   * 超えた場合は全行削除+全行追加のhunkにフォールバックする（出力は正しいままだが、最小の差分ではなくなる）。
+   * 比較対象は1オブジェクト分（数十〜数百行）のため、通常はこの上限に達しない
    */
   static final int MAX_EDIT_DISTANCE = 1000;
 

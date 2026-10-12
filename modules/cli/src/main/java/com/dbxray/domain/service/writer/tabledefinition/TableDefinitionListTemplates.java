@@ -28,7 +28,7 @@ public class TableDefinitionListTemplates {
 
   /**
    * 関連ドキュメントセクション<br>
-   * トリガー・関数/プロシージャ・シーケンス・ユーザー定義型など、 存在するオブジェクト一覧へのリンクを列挙する
+   * トリガー・関数/プロシージャ・シーケンス・ユーザー定義型など、存在するオブジェクト一覧へのリンクを列挙する
    *
    * @param types リンクを掲載する一覧の種別（掲載順）
    * @return 関連ドキュメントセクション文字列。typesが空の場合は空文字列
@@ -53,8 +53,8 @@ public class TableDefinitionListTemplates {
   /**
    * テーブル一覧セクションの表ヘッダー<br>
    * 見出しは{@link PagedSectionTemplates#heading(String)}で付与するため含まない。
-   * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、 トリガー・関数/プロシージャなどの一覧（{@link
-   * ObjectListTemplates}）と同じ方針である
+   * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
+   * トリガー・関数/プロシージャなどの一覧（{@link ObjectListTemplates}）と同じ方針である
    */
   public static String tableListTableHeader() {
     return """

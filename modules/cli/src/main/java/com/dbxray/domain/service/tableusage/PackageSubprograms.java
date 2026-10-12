@@ -10,14 +10,14 @@ import java.util.Set;
 
 /**
  * Oracleのパッケージ本体から、最上位で定義されたサブプログラムの範囲を求めるクラス<br>
- * {@code BEGIN}・{@code CASE}と{@code END}の対応をスタック（ヒープ上）で数える。{@code IF}・{@code LOOP}は{@code END
- * IF}・{@code END LOOP}で閉じるため数えない。{@code CASE}は文と式を区別する（式は{@code END}だけで閉じ、直後に{@code LOOP}・{@code
- * IF}が続いても{@code END LOOP}・{@code END IF}ではない）。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める。<br>
- * サブプログラムの見出しは、宣言部の先頭と前の宣言の後ろだけで読む（{@code function}・{@code procedure}は予約語でなく、実行部や{@code
- * CURSOR}の問い合わせの列の別名にも使えるため）。SQLの中のインラインの関数（{@code WITH FUNCTION}）は、位置によらず見出しとして読んで{@code
- * END}の対応を数えるが、パッケージのサブプログラムとしては数えない。<br>
- * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態（まとまりのスタック・括弧の深さ・読んでいる見出し）から読み、{@code
- * $END}の後は最初の分岐を読み終えた状態を続ける（分岐ごとに{@code BEGIN}を書き分けても対応がずれないようにするため）。
+ * {@code BEGIN}・{@code CASE}と{@code END}の対応をスタック（ヒープ上）で数える。
+ * {@code IF}・{@code LOOP}は{@code END IF}・{@code END LOOP}で閉じるため数えない。{@code CASE}は文と式を区別する（式は{@code END}だけで閉じ、
+ * 直後に{@code LOOP}・{@code IF}が続いても{@code END LOOP}・{@code END IF}ではない）。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める。<br>
+ * サブプログラムの見出しは、宣言部の先頭と前の宣言の後ろだけで読む（{@code function}・{@code procedure}は予約語でなく、
+ * 実行部や{@code CURSOR}の問い合わせの列の別名にも使えるため）。SQLの中のインラインの関数（{@code WITH FUNCTION}）は、
+ * 位置によらず見出しとして読んで{@code END}の対応を数えるが、パッケージのサブプログラムとしては数えない。<br>
+ * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態（まとまりのスタック・括弧の深さ・読んでいる見出し）から読み、
+ * {@code $END}の後は最初の分岐を読み終えた状態を続ける（分岐ごとに{@code BEGIN}を書き分けても対応がずれないようにするため）。
  * 分岐ごとに見出しが違う場合は、本体の始まりを後ろの分岐の見出しの{@code IS}・{@code AS}の後ろにして、どの分岐の見出しも本体に含めない。<br>
  * スタックと見出しの引数名は要素を共有する連結リストで持ち、分岐の時点の状態を複製せずに覚える（引数名を多数並べた見出しの中に分岐を重ねても、分岐のたびに引数名の数だけ複製しないようにするため）
  */
@@ -90,8 +90,8 @@ final class PackageSubprograms {
   /**
    * 字句1つ分の状態の変化
    *
-   * @return 次に読む字句の位置（{@code END IF}等の後ろの語を読み飛ばす場合は、{@code END}から{@link
-   *     #END_WITH_KEYWORD_TOKENS}字句先）
+   * @return 次に読む字句の位置（{@code END IF}等の後ろの語を読み飛ばす場合は、
+   *     {@code END}から{@link #END_WITH_KEYWORD_TOKENS}字句先）
    */
   private int visit(int i) {
     final SqlToken token = tokens.at(i);
@@ -186,8 +186,8 @@ final class PackageSubprograms {
   }
 
   /**
-   * {@code END}の処理。{@code CASE}式は{@code END}だけで閉じる。それ以外は、{@code END IF}・{@code END
-   * LOOP}ならまとまりを閉じず、{@code END CASE}・{@code END}・{@code END ラベル}なら閉じる
+   * {@code END}の処理。{@code CASE}式は{@code END}だけで閉じる。それ以外は、
+   * {@code END IF}・{@code END LOOP}ならまとまりを閉じず、{@code END CASE}・{@code END}・{@code END ラベル}なら閉じる
    *
    * @return 次に読む字句の位置（{@code END IF}・{@code END LOOP}・{@code END CASE}は後ろの語を読み飛ばす）
    */
@@ -237,8 +237,8 @@ final class PackageSubprograms {
 
   /**
    * 読んでいた分岐を終える。最初の分岐の終わりの状態は、{@code $END}の後に続ける状態として覚える<br>
-   * 後ろの分岐が、同じ入れ子の位置で別の見出しを読み終えていれば、本体の始まりをそちらの{@code IS}・{@code AS}の後ろへ寄せる （見出しが分岐で違っても、本体は{@code
-   * $END}の後に共通で続くため）
+   * 後ろの分岐が、同じ入れ子の位置で別の見出しを読み終えていれば、本体の始まりをそちらの{@code IS}・{@code AS}の後ろへ寄せる（見出しが分岐で違っても、
+   * 本体は{@code $END}の後に共通で続くため）
    */
   private void endBranch(Conditional conditional) {
     final State end = new State(blocks, parenDepth, header);
@@ -314,11 +314,11 @@ final class PackageSubprograms {
   /**
    * 宣言の{@code IS}・{@code AS}の直後から、呼び出し仕様の言語を求めるメソッド<br>
    * {@code LANGUAGE}・{@code EXTERNAL}は予約語でなく、局所変数の名前（{@code language VARCHAR2(10);}）にも使えるため、
-   * 呼び出し仕様の続き（{@code LANGUAGE JAVA NAME}・{@code LANGUAGE C NAME|LIBRARY}・{@code EXTERNAL
-   * NAME|LIBRARY}）がある場合だけ呼び出し仕様とする
+   * 呼び出し仕様の続き（{@code LANGUAGE JAVA NAME}・{@code LANGUAGE C NAME|LIBRARY}・
+   * {@code EXTERNAL NAME|LIBRARY}）がある場合だけ呼び出し仕様とする
    *
-   * @return {@code LANGUAGE JAVA}は{@code JAVA}、{@code LANGUAGE C}・{@code EXTERNAL}は{@code
-   *     C}。呼び出し仕様でなければ空文字
+   * @return {@code LANGUAGE JAVA}は{@code JAVA}、
+   *     {@code LANGUAGE C}・{@code EXTERNAL}は{@code C}。呼び出し仕様でなければ空文字
    */
   static String callSpecLanguage(SqlTokens tokens, int i) {
     if (tokens.isWordAt(i, "LANGUAGE")) {

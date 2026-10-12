@@ -43,8 +43,8 @@ public final class DatabaseTypeDetector {
 
   /**
    * DBへ接続するメソッド<br>
-   * 接続できないのは接続情報の誤りかDBが起動していない場合で、いずれも利用者が見直せば解消するため {@link
-   * UserCorrectableException}として伝える（接続できなかった理由は原因の例外のメッセージが示す）
+   * 接続できないのは接続情報の誤りかDBが起動していない場合で、
+   * いずれも利用者が見直せば解消するため{@link UserCorrectableException}として伝える（接続できなかった理由は原因の例外のメッセージが示す）
    *
    * @throws UserCorrectableException DBに接続できない場合
    */

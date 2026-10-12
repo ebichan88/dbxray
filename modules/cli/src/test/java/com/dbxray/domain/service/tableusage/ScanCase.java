@@ -13,8 +13,7 @@ import java.util.stream.Collectors;
 /**
  * テーブルの位置の判定のテストケース1件（本体のSQLと、期待する結果の短い記法）
  *
- * @param expected {@code "sample.employee:RU, audit_log:C [dyn
- *     EXECUTE]"}の形。名前は拾った順、操作はC・R・U・Dの順。何も無ければ{@code "-"}
+ * @param expected {@code "sample.employee:RU, audit_log:C [dyn EXECUTE]"}の形。名前は拾った順、操作はC・R・U・Dの順。何も無ければ{@code "-"}
  */
 record ScanCase(Dbms dbms, String sql, String expected) {
 

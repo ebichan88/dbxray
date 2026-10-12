@@ -53,7 +53,7 @@ public class ViewpointTemplates {
 
   /**
    * ER図セクション（Mermaid記法）<br>
-   * 所属テーブル同士の関連のみを描画する。描画の内容・上限を超えた場合の扱いはスキーマ別ER図と同じ （{@link ErDiagramTemplates#erDiagram}）
+   * 所属テーブル同士の関連のみを描画する。描画の内容・上限を超えた場合の扱いはスキーマ別ER図と同じ（{@link ErDiagramTemplates#erDiagram}）
    */
   public static String erDiagram(RenderingPlan plan, DiagramBoxes boxes) {
     if (plan.group().foreignKeys().isEmpty()) {

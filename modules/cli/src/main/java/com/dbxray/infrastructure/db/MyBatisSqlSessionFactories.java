@@ -10,8 +10,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * MyBatisの{@link SqlSessionFactory}を生成するクラス<br>
- * 生成は設定XMLとmapperの解析を伴い重いため、エントリーポイントで1回だけ生成し、DIコンテナを通じて使い回す。 生成するだけでDBへは接続しない（接続はコネクションプールが{@code
- * openSession()}の時に行う）
+ * 生成は設定XMLとmapperの解析を伴い重いため、エントリーポイントで1回だけ生成し、DIコンテナを通じて使い回す。
+ * 生成するだけでDBへは接続しない（接続はコネクションプールが{@code openSession()}の時に行う）
  */
 public final class MyBatisSqlSessionFactories {
 

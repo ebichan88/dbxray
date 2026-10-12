@@ -14,7 +14,8 @@ import java.util.Map;
 
 /**
  * Jacksonを用いた{@link SnapshotSerializer}の実装クラス<br>
- * recordはコンポーネントの宣言順に出力されるため、同じ内容からは常に同じ文字列が得られる。 日本語等の非ASCII文字はエスケープせずそのまま出力する（git diffでの可読性のため）
+ * recordはコンポーネントの宣言順に出力されるため、同じ内容からは常に同じ文字列が得られる。
+ * 日本語等の非ASCII文字はエスケープせずそのまま出力する（git diffでの可読性のため）
  */
 public class JacksonSnapshotSerializer implements SnapshotSerializer {
 

@@ -25,10 +25,11 @@ import java.util.Map;
 
 /**
  * スキーマ単位のER図（全体ER図）書き込みに利用するMarkdownのテンプレートを扱うクラス<br>
- * テーブル単位のER図（{@link TableDefinitionTemplates#erDiagram}）とは異なり、 すべてのテーブルの箱に関連をつなぐカラムだけを表示する。
+ * テーブル単位のER図（{@link TableDefinitionTemplates#erDiagram}）とは異なり、すべてのテーブルの箱に関連をつなぐカラムだけを表示する。
  * カラムは関連カラム（{@link DiagramBoxes}）を用いるため、テーブル詳細のチャンク分割取得の影響を受けない<br>
- * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、 テーブル一覧（{@link
- * TableDefinitionListTemplates}）と同じ方針である
+ * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。
+ * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
+ * テーブル一覧（{@link TableDefinitionListTemplates}）と同じ方針である
  */
 public class ErDiagramTemplates {
 
@@ -93,8 +94,9 @@ public class ErDiagramTemplates {
 
   /**
    * ER図セクション（Mermaid記法）<br>
-   * 外部キーによる関連を持つテーブルのみをノードとして描画する。 関連を持たないテーブルを含めるとノード数が膨らみ図が読めなくなるため描画対象から除外する （全テーブルはテーブル一覧{@code
-   * tableList_{DB名}.md}側に掲載されている）。<br>
+   * 外部キーによる関連を持つテーブルのみをノードとして描画する。
+   * 関連を持たないテーブルを含めるとノード数が膨らみ図が読めなくなるため描画対象から除外する（全テーブルはテーブル一覧
+   * {@code tableList_{DB名}.md}側に掲載されている）。<br>
    * テーブルの箱には、図に描画する関連をつなぐカラムだけを表示する。<br>
    * 描画を省略する計画（{@link RenderingPlan.Omit}）の場合はMermaidの描画を諦め、その旨のメッセージのみを返す
    * （代替として掲載する外部キー一覧は呼び出し側が組み立てる）
@@ -248,7 +250,7 @@ public class ErDiagramTemplates {
 
   /**
    * スキーマ跨ぎ外部キーセクションの見出し<br>
-   * スキーマ単位にER図を分割すると、スキーマをまたぐ関連は双方の図に現れて全体像が追いにくいため、 索引ページに一覧としてまとめて掲載する
+   * スキーマ単位にER図を分割すると、スキーマをまたぐ関連は双方の図に現れて全体像が追いにくいため、索引ページに一覧としてまとめて掲載する
    */
   public static String crossSchemaForeignKeyHeading() {
     return "スキーマ跨ぎの外部キー";

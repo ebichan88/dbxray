@@ -9,8 +9,8 @@ import java.util.Optional;
 
 /**
  * テーブル定義および一覧出力用のパス生成戦略インタフェース <br>
- * 物理レイアウト（ディレクトリ構造・ファイル命名規則）を抽象化する。Markdownドキュメントのファイル名・配置の規則自体は、 ドキュメント間の相対リンクと共有するため{@link
- * DocumentLocations}に定める
+ * 物理レイアウト（ディレクトリ構造・ファイル命名規則）を抽象化する。Markdownドキュメントのファイル名・配置の規則自体は、
+ * ドキュメント間の相対リンクと共有するため{@link DocumentLocations}に定める
  */
 public interface OutputPathResolver {
 
@@ -22,7 +22,7 @@ public interface OutputPathResolver {
 
   /**
    * 出力先ベースディレクトリを、書き込み前にディレクトリごと削除してよいか判定する。<br>
-   * カレントディレクトリ・ホームディレクトリ自体と、それらを含む上位のディレクトリ（ルートを含む）は、設定誤りで削除すると 被害が甚大なため削除を認めない
+   * カレントディレクトリ・ホームディレクトリ自体と、それらを含む上位のディレクトリ（ルートを含む）は、設定誤りで削除すると被害が甚大なため削除を認めない
    */
   boolean isRemovableOutputDir(Path baseOutputDir);
 
@@ -90,8 +90,8 @@ public interface OutputPathResolver {
    * スキーマ配下オブジェクト（関数/シーケンス/型）の出力ディレクトリを返す。<br>
    * 例: {base}/{DB名}/{スキーマ名}/{kind}/
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    */
   Path resolveSchemaObjectDirectory(OutputRoot root, String schemaName, ListDocumentType kind);
 
@@ -99,8 +99,8 @@ public interface OutputPathResolver {
    * スキーマ配下オブジェクト（関数/シーケンス/型）の出力ファイルパスを返す。<br>
    * 例: {base}/{DB名}/{スキーマ名}/{kind}/{name}.md
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    * @param name ファイル名（拡張子を除く）
    */
   Path resolveSchemaObjectFile(

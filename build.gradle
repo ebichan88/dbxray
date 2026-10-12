@@ -55,7 +55,9 @@ subprojects {
 
     spotless {
         java {
-            googleJavaFormat('1.27.0')
+            // Javadocは整形しない。整形は日本語の文を1段落に詰め直し、行の継ぎ目に半角空白を入れ、
+            // {@link}・{@code}を行末で割るため。Javadocの折り返しは手で行う（docs/development/coding-guidelines.md）
+            googleJavaFormat('1.27.0').skipJavadocFormatting()
             // static importを第1グループ、それ以外をASCII辞書順の1グループとする
             importOrder('\\#', '')
             removeUnusedImports()

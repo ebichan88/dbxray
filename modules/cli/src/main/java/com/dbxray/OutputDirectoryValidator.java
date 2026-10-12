@@ -18,8 +18,8 @@ import java.nio.file.Path;
  *   <li>{@code --rm-dist}指定時に、ルート・ホームディレクトリ・カレントディレクトリ自体など、削除すると被害が甚大なディレクトリを指す場合は誤りとする
  * </ul>
  *
- * 出力先パスの解決（未指定時の既定値）と、削除してよいディレクトリかの判定は{@link OutputPathResolver}に、 パスの状態の問い合わせは{@link
- * FileRepository}に委ねる
+ * 出力先パスの解決（未指定時の既定値）と、削除してよいディレクトリかの判定は{@link OutputPathResolver}に、
+ * パスの状態の問い合わせは{@link FileRepository}に委ねる
  */
 class OutputDirectoryValidator {
 

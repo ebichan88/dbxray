@@ -30,8 +30,8 @@ public class LocalFileRepository implements FileRepository {
 
   /**
    * 内容をUTF-8で書き込むメソッド<br>
-   * {@link Files#newBufferedWriter}はエンコードできない文字で例外を投げるため、従来どおり置換文字で書き込む {@link
-   * OutputStreamWriter}を用いる
+   * {@link Files#newBufferedWriter}はエンコードできない文字で例外を投げるため、
+   * 従来どおり置換文字で書き込む{@link OutputStreamWriter}を用いる
    *
    * @param options ファイルのオープン方法（未指定の場合は新規作成または上書き）
    */

@@ -14,8 +14,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * DBドキュメント出力処理のコントローラークラス<br>
- * ユースケースを実行し、結果を表示用のDTOへ変換する。ユースケースの例外は捕捉せずに呼び出し元へ伝える （捕捉はエントリーポイントが1箇所にまとめて行い、報告は{@link
- * FailureReporter}が行う）
+ * ユースケースを実行し、結果を表示用のDTOへ変換する。ユースケースの例外は捕捉せずに呼び出し元へ伝える（捕捉はエントリーポイントが1箇所にまとめて行い、
+ * 報告は{@link FailureReporter}が行う）
  */
 public class ExportSchemaController {
 

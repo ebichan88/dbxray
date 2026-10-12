@@ -27,8 +27,8 @@ import org.junit.jupiter.api.TestFactory;
 
 /**
  * DB由来の名前に出力先の外を指す文字列が入っても、{@link OutputPathResolver}が返すパスが出力先の外を指さないことのテスト<br>
- * パスを返すメソッドをリフレクションで列挙するため、メソッドを追加すると自動的に検査の対象になる。 引数の型に対応する値が無い場合は失敗するので、{@link
- * #ARGUMENTS}に危険な名前を含む値を足すこと
+ * パスを返すメソッドをリフレクションで列挙するため、メソッドを追加すると自動的に検査の対象になる。
+ * 引数の型に対応する値が無い場合は失敗するので、{@link #ARGUMENTS}に危険な名前を含む値を足すこと
  */
 public class OutputPathContainmentTest {
 

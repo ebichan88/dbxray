@@ -26,8 +26,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * スキーマのスナップショット（DBから取得したスキーマ情報を構造化した中間表現）を書き込むクラス<br>
- * Markdownのテーブル定義書と同じ取得結果から、機械可読なJSON Lines形式（1行1オブジェクト）で出力する。 テーブルはチャンク単位の取得・破棄（{@code
- * chunkSize}）のメモリプロファイルを変えないよう、 1テーブル書き終えるごとにスキーマ単位のファイルへ追記する
+ * Markdownのテーブル定義書と同じ取得結果から、機械可読なJSON Lines形式（1行1オブジェクト）で出力する。
+ * テーブルはチャンク単位の取得・破棄（{@code chunkSize}）のメモリプロファイルを変えないよう、1テーブル書き終えるごとにスキーマ単位のファイルへ追記する
  */
 public class SchemaSnapshotWriter {
 
@@ -80,7 +80,7 @@ public class SchemaSnapshotWriter {
         functions.stream().map(FunctionSnapshot::of).toList());
   }
 
-  /** 前回実行時のファイルが残っている場合でも、その内容へ追記してしまわないよう上書きで空にする。 当該スキーマの{@link #appendTable}より前に1回だけ呼び出すこと */
+  /** 前回実行時のファイルが残っている場合でも、その内容へ追記してしまわないよう上書きで空にする。当該スキーマの{@link #appendTable}より前に1回だけ呼び出すこと */
   public void initTableFile(String schemaName, OutputRoot outputRoot) {
     write(
         outputPathResolver.resolveSnapshotFile(outputRoot, schemaName, SnapshotKind.TABLE),

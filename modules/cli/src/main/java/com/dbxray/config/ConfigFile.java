@@ -17,7 +17,8 @@ import org.yaml.snakeyaml.error.YAMLException;
 
 /**
  * 設定ファイル（{@code conf/config.yml}）を読み込んだ内容を表すクラス<br>
- * ファイルの読み込みとYAMLとしての解析だけを担い、最上位のキーと値の組を保持する。 どのキーを書けるか・既定値・値の形式といった設定項目の仕様と検証は、読み込んだ値を使う側が持つ
+ * ファイルの読み込みとYAMLとしての解析だけを担い、最上位のキーと値の組を保持する。
+ * どのキーを書けるか・既定値・値の形式といった設定項目の仕様と検証は、読み込んだ値を使う側が持つ
  * （{@code database}以外は{@code DbxrayProperties}、{@code database}は{@code ConnectionSettings}）
  */
 public final class ConfigFile {
@@ -35,7 +36,7 @@ public final class ConfigFile {
 
   /**
    * 設定ファイルを読み込むメソッド<br>
-   * ファイルが無い場合に既定値で続行しないのは、実行するディレクトリを誤った場合に、既定の出力先 （{@code ./output}）へ黙って出力しないようにするため
+   * ファイルが無い場合に既定値で続行しないのは、実行するディレクトリを誤った場合に、既定の出力先（{@code ./output}）へ黙って出力しないようにするため
    *
    * @throws InvalidConfigurationException ファイルが存在しない場合や、YAMLとして解釈できない場合、最上位がキーと値の組でない場合
    */
@@ -135,7 +136,7 @@ public final class ConfigFile {
   }
 
   /**
-   * YAMLとして解釈できないのは利用者が手で書いたファイルの誤りのため、どのファイルを直せばよいかを添えて伝える （解析の失敗箇所は原因の例外のメッセージが示す）
+   * YAMLとして解釈できないのは利用者が手で書いたファイルの誤りのため、どのファイルを直せばよいかを添えて伝える（解析の失敗箇所は原因の例外のメッセージが示す）
    *
    * @throws InvalidConfigurationException YAMLとして解釈できない場合（構文誤り・UTF-8以外の文字コード等）
    */

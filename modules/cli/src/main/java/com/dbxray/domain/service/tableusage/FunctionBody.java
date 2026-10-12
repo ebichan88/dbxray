@@ -5,8 +5,8 @@ import java.util.List;
 
 /**
  * 関数・プロシージャの定義から切り出した結果<br>
- * 解析しない場合（{@link NotAnalyzable}・{@link UnsupportedLanguage}）と、DBMSごとの解析する本体（{@link Postgres}・{@link
- * Oracle}）を、 型で分けて持つ。持つ属性がそれぞれ違い、解析しない場合は字句を持たないため。解析できない理由は、例外にせず結果の型と状態で表す
+ * 解析しない場合（{@link NotAnalyzable}・{@link UnsupportedLanguage}）と、
+ * DBMSごとの解析する本体（{@link Postgres}・{@link Oracle}）を、型で分けて持つ。持つ属性がそれぞれ違い、解析しない場合は字句を持たないため。解析できない理由は、例外にせず結果の型と状態で表す
  */
 sealed interface FunctionBody {
 
@@ -20,8 +20,8 @@ sealed interface FunctionBody {
   /**
    * 言語以外の理由で解析しない場合の結果
    *
-   * @param status 解析しない理由（言語が対象外の場合は{@link UnsupportedLanguage}を使う。{@link
-   *     TableUsageStatus#ANALYZED}は解析しない理由ではない）
+   * @param status 解析しない理由（言語が対象外の場合は{@link UnsupportedLanguage}を使う。
+   *     {@link TableUsageStatus#ANALYZED}は解析しない理由ではない）
    */
   record NotAnalyzable(TableUsageStatus status) implements FunctionBody {
 
@@ -56,8 +56,8 @@ sealed interface FunctionBody {
     /**
      * 本体の字句を求めるメソッド
      *
-     * @return 本体の字句（空白・コメントを除いたもの）。本体ごとに分けて持つ（文の状態が本体をまたがないよう、本体ごとに走査するため）。 字句のリストは、{@link
-     *     SqlLexResult}が変更不可で包んだ字句のリストの一部（ビュー）を、複製せずに持つ
+     * @return 本体の字句（空白・コメントを除いたもの）。本体ごとに分けて持つ（文の状態が本体をまたがないよう、本体ごとに走査するため）。
+     *     字句のリストは、{@link SqlLexResult}が変更不可で包んだ字句のリストの一部（ビュー）を、複製せずに持つ
      */
     List<List<SqlToken>> segments();
 
@@ -89,9 +89,9 @@ sealed interface FunctionBody {
    *
    * @param tokens 本体の字句（空白・コメントを除いたもの）。{@link Analyzed#segments}と同じく、複製せずに持つ
    * @param incomplete 定義の終わりまで字句を読み取れなかったか
-   * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（本体の中のSET文・{@code set_config}は含まない。{@code
-   *     $user}・{@code pg_catalog}・{@code pg_temp}を除く）。指定が無い場合と、{@code
-   *     $user}だけで実行時に決まる場合は空。指定があるのに出力対象のスキーマが無い場合は、空のスキーマ名1つ
+   * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（本体の中のSET文・{@code set_config}は含まない。
+   *     {@code $user}・{@code pg_catalog}・{@code pg_temp}を除く）。指定が無い場合と、
+   *     {@code $user}だけで実行時に決まる場合は空。指定があるのに出力対象のスキーマが無い場合は、空のスキーマ名1つ
    */
   record Postgres(List<SqlToken> tokens, boolean incomplete, List<String> searchPath)
       implements Analyzed {

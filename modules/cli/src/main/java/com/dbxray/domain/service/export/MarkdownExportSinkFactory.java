@@ -130,8 +130,8 @@ public class MarkdownExportSinkFactory {
     /**
      * {@inheritDoc}<br>
      * テーブル一覧・ER図・各種一覧・観点・シーケンス/型の個別定義を書き出す。ER図はテーブル一覧・外部キー一覧と、
-     * 別途取得した関連カラムのみで生成できるため、テーブル詳細をチャンク単位で取得する前のこの時点で書き出せる。 READMEはカラムの数を含む集計を載せるため、{@link
-     * #writeSummary}で書き出す
+     * 別途取得した関連カラムのみで生成できるため、テーブル詳細をチャンク単位で取得する前のこの時点で書き出せる。
+     * READMEはカラムの数を含む集計を載せるため、{@link #writeSummary}で書き出す
      */
     @Override
     public void writeOverview(ExportTargets targets) {

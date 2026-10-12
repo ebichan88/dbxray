@@ -25,8 +25,8 @@ final class OracleBodyLocator implements FunctionBodyLocator {
 
   /**
    * 仕様部とパッケージ本体のつなぎ目<br>
-   * {@code catalogMapper.xml}（Oracle）のパッケージの定義の取得が、仕様部の後ろに{@code CHR(10) || CHR(10)}を挟み、{@code
-   * source_text}の関数が{@code 'CREATE OR REPLACE '}を補ったパッケージ本体を続けて組み立てる形と一致させている。
+   * {@code catalogMapper.xml}（Oracle）のパッケージの定義の取得が、仕様部の後ろに{@code CHR(10) || CHR(10)}を挟み、
+   * {@code source_text}の関数が{@code 'CREATE OR REPLACE '}を補ったパッケージ本体を続けて組み立てる形と一致させている。
    * mapperの組み立てを変えると、仕様部が壊れている場合の立て直し（{@link #parseWithBrokenSpecification}）が効かなくなるため、あわせて直す
    */
   private static final String PACKAGE_BODY_SEPARATOR = "\n\n" + PACKAGE_BODY_PREFIX;

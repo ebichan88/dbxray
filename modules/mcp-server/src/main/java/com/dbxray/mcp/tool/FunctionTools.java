@@ -152,8 +152,8 @@ final class FunctionTools {
 
   /**
    * 利用しているテーブルの参考情報を、AIが読みやすい形にするメソッド<br>
-   * テーブルは{@code スキーマ名.テーブル名}、操作は{@code CRU}のように1つの文字列にまとめる。 解析した結果は、利用しているテーブルが無い場合も{@code
-   * tables}を空の配列で返す（参考情報が無い場合と区別するため）
+   * テーブルは{@code スキーマ名.テーブル名}、操作は{@code CRU}のように1つの文字列にまとめる。
+   * 解析した結果は、利用しているテーブルが無い場合も{@code tables}を空の配列で返す（参考情報が無い場合と区別するため）
    *
    * @return 解析しなかった場合は{@code status}（と{@code language}）だけ
    */
@@ -261,8 +261,8 @@ final class FunctionTools {
   /**
    * {@code get_function}の結果
    *
-   * @param definition {@code includeDefinition}指定時、全オーバーロードの定義本体が同じ場合にまとめた本体。 本体が異なる場合・{@code
-   *     includeDefinition}未指定の場合はnull（その場合、本体は{@code overloads}側に残る）
+   * @param definition {@code includeDefinition}指定時、全オーバーロードの定義本体が同じ場合にまとめた本体。
+   *     本体が異なる場合・{@code includeDefinition}未指定の場合はnull（その場合、本体は{@code overloads}側に残る）
    * @param overloads オーバーロードごとのシグネチャ（スナップショットの1行から名前を除いたもの。cliが項目を追加すれば、そのまま返る）。
    *     参考情報がある場合は、利用しているテーブル（{@code tableUsage}）を加える
    * @param calledByTriggers この関数を実行するトリガー

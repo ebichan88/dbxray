@@ -15,10 +15,10 @@ import java.util.Map;
  * 出力するMarkdownドキュメントの配置（ファイル名と、データベース単位ディレクトリからの相対パス）を一元的に定めるクラス<br>
  * 出力先の絶対パス（{@link OutputPathResolver}）と、ドキュメント間の相対リンク（テンプレート）の双方が
  * このクラスの規則を参照することで、ファイル名を変更した場合にパスとリンクが食い違わないようにする。<br>
- * 複数のデータベースを同じ出力先へ出力してもドキュメントが混ざらないよう、DB1つ分のドキュメントはすべて {@code
- * {DB名}/}ディレクトリ配下にまとめる（このクラスが返す相対パスはこのディレクトリからの相対パスとし、 {@code {DB名}/}自体の付与は{@link
- * OutputPathResolver}が行う）。配置は次のとおり。一覧・ER図・観点ページ・READMEは {@code {DB名}/}直下に、テーブル定義書・関数等の個別定義書は{@code
- * {スキーマ名}/{区分}/}配下に置く。<br>
+ * 複数のデータベースを同じ出力先へ出力してもドキュメントが混ざらないよう、
+ * DB1つ分のドキュメントはすべて{@code {DB名}/}ディレクトリ配下にまとめる（このクラスが返す相対パスはこのディレクトリからの相対パスとし、
+ * {@code {DB名}/}自体の付与は{@link OutputPathResolver}が行う）。配置は次のとおり。一覧・ER図・観点ページ・READMEは{@code {DB名}/}直下に、
+ * テーブル定義書・関数等の個別定義書は{@code {スキーマ名}/{区分}/}配下に置く。<br>
  * パスに用いるDB由来の名前（DB名・スキーマ名・テーブル名等）は、出力先の外を指さないよう{@link PathSegments}で置き換える
  */
 public final class DocumentLocations {
@@ -116,8 +116,8 @@ public final class DocumentLocations {
   }
 
   /**
-   * 同じスキーマに同名の関数・プロシージャ（オーバーロード）が複数存在する場合は、ファイル名が重複しないよう 作成順の番号を付ける（例: {@code calc_1}, {@code
-   * calc_2}）。存在しない場合は関数・プロシージャ名をそのまま用いる
+   * 同じスキーマに同名の関数・プロシージャ（オーバーロード）が複数存在する場合は、ファイル名が重複しないよう作成順の番号を付ける（例: {@code calc_1},
+   * {@code calc_2}）。存在しない場合は関数・プロシージャ名をそのまま用いる
    */
   public static String functionDefinitionName(FunctionEntity function) {
     if (!function.isOverloaded()) {
@@ -128,8 +128,8 @@ public final class DocumentLocations {
 
   /**
    * 個別定義のファイルが同じになる関数・プロシージャを求めるメソッド<br>
-   * オーバーロードに付けた番号が別の関数の名前と重なると（{@code calc}のオーバーロードの{@code calc_1}と、別の関数{@code
-   * calc_1}）、後に書いたほうが先に書いたファイルを上書きする
+   * オーバーロードに付けた番号が別の関数の名前と重なると（{@code calc}のオーバーロードの{@code calc_1}と、
+   * 別の関数{@code calc_1}）、後に書いたほうが先に書いたファイルを上書きする
    *
    * @return 個別定義ファイルの相対パス（{@link #schemaObjectFile}）ごとの、そのファイルを書く関数・プロシージャ（取得順）。
    *     ファイルが同じになるものだけを含み、無ければ空
@@ -157,8 +157,8 @@ public final class DocumentLocations {
   /**
    * 関数・シーケンス・型の個別定義を置くディレクトリの、データベース単位ディレクトリからの相対パス
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    * @return {@code {スキーマ名}/{区分}}
    */
   public static String schemaObjectDirectory(String schemaName, ListDocumentType kind) {
@@ -168,8 +168,8 @@ public final class DocumentLocations {
   /**
    * 関数・シーケンス・型の個別定義ファイルの、データベース単位ディレクトリからの相対パス
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    * @param name 個別定義ファイル名（拡張子を除く）
    * @return {@code {スキーマ名}/{区分}/{名前}.md}
    */

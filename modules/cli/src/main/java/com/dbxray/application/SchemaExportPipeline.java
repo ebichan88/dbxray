@@ -50,8 +50,8 @@ import org.apache.logging.log4j.Logger;
  * DBからスキーマ情報を取得し、出力形式ごとの{@link ExportSink}へ書き出す段取りを担うクラス<br>
  * DBドキュメント出力（通常実行）と差分検知（{@code --check}）の双方で共通の処理で、両者の違いは書き出し先の{@link ExportSink}のみ。
  * 対象範囲全体を一度にメモリへ載せないよう、軽量な情報は一括取得し（{@link #fetchTargets}）、
- * テーブル数に比例して重くなる情報はスキーマ・チャンク単位で取得・書き出し・破棄する（{@link #export}）。 取得した情報同士の突き合わせは{@link
- * ExportTargetConsistency}に委ねる
+ * テーブル数に比例して重くなる情報はスキーマ・チャンク単位で取得・書き出し・破棄する（{@link #export}）。
+ * 取得した情報同士の突き合わせは{@link ExportTargetConsistency}に委ねる
  */
 final class SchemaExportPipeline {
 
@@ -77,8 +77,8 @@ final class SchemaExportPipeline {
   }
 
   /**
-   * 出力対象のうち、一括取得する軽量な情報（基本情報・テーブル一覧・外部キー・トリガー・パーティション・関数/シーケンス/型の一覧・ 手動付帯情報）を取得するメソッド<br>
-   * テーブル数に比例して重くなる詳細情報（カラム・インデックス・制約）と関数の定義本体は、 出力時（{@link #export}）にスキーマ・チャンク単位で取得する
+   * 出力対象のうち、一括取得する軽量な情報（基本情報・テーブル一覧・外部キー・トリガー・パーティション・関数/シーケンス/型の一覧・手動付帯情報）を取得するメソッド<br>
+   * テーブル数に比例して重くなる詳細情報（カラム・インデックス・制約）と関数の定義本体は、出力時（{@link #export}）にスキーマ・チャンク単位で取得する
    */
   ExportTargets fetchTargets(TargetSelection targetSelection, String sidecarPath) {
     // スキーマ・テーブルの絞り込み条件（入口で1回だけ組み立て済み。テーブルごとにワイルドカードパターンを解析し直さない）
@@ -152,8 +152,8 @@ final class SchemaExportPipeline {
   /**
    * 物理外部キーとサイドカー由来の論理リレーションを取得し、出力対象のテーブル同士のものへ絞り込むメソッド<br>
    * 外部キーは制約数に比例する軽量な情報のため、テーブルと異なりチャンク化せず対象範囲全体を一括取得する。
-   * ER図で他チャンク・他スキーマのテーブルから自テーブルが参照されている関係も正しく解決するには、 特定のチャンクに限定せず全件を保持しておく必要があるため。絞り込みの基準は{@link
-   * ExportTargetConsistency#resolveForeignKeys}を参照
+   * ER図で他チャンク・他スキーマのテーブルから自テーブルが参照されている関係も正しく解決するには、特定のチャンクに限定せず全件を保持しておく必要があるため。
+   * 絞り込みの基準は{@link ExportTargetConsistency#resolveForeignKeys}を参照
    */
   private ForeignKeys fetchForeignKeys(
       List<String> targetSchemaList,
@@ -172,8 +172,8 @@ final class SchemaExportPipeline {
 
   /**
    * トリガーを取得するメソッド<br>
-   * テーブルに属する軽量な情報のため、外部キーと同様にチャンク化せず対象範囲全体を一括取得し、 テーブル定義書内のセクションとトリガー一覧の両方で利用する。{@code
-   * outputObjectList}で対象外とされた場合は 取得自体を行わず、一覧・テーブル定義書双方から除外する
+   * テーブルに属する軽量な情報のため、外部キーと同様にチャンク化せず対象範囲全体を一括取得し、テーブル定義書内のセクションとトリガー一覧の両方で利用する。
+   * {@code outputObjectList}で対象外とされた場合は取得自体を行わず、一覧・テーブル定義書双方から除外する
    */
   private Triggers fetchTriggers(
       List<String> targetSchemaList, Set<OutputObjectType> outputObjectTypes) {
@@ -185,9 +185,9 @@ final class SchemaExportPipeline {
 
   /**
    * スキーマレベルのオブジェクト（関数/シーケンス/型）を取得するメソッド<br>
-   * テーブルフィルタの対象外で、スキーマフィルタのみ適用する。関数一覧は定義本体を含まない軽量情報のみ取得する （定義本体はスキーマ単位で{@link
-   * #exportSchemaFunctionDefinitions}が別途取得する）。{@link #fetchTriggers}と同様、 {@code
-   * outputObjectList}で対象外とされた種別は取得自体を行わない（一覧・個別定義とも出力されなくなる）
+   * テーブルフィルタの対象外で、スキーマフィルタのみ適用する。
+   * 関数一覧は定義本体を含まない軽量情報のみ取得する（定義本体はスキーマ単位で{@link #exportSchemaFunctionDefinitions}が別途取得する）。{@link #fetchTriggers}と同様、
+   * {@code outputObjectList}で対象外とされた種別は取得自体を行わない（一覧・個別定義とも出力されなくなる）
    */
   private SchemaObjects fetchSchemaObjects(
       List<String> targetSchemaList, Set<OutputObjectType> outputObjectTypes) {
@@ -211,8 +211,8 @@ final class SchemaExportPipeline {
 
   /**
    * ER図のテーブルの箱に表示する内容（論理テーブル名・関連カラム）を求めるメソッド<br>
-   * 関連カラムを持つテーブルのカラムをスキーマ・チャンク単位で取得し、関連カラムだけを残して他は破棄する。 Markdownの描画でのみ用いるため、差分検知（{@code
-   * --check}）では取得しない
+   * 関連カラムを持つテーブルのカラムをスキーマ・チャンク単位で取得し、関連カラムだけを残して他は破棄する。
+   * Markdownの描画でのみ用いるため、差分検知（{@code --check}）では取得しない
    *
    * @param chunkSize 1回の取得でまとめて処理するテーブル数の上限。0以下の場合はスキーマ単位で分割しない
    */
@@ -236,7 +236,8 @@ final class SchemaExportPipeline {
 
   /**
    * リストを{@code chunkSize}件ずつの塊に分割するメソッド<br>
-   * {@code chunkSize}が0以下の場合は分割せず全体を1つの塊とする。空のリストは塊を持たない。 返す塊は元のリストのビューのため、元のリストを変更してはならない
+   * {@code chunkSize}が0以下の場合は分割せず全体を1つの塊とする。空のリストは塊を持たない。
+   * 返す塊は元のリストのビューのため、元のリストを変更してはならない
    */
   private static <T> List<List<T>> splitIntoChunks(List<T> list, int chunkSize) {
     final int total = list.size();
@@ -251,7 +252,8 @@ final class SchemaExportPipeline {
   /**
    * 一括取得した情報をもとに、指定された出力形式で書き出すメソッド<br>
    * 一括取得した情報から出力できるもの（一覧・ER図等）を先に書き出し、その後に関数の定義本体をスキーマ単位で、
-   * テーブルの詳細情報をスキーマ・チャンク単位で取得・書き出し・破棄する。最後に、取得の途中で数えた集計を書き出す。 どの形式で書き出す場合も取得処理は共通
+   * テーブルの詳細情報をスキーマ・チャンク単位で取得・書き出し・破棄する。最後に、取得の途中で数えた集計を書き出す。
+   * どの形式で書き出す場合も取得処理は共通
    *
    * @param chunkSize 1回の取得でまとめて処理するテーブル数の上限。0以下の場合は分割しない
    * @param previewFeatures 有効にするプレビューの機能
@@ -345,7 +347,7 @@ final class SchemaExportPipeline {
   }
 
   /**
-   * 当該チャンクのテーブルの詳細情報（カラム・インデックス・制約）のみを取得し、 出力後にローカル変数のスコープを抜けることでメモリ解放対象とする
+   * 当該チャンクのテーブルの詳細情報（カラム・インデックス・制約）のみを取得し、出力後にローカル変数のスコープを抜けることでメモリ解放対象とする
    *
    * @param chunk 1チャンク分のテーブルのリスト（同一スキーマ。呼び出し元で絞り込み済み）
    */

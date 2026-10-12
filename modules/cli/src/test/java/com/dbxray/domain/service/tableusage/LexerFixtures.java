@@ -9,8 +9,8 @@ final class LexerFixtures {
 
   /**
    * 字句の解析結果を、{@code 種類:文字列}を{@code |}でつないだ記法にするメソッド<br>
-   * 種類は1文字（W=単語、Q=引用符付き識別子、S=文字列、D=ドル引用符、N=数値、P=パラメータ、X=指令、Y=記号）。 閉じていない要素があれば末尾に{@code
-   * [incomplete]}を付ける
+   * 種類は1文字（W=単語、Q=引用符付き識別子、S=文字列、D=ドル引用符、N=数値、P=パラメータ、X=指令、Y=記号）。
+   * 閉じていない要素があれば末尾に{@code [incomplete]}を付ける
    */
   static String describe(SqlLexResult result) {
     final String tokens =

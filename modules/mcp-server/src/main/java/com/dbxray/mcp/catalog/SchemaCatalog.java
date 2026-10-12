@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 
 /**
  * スナップショットから読み込んだ全オブジェクトを保持し、関心ごとの窓口を返すクラス<br>
- * 検索・一覧・名前の解決・関連のたどりは各窓口（{@link TableCatalog}・{@link ObjectCatalog}・{@link ViewpointCatalog}・{@link
- * RelationGraph}）が担い、ここには複数の窓口にまたがる処理だけを置く
+ * 検索・一覧・名前の解決・関連のたどりは各窓口（{@link TableCatalog}・{@link ObjectCatalog}・{@link ViewpointCatalog}・
+ * {@link RelationGraph}）が担い、ここには複数の窓口にまたがる処理だけを置く
  */
 public final class SchemaCatalog {
 

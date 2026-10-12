@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * PagedSectionWriter のページ分割可否・境界値に関するテスト<br>
- * 分割判定の上限（MAX_PAGE_SIZE = 3000）はクラス内部のprivate定数のため、 このテストでは実測されたその値をリテラルとして直接使用する
+ * 分割判定の上限（MAX_PAGE_SIZE = 3000）はクラス内部のprivate定数のため、このテストでは実測されたその値をリテラルとして直接使用する
  */
 public class PagedSectionWriterTest {
 

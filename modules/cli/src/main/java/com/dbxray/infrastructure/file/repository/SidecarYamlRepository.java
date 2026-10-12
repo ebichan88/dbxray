@@ -119,7 +119,7 @@ public class SidecarYamlRepository implements SidecarRepository {
   }
 
   /**
-   * 指定したのにファイルが無い場合に付帯情報なしで続行すると、付帯情報の消えた定義書が気付かれずに出力されるため、 利用者が直せる誤りとして報告する
+   * 指定したのにファイルが無い場合に付帯情報なしで続行すると、付帯情報の消えた定義書が気付かれずに出力されるため、利用者が直せる誤りとして報告する
    *
    * @param sidecarPath サイドカーYAMLのパス（前後の空白を除去済み）
    * @throws UserCorrectableException パスとして解釈できない場合や、ファイルが存在しない・ファイルでない場合
@@ -150,7 +150,7 @@ public class SidecarYamlRepository implements SidecarRepository {
   }
 
   /**
-   * YAMLとして解釈できないのは利用者が手で書いたファイルの誤りのため、どのファイルを直せばよいかを添えて {@link UserCorrectableException}として伝える
+   * YAMLとして解釈できないのは利用者が手で書いたファイルの誤りのため、どのファイルを直せばよいかを添えて{@link UserCorrectableException}として伝える
    * （解析の失敗箇所は{@link YamlSyntaxErrors}が示す）
    *
    * @throws UserCorrectableException YAMLとして解釈できない場合（構文誤り・UTF-8以外の文字コード等）
@@ -203,7 +203,7 @@ public class SidecarYamlRepository implements SidecarRepository {
     return Annotations.of(byKey);
   }
 
-  /** 参照元・参照先のテーブルや列が欠けている定義はER図の関連線を描けないため読み飛ばす。 列数の不一致は関連線の描画自体は成立するため、警告のみ出して定義は維持する */
+  /** 参照元・参照先のテーブルや列が欠けている定義はER図の関連線を描けないため読み飛ばす。列数の不一致は関連線の描画自体は成立するため、警告のみ出して定義は維持する */
   private List<ForeignKeyEntity> parseRelations(Object root, Path path) {
     final Object relations = mapValue(root, KEY_RELATIONS);
     if (relations == null) {
@@ -354,8 +354,8 @@ public class SidecarYamlRepository implements SidecarRepository {
   }
 
   /**
-   * DBに制約が存在せず機械的に判定できないため、YAMLでの明示指定を優先し、 未指定・不正な指定の場合は既定値（{@link
-   * Cardinality#DEFAULT_FOR_LOGICAL_RELATION}）を用いる。未指定の場合は既定値へ黙って落とすが、不正な値が指定された場合は気付けるよう警告する
+   * DBに制約が存在せず機械的に判定できないため、YAMLでの明示指定を優先し、
+   * 未指定・不正な指定の場合は既定値（{@link Cardinality#DEFAULT_FOR_LOGICAL_RELATION}）を用いる。未指定の場合は既定値へ黙って落とすが、不正な値が指定された場合は気付けるよう警告する
    *
    * @param label YAMLで指定された多重度のラベル（未指定可）
    * @param entry 警告に添える、{@code relations}の何件目の定義か

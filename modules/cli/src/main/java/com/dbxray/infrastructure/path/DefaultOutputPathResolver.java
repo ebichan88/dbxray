@@ -18,8 +18,7 @@ import java.util.function.Predicate;
  * 出力パス解決のデフォルト実装<br>
  * Markdownドキュメントのファイル名・配置は{@link DocumentLocations}、スナップショットのそれは{@link SnapshotLocations}の規則に従い、
  * 出力ベースディレクトリを起点に解決する。<br>
- * 解決したパスが起点のディレクトリの外を指さないことを確かめる（DB由来の名前は{@link
- * com.dbxray.domain.service.path.PathSegments}で置き換え済みのため、外を指すのは規則の不具合）
+ * 解決したパスが起点のディレクトリの外を指さないことを確かめる（DB由来の名前は{@link com.dbxray.domain.service.path.PathSegments}で置き換え済みのため、外を指すのは規則の不具合）
  */
 public class DefaultOutputPathResolver implements OutputPathResolver {
 

@@ -46,8 +46,8 @@ class RealisticFunctionBodiesTest {
           "public.orders");
 
   /**
-   * 出力対象のテーブル。{@code legacy_invoices}・{@code invoice_history}は、コメント・文字列の中にだけ書いてあり、 {@code
-   * init_audit}は、パッケージの初期化の処理だけが書き込む（いずれも期待値には現れない）
+   * 出力対象のテーブル。{@code legacy_invoices}・{@code invoice_history}は、コメント・文字列の中にだけ書いてあり、
+   * {@code init_audit}は、パッケージの初期化の処理だけが書き込む（いずれも期待値には現れない）
    */
   private static final Tables BILLING_TABLES =
       tables(
