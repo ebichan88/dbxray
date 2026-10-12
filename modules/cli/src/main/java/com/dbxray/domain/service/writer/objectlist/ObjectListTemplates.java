@@ -20,7 +20,9 @@ import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
  * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
  * テーブル一覧（{@link TableDefinitionListTemplates}）と同じ方針である
  */
-public class ObjectListTemplates {
+public final class ObjectListTemplates {
+
+  private ObjectListTemplates() {}
 
   /** 一覧ファイルヘッダー */
   public static String fileHeader(String title, BaseInfoEntity baseInfo) {

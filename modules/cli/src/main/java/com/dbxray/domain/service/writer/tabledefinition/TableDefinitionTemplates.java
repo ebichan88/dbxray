@@ -31,7 +31,9 @@ import java.util.Map;
 import java.util.Set;
 
 /** テーブル定義書き込みに利用するMarkdownのテンプレートを扱うクラス */
-public class TableDefinitionTemplates {
+public final class TableDefinitionTemplates {
+
+  private TableDefinitionTemplates() {}
 
   /** テーブル定義ヘッダー */
   public static String fileHeader(TableEntity table) {
@@ -90,7 +92,7 @@ public class TableDefinitionTemplates {
    * いずれも自由記述文字列で改行を含む場合もあるためエスケープする
    */
   public static String columns(List<ColumnEntity> columns, TableAnnotation annotation) {
-    String header =
+    final String header =
         """
                 ## カラム情報
 
@@ -177,7 +179,7 @@ public class TableDefinitionTemplates {
    * 備考はDBコメント（{@code COMMENT ON INDEX}）由来の自由記述文字列のためエスケープする
    */
   public static String indexes(List<IndexEntity> indexes) {
-    String header =
+    final String header =
         """
                 ## インデックス情報
 
@@ -203,7 +205,7 @@ public class TableDefinitionTemplates {
    * 備考はDBコメント（{@code COMMENT ON CONSTRAINT}）由来の自由記述文字列のためエスケープする
    */
   public static String constraints(List<ConstraintEntity> constraints) {
-    String header =
+    final String header =
         """
                 ## 制約情報
 
@@ -224,7 +226,7 @@ public class TableDefinitionTemplates {
 
   /** 外部キー情報セクション（DBに実在する外部キー制約のみ） */
   public static String foreignKeys(List<ForeignKeyEntity> foreignKeys) {
-    String header =
+    final String header =
         """
                 ## 外部キー情報
 
@@ -380,7 +382,7 @@ public class TableDefinitionTemplates {
    * 本体を持つトリガー（Oracle）は、表の後にトリガーごとの見出しとコードブロックで本体を出す（複数行のため表のセルに収まらない）
    */
   public static String triggers(List<TriggerEntity> triggers) {
-    String header =
+    final String header =
         """
                 ## トリガー情報
 
@@ -425,7 +427,7 @@ public class TableDefinitionTemplates {
       List<ColumnEntity> columns,
       DiagramNeighborhood neighborhood,
       DiagramBoxes boxes) {
-    StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
     final List<ForeignKeyEntity> drawnRelations = neighborhood.relations();
     if (drawnRelations.isEmpty()) {
       return sb.append("関連するテーブルはありません。").append(LINE_SEPARATOR_DOUBLE).toString();

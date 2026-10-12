@@ -15,10 +15,12 @@ import java.util.Set;
 import java.util.function.Function;
 
 /** データベース単位ディレクトリのREADME書き込みに利用するMarkdownのテンプレートを扱うクラス */
-public class ReadmeTemplates {
+public final class ReadmeTemplates {
 
   /** 全スキーマの合計の行の、スキーマ名の欄の表示（スキーマ名と区別するため括弧で囲む） */
   private static final String TOTAL_LABEL = "（合計）";
+
+  private ReadmeTemplates() {}
 
   /** READMEのファイルヘッダー */
   public static String fileHeader(BaseInfoEntity baseInfo) {

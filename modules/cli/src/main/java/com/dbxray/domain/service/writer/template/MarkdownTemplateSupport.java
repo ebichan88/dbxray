@@ -16,7 +16,7 @@ public final class MarkdownTemplateSupport {
 
   public static final String LINE_SEPARATOR = System.lineSeparator();
   public static final String LINE_SEPARATOR_DOUBLE = LINE_SEPARATOR + LINE_SEPARATOR;
-  public static final String HORIZON = "___";
+  public static final String HORIZONTAL_RULE = "___";
 
   /** 基本情報に掲載する作成日の書式 */
   private static final DateTimeFormatter GENERATED_DATE_FORMAT =
@@ -24,6 +24,14 @@ public final class MarkdownTemplateSupport {
 
   /** 表のセルで真偽値の「真」を表すマーカー文字列（「偽」は空文字とする） */
   private static final String MARKER = "○";
+
+  /** 生のHTMLのタグ・コメントの開始になる{@code <}のうち、表のセルの改行に使う{@code <br>}以外 */
+  private static final Pattern HTML_START = Pattern.compile("<(?!br>)");
+
+  private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
+
+  /** コードブロックの囲みの最短の長さ（CommonMarkの仕様） */
+  private static final int MIN_FENCE_LENGTH = 3;
 
   private MarkdownTemplateSupport() {}
 
@@ -45,14 +53,6 @@ public final class MarkdownTemplateSupport {
         + LINE_SEPARATOR_DOUBLE;
   }
 
-  /** 生のHTMLのタグ・コメントの開始になる{@code <}のうち、表のセルの改行に使う{@code <br>}以外 */
-  private static final Pattern HTML_START = Pattern.compile("<(?!br>)");
-
-  private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
-
-  /** コードブロックの囲みの最短の長さ（CommonMarkの仕様） */
-  private static final int MIN_FENCE_LENGTH = 3;
-
   /**
    * Markdownの表の1行を組み立てるメソッド<br>
    * 各引数を{@code |}区切りで連結し、先頭・末尾にも{@code |}を付与する（末尾の改行は含まない）。
@@ -66,7 +66,7 @@ public final class MarkdownTemplateSupport {
    */
   public static String row(Object... cells) {
     final StringBuilder sb = new StringBuilder();
-    for (Object cell : cells) {
+    for (final Object cell : cells) {
       final String value = String.valueOf(cell);
       sb.append('|').append(value);
       // GFMの表では\|がセルの区切りではなく文字の|と解釈され、値が\で終わると次のセルと1つにつながって列がずれる

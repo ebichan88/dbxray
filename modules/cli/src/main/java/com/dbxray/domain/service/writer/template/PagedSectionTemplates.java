@@ -1,6 +1,6 @@
 package com.dbxray.domain.service.writer.template;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
@@ -10,7 +10,9 @@ import java.util.List;
  * 行数の多い表を複数ページに分割して出力する際に共通で利用するMarkdownのテンプレートを扱うクラス<br>
  * GitHub上で表として表示できる行数には上限があるため、一覧系のドキュメントは行数が多い場合に別ファイルへ分割して出力する。本体ページに載せるリンク一覧と、分割ページのページ送りを扱う
  */
-public class PagedSectionTemplates {
+public final class PagedSectionTemplates {
+
+  private PagedSectionTemplates() {}
 
   /** セクションの見出し行 */
   public static String heading(String heading) {
@@ -42,7 +44,7 @@ public class PagedSectionTemplates {
    */
   public static String pageFooter(
       String prevHref, String nextHref, String backHref, String backLabel) {
-    StringBuilder sb = new StringBuilder(HORIZON).append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder(HORIZONTAL_RULE).append(LINE_SEPARATOR_DOUBLE);
     if (prevHref != null) {
       sb.append(String.format("[<<前へ](%s) ", prevHref));
     }

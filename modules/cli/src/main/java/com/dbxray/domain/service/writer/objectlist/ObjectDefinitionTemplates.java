@@ -12,7 +12,9 @@ import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
 
 /** 関数/プロシージャ・シーケンス・ユーザー定義型の個別定義書き込みに利用する Markdownのテンプレートを扱うクラス */
-public class ObjectDefinitionTemplates {
+public final class ObjectDefinitionTemplates {
+
+  private ObjectDefinitionTemplates() {}
 
   /** 基本情報セクション */
   private static String baseInfo(BaseInfoEntity baseInfo) {
@@ -40,7 +42,7 @@ public class ObjectDefinitionTemplates {
 
   /** シーケンスの個別定義ファイル内容 */
   public static String sequenceFile(SequenceEntity sequence, BaseInfoEntity baseInfo) {
-    String properties =
+    final String properties =
         """
                 ## シーケンス情報
 
@@ -64,7 +66,7 @@ public class ObjectDefinitionTemplates {
 
   /** ユーザー定義型の個別定義ファイル内容 */
   public static String typeFile(TypeEntity type, BaseInfoEntity baseInfo) {
-    String definition =
+    final String definition =
         """
                 ## 定義
 

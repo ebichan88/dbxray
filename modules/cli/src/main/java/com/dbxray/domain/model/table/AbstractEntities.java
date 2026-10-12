@@ -31,7 +31,7 @@ public abstract class AbstractEntities<T extends SchemaTableKeyed> {
    * @return テーブルキーをキー、エンティティのリストを値とするマップ
    */
   protected static <E> Map<TableKey, List<E>> index(List<E> list, Function<E, TableKey> keyFn) {
-    Map<TableKey, List<E>> map = new LinkedHashMap<>();
+    final Map<TableKey, List<E>> map = new LinkedHashMap<>();
     // computeIfAbsentでListを初期化してからaddする
     list.forEach(e -> map.computeIfAbsent(keyFn.apply(e), k -> new ArrayList<>()).add(e));
     map.replaceAll((k, v) -> List.copyOf(v));

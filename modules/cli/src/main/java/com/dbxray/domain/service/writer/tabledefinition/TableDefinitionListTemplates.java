@@ -13,7 +13,9 @@ import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
 import java.util.List;
 
 /** テーブル定義一覧書き込みに利用するMarkdownのテンプレートを扱うクラス */
-public class TableDefinitionListTemplates {
+public final class TableDefinitionListTemplates {
+
+  private TableDefinitionListTemplates() {}
 
   /** テーブル定義一覧ヘッダー */
   public static String fileHeader(BaseInfoEntity baseInfo) {

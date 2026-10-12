@@ -1,6 +1,6 @@
 package com.dbxray.domain.service.writer.erdiagram;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.row;
@@ -32,7 +32,9 @@ import java.util.Map;
  * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
  * テーブル一覧（{@link TableDefinitionListTemplates}）と同じ方針である
  */
-public class ErDiagramTemplates {
+public final class ErDiagramTemplates {
+
+  private ErDiagramTemplates() {}
 
   /** ER図ファイルヘッダー */
   public static String fileHeader(String title, BaseInfoEntity baseInfo) {
@@ -100,7 +102,7 @@ public class ErDiagramTemplates {
    */
   public static String erDiagram(RenderingPlan plan, DiagramBoxes boxes) {
     final ForeignKeyGroup group = plan.group();
-    StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
     if (group.foreignKeys().isEmpty()) {
       return sb.append("外部キーによる関連を持つテーブルはありません。").append(LINE_SEPARATOR_DOUBLE).toString();
     }
@@ -189,7 +191,7 @@ public class ErDiagramTemplates {
    * スキーマ全体のER図（グループ一覧）へ戻る導線を加える
    */
   public static String groupFooter(String schemaName, BaseInfoEntity baseInfo) {
-    return HORIZON
+    return HORIZONTAL_RULE
         + LINE_SEPARATOR_DOUBLE
         + String.format(
             "[スキーマのER図へ](%s) / ",
@@ -264,7 +266,7 @@ public class ErDiagramTemplates {
 
   /** スキーマ別ER図ページのフッター */
   public static String schemaFooter(BaseInfoEntity baseInfo) {
-    return HORIZON + LINE_SEPARATOR_DOUBLE + backLinks(baseInfo) + LINE_SEPARATOR;
+    return HORIZONTAL_RULE + LINE_SEPARATOR_DOUBLE + backLinks(baseInfo) + LINE_SEPARATOR;
   }
 
   /** ER図索引ページのフッター */

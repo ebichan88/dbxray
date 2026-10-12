@@ -1,6 +1,6 @@
 package com.dbxray.domain.service.writer.viewpoint;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
@@ -24,7 +24,9 @@ import java.util.List;
  * ER図の描画と、テーブル・関連の表の1行分は、スキーマ別ER図（{@link ErDiagramTemplates}）と同じものを用いる。
  * 観点は人が選んだテーブルのまとまりのため、スキーマ別ER図と異なり連結成分によるグループ分割は行わない
  */
-public class ViewpointTemplates {
+public final class ViewpointTemplates {
+
+  private ViewpointTemplates() {}
 
   /** 観点ページのファイルヘッダー */
   public static String fileHeader(Viewpoint viewpoint, BaseInfoEntity baseInfo) {
@@ -108,7 +110,7 @@ public class ViewpointTemplates {
    * 観点一覧・テーブル一覧へ戻る導線を置く
    */
   public static String footer(BaseInfoEntity baseInfo) {
-    return HORIZON
+    return HORIZONTAL_RULE
         + LINE_SEPARATOR_DOUBLE
         + String.format(
             "[%s](%s) / [%s](%s)",
