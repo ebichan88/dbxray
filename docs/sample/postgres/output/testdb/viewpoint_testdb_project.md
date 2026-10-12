@@ -37,20 +37,20 @@ erDiagram
 
 | No. | スキーマ名 | 物理テーブル名 | 論理テーブル名 | 区分 | Link |
 |:---|:---|:---|:---|:---|:---|
-| 1 | sample | employee | 従業員 | table | [■](./sample/table/employee.md) |
-| 2 | sample | project | プロジェクト | table | [■](./sample/table/project.md) |
-| 3 | sample | project_assignment |  | table | [■](./sample/table/project_assignment.md) |
-| 4 | sample | project_summary_mv | プロジェクト別要員数集計 | materialized_view | [■](./sample/materialized_view/project_summary_mv.md) |
+|1|sample|employee|従業員|table|[■](./sample/table/employee.md)|
+|2|sample|project|プロジェクト|table|[■](./sample/table/project.md)|
+|3|sample|project_assignment||table|[■](./sample/table/project_assignment.md)|
+|4|sample|project_summary_mv|プロジェクト別要員数集計|materialized_view|[■](./sample/materialized_view/project_summary_mv.md)|
 
 ## 観点外のテーブルとの関連
 
 | No. | 参照元 | 外部キー名 | 参照先 |
 |:---|:---|:---|:---|
-| 1 | sample.attendance | attendance_employee_id_fkey | sample.employee |
-| 2 | sample.employee | employee_department_id_fkey | sample.department |
-| 3 | sample.employee | employee_parking_spot_id_fkey | sample.parking_spot |
-| 4 | sample.employee_profile | employee_profile_employee_id_fkey | sample.employee |
-| 5 | sample.audit_log | record_id | sample.employee |
+|1|sample.attendance|attendance_employee_id_fkey|sample.employee|
+|2|sample.employee|employee_department_id_fkey|sample.department|
+|3|sample.employee|employee_parking_spot_id_fkey|sample.parking_spot|
+|4|sample.employee_profile|employee_profile_employee_id_fkey|sample.employee|
+|5|sample.audit_log|record_id|sample.employee|
 
 ___
 

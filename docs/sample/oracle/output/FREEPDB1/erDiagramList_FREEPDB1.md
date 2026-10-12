@@ -10,7 +10,7 @@
 
 | No. | スキーマ名 | テーブル数 | Link |
 |:---|:---|:---|:---|
-| 1 | SAMPLE | 14 | [■](./erDiagram_FREEPDB1_SAMPLE.md) |
+|1|SAMPLE|14|[■](./erDiagram_FREEPDB1_SAMPLE.md)|
 
 ___
 

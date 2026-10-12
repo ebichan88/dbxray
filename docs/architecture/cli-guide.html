@@ -1670,8 +1670,8 @@ ER図に描画するテーブル数が11件となり、上限（erDiagramMaxNode
 
 | No. | テーブル数 | 外部キー数 | 主なテーブル | Link |
 |:---|:---|:---|:---|:---|
-| 1 | 9 | 9 | sample.employee | [■](./erDiagram_testdb_sample_group1.md) |
-| 2 | 2 | 1 | sample.shipment | [■](./erDiagram_testdb_sample_group2.md) |</code></pre>
+|1|9|9|sample.employee|[■](./erDiagram_testdb_sample_group1.md)|
+|2|2|1|sample.shipment|[■](./erDiagram_testdb_sample_group2.md)|</code></pre>
 <p class="small muted">「主なテーブル」は<code>ForeignKeyGroup.mainTable</code>で、最も多くの関連が接続するテーブルです。group1の外部キー数9には、論理リレーション<code>audit_log.record_id</code>も含まれます（合流しているため）。</p>
 
 <h3>9.5 ER図の箱に何を表示するか（DiagramBoxes）</h3>
@@ -2001,7 +2001,7 @@ erDiagram
   <thead><tr><th>使い道</th><th>通す部品</th><th>防ぐこと</th><th>検査するテスト</th></tr></thead>
   <tbody>
     <tr><td>ファイル名・ディレクトリ名</td><td><code>PathSegments.encode</code>（<code>/ \ : * ? " &lt; &gt; |</code>・<code>~</code>・制御文字を<code>~</code>＋16進2桁に、<code>.</code>だけの名前と空の名前も置き換える。例：<code>a/b</code> → <code>a~2Fb</code>）と、<code>DefaultOutputPathResolver</code>の<code>within</code></td><td>出力先の外への書き込み（パストラバーサル）</td><td><code>OutputPathContainmentTest</code>（<code>OutputPathResolver</code>の全メソッドを危険な名前で呼ぶ）、<code>ArchitectureTest</code>（<code>Path.resolve</code>の呼び出し場所）</td></tr>
-    <tr><td>表の行</td><td><code>row</code>（書式で組み立てた行は<code>escapeTableRow</code>）。改行を<code>&lt;br&gt;</code>に、それ以外の<code>&lt;</code>を<code>&amp;lt;</code>に</td><td>生のHTMLの描画、行の分断</td><td rowspan="3"><code>MarkdownInjectionTest</code>（各テンプレートにHTML・<code>```</code>・見出しを混ぜた文字列を渡す）</td></tr>
+    <tr><td>表の行</td><td><code>row</code>（表の行はすべてこのメソッドで組み立てる）。改行を<code>&lt;br&gt;</code>に、それ以外の<code>&lt;</code>を<code>&amp;lt;</code>に</td><td>生のHTMLの描画、行の分断</td><td rowspan="3"><code>MarkdownInjectionTest</code>（各テンプレートにHTML・<code>```</code>・見出しを混ぜた文字列を渡す）</td></tr>
     <tr><td>見出し・リストの項目</td><td><code>escapeInline</code>（改行を空白に）</td><td>次の行がMarkdownの構文になること</td></tr>
     <tr><td>関数・ビューの定義、トリガーの本体、パーティションキー</td><td><code>codeFence</code>・<code>codeSpan</code>（中身の最長のバッククォートより長い囲み）</td><td>コードブロックが途中で閉じること</td></tr>
     <tr><td>Mermaidの図</td><td><code>MermaidSupport</code>（識別子は記号を<code>_</code>に、表示名・関連名の二重引用符と改行を置き換える）</td><td>図の構文の破壊、コードブロックを閉じる行</td><td><code>MermaidSupportTest</code></td></tr>

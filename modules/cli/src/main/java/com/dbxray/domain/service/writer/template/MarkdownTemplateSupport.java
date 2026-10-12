@@ -56,6 +56,7 @@ public final class MarkdownTemplateSupport {
   /**
    * Markdownの表の1行を組み立てるメソッド<br>
    * 各引数を{@code |}区切りで連結し、先頭・末尾にも{@code |}を付与する（末尾の改行は含まない）。
+   * 表の行はすべてこのメソッドで組み立て、書式（{@code "| %s |"}等）で組み立てない。
    * セルの値は{@link String#valueOf}相当で文字列化し、行全体に{@link #escapeTableRow}を適用する。
    * {@code |}を含みうる自由記述文字列は、呼び出し側で{@link #escapeTableCell}等を適用した上で渡すこと。
    * {@code \}で終わるセルの後には空白を1つ置く（表示ではセルの前後の空白は除かれる）
@@ -79,9 +80,9 @@ public final class MarkdownTemplateSupport {
   /**
    * 表の1行分の文字列（末尾の改行を含まない）に含まれるDB由来の文字列をエスケープするメソッド<br>
    * 改行を{@code <br>}に置き換えたうえで{@link #escapeHtml}を適用する（DB由来の名前の改行で行が切れ、
-   * 次の行がMarkdownの構文として解釈されないようにするため）。{@link #row}を使わず書式で組み立てた行に適用する
+   * 次の行がMarkdownの構文として解釈されないようにするため）
    */
-  public static String escapeTableRow(String line) {
+  private static String escapeTableRow(String line) {
     return escapeHtml(LINE_BREAK.matcher(Objects.toString(line, "")).replaceAll("<br>"));
   }
 

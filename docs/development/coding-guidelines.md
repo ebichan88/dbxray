@@ -162,7 +162,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
   `Path.resolve`等をそれ以外の場所で呼ぶと`ArchitectureTest`が失敗する。`OutputPathResolver`にメソッドを足すと、
   `OutputPathContainmentTest`が危険な名前（`..`・絶対パス・`\`・`C:`等）で自動的に検査する
   （引数の型が新しい場合は、テストの`ARGUMENTS`に危険な値を足す）。
-- **Markdown・Mermaid**：DB由来の文字列は、表の行なら`MarkdownTemplateSupport.row`（書式で組み立てた行は`escapeTableRow`）、
+- **Markdown・Mermaid**：DB由来の文字列は、表の行なら`MarkdownTemplateSupport.row`（表の行は書式で組み立てずこのメソッドで組み立てる）、
   見出し・リストの項目なら`escapeInline`、コードブロックは`codeFence`、コードスパンは`codeSpan`を通し、Mermaidの図は
   `MermaidSupport`のメソッドで組み立てる（生のHTMLやコードブロックを閉じる行が出力されないようにするため）。
   DB由来の文字列を受け取るテンプレートを足したら、`MarkdownInjectionTest`の`renderedDocuments`にも足す。

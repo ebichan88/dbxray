@@ -10,7 +10,7 @@
 
 | No. | スキーマ名 | テーブル数 | Link |
 |:---|:---|:---|:---|
-| 1 | sample | 14 | [■](./erDiagram_testdb_sample.md) |
+|1|sample|14|[■](./erDiagram_testdb_sample.md)|
 
 ___
 

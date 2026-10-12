@@ -111,7 +111,7 @@ public class ViewpointTemplatesTest {
 
         | No. | 参照元 | 外部キー名 | 参照先 |
         |:---|:---|:---|:---|
-        | 1 | public.orders | rel_orders_product | public.product |
+        |1|public.orders|rel_orders_product|public.product|
 
         """,
         ViewpointTemplates.outsideRelations(
