@@ -8,7 +8,7 @@ cliが出力したスキーマのスナップショット（JSON Lines）を、A
 cliのアーキテクチャ（[overview.md](./overview.md)）とは独立している。cliのコードには依存せず、両者の接点はスナップショットの形式だけ。
 
 初めてコードを読む人向けに、MCPとMCP Java SDKの事前知識、起動から1回のツール呼び出しまでの流れ、ソースごとの役割と繋がりを
-図でまとめた読解ガイド（[mcp-server-guide.html](./mcp-server-guide.html)。ブラウザで開く）がある。ガイドはある時点のコードを読んで
+図でまとめた読解ガイド（[mcp-server-guide.html](./mcp-server-guide.html)。最新の正式版の時点のものを[GitHub Pages](https://ebichan88.github.io/dbxray/mcp-server-guide.html)で読める）がある。ガイドはある時点のコードを読んで
 書いたもので、クラス名・行数等が食い違う場合はこの文書とコードを正とする。
 
 ## 構成と依存の向き

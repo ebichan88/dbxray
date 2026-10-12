@@ -1,0 +1,85 @@
+name: Pages
+
+# v*タグ（v0.4.0等）のpushで、そのタグの時点の読解ガイド（docs/architecture/*-guide.html）をGitHub Pagesに公開する。
+# 公開するファイルはタグからそのまま取り出し、ページ上部にタグ名を差し込むため、タグの後のコミットは混ざらない。
+# タグに「-」を含む版（v0.5.0-rc.1等）は公開しない（release.ymlのプレリリースと同じ扱い）。
+# このワークフローが無いタグ（v0.4.0以前）や公開し直したいときは、手動実行でタグを指定する
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 公開するタグ（v0.4.0等）
+        required: true
+
+permissions:
+  contents: read
+
+# 公開中のデプロイを途中で止めないよう、後から来たものは待たせる
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # 手動実行の入力はシェルへ直接埋め込まず、環境変数で渡す
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Check the tag
+        shell: bash
+        run: |
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::公開できるのは正式版のタグ（v0.4.0等）だけです: ${TAG}"
+            exit 1
+          fi
+
+      # 目次ページの雛形は実行中のワークフローと同じ版のものを、ガイドは公開するタグのものを使う
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          path: tagged
+          sparse-checkout: docs/architecture
+
+      # タグ名の表示を差し込み、Pages上では開けない相対リンクのmd（domain-model.md等）を、同じタグのGitHub上のファイルに向け直す
+      - name: Assemble the site
+        shell: bash
+        run: |
+          repo_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          release="<p class=\"small\" style=\"display:inline-block;margin:0 0 0.6rem;padding:0.1rem 0.7rem;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);color:var(--accent);font-family:var(--font-mono)\">${TAG} の時点のガイド（<a href=\"${repo_url}/tree/${TAG}\">ソース</a>）</p>"
+          mkdir -p site
+          for guide in cli-guide.html mcp-server-guide.html; do
+            sed -e "0,/<header>/s||<header>\n  ${release}|" \
+                -e "s|href=\"\./\([^\"#]*\.md\)|href=\"${repo_url}/blob/${TAG}/docs/architecture/\1|g" \
+                "tagged/docs/architecture/${guide}" > "site/${guide}"
+            if ! grep -qF "${TAG} の時点のガイド" "site/${guide}"; then
+              echo "::error::${guide}にタグ名を差し込めませんでした（<header>が見つかりません）"
+              exit 1
+            fi
+          done
+          sed -e "s|__TAG__|${TAG}|g" -e "s|__REPO_URL__|${repo_url}|g" .github/pages/index.html > site/index.html
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -9,7 +9,7 @@ Java 21 / Gradle製で、DIコンテナにGoogle Guiceを、O/RマッパーにMy
 [mcp-server.md](./mcp-server.md)を参照。
 
 初めてコードを読む人向けに、入出力と使っている技術（Guice・MyBatis等）の事前知識、起動から終了までと取得・書き出しの流れ、
-データの持ち方、ソースごとの役割と繋がりを図でまとめた読解ガイド（[cli-guide.html](./cli-guide.html)。ブラウザで開く）がある。
+データの持ち方、ソースごとの役割と繋がりを図でまとめた読解ガイド（[cli-guide.html](./cli-guide.html)。最新の正式版の時点のものを[GitHub Pages](https://ebichan88.github.io/dbxray/cli-guide.html)で読める）がある。
 ガイドはある時点のコードを読んで書いたもので、クラス名・行数等が食い違う場合はこの文書とコードを正とする。
 
 ## レイヤー構成
