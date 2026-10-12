@@ -86,9 +86,10 @@ public final class ForeignKeyGroup {
 
   /**
    * まとまりの中で最も多くの外部キーが接続するテーブルを求めるメソッド<br>
-   * どのまとまりなのかを識別する手がかりとして一覧に掲載する
+   * どのまとまりなのかを識別する手がかりとして一覧に掲載する。外部キーを1つ以上持つまとまりでだけ呼ぶ
    *
-   * @return 最も多くの外部キーが接続するテーブル。同数の場合はスキーマ名・テーブル名順で先頭のもの。外部キーが無い場合はnull
+   * @return 最も多くの外部キーが接続するテーブル。同数の場合はスキーマ名・テーブル名順で先頭のもの
+   * @throws java.util.NoSuchElementException 外部キーが無いまとまりの場合
    */
   public TableKey mainTable() {
     final Map<TableKey, Integer> degrees = new HashMap<>();
@@ -105,6 +106,6 @@ public final class ForeignKeyGroup {
                 .thenComparing(entry -> entry.getKey().table()))
         .map(Map.Entry::getKey)
         .findFirst()
-        .orElse(null);
+        .orElseThrow();
   }
 }

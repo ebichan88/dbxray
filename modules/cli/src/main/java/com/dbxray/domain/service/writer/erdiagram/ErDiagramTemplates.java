@@ -181,7 +181,7 @@ public class ErDiagramTemplates {
                 no,
                 tableCount,
                 fkCount,
-                mainTable == null ? "" : mainTable.qualifiedName(),
+                mainTable.qualifiedName(),
                 MarkdownTemplateSupport.linkCell(href)))
         + LINE_SEPARATOR;
   }
