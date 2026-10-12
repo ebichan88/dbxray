@@ -37,9 +37,12 @@ final class SqlNames {
    * @param quote 囲む引用符（識別子は{@code "}、文字列は{@code '}）。中の2つ並びの引用符は1つにする
    */
   static String unquote(String text, char quote) {
-    final int open = text.indexOf(quote);
-    final boolean closed = text.length() - open >= 2 && text.charAt(text.length() - 1) == quote;
-    return text.substring(open + 1, closed ? text.length() - 1 : text.length())
-        .replace(String.valueOf(quote).repeat(2), String.valueOf(quote));
+    final String single = String.valueOf(quote);
+    final String doubled = single.repeat(2);
+    final int contentStart = text.indexOf(quote) + 1;
+    // 開きの引用符の後ろに文字が無ければ、末尾の引用符は開きそのもので、閉じではない
+    final boolean closed = text.length() > contentStart && text.charAt(text.length() - 1) == quote;
+    final int contentEnd = closed ? text.length() - 1 : text.length();
+    return text.substring(contentStart, contentEnd).replace(doubled, single);
   }
 }
