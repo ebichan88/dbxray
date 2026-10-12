@@ -9,13 +9,13 @@ final class AsciiCase {
 
   private AsciiCase() {}
 
-  /** ASCIIの英字の大文字小文字を区別せずに比べる */
-  static boolean equalsIgnoreCase(String a, String b) {
-    if (a.length() != b.length()) {
+  /** 文字列の一部の範囲が、ASCIIの英字の大文字小文字を区別せずに別の文字列と等しいか（部分文字列を作らずに比べる） */
+  static boolean regionEqualsIgnoreCase(String source, int start, int end, String other) {
+    if (end - start != other.length()) {
       return false;
     }
-    for (int i = 0; i < a.length(); i++) {
-      if (toUpper(a.charAt(i)) != toUpper(b.charAt(i))) {
+    for (int i = 0; i < other.length(); i++) {
+      if (toUpper(source.charAt(start + i)) != toUpper(other.charAt(i))) {
         return false;
       }
     }
@@ -24,11 +24,16 @@ final class AsciiCase {
 
   /** ASCIIの英小文字だけを大文字にする */
   static String toUpper(String value) {
-    final StringBuilder sb = new StringBuilder(value.length());
-    for (int i = 0; i < value.length(); i++) {
-      sb.append(toUpper(value.charAt(i)));
+    return toUpper(value, 0, value.length());
+  }
+
+  /** 文字列の一部の範囲について、ASCIIの英小文字だけを大文字にした文字列を返す */
+  static String toUpper(String value, int start, int end) {
+    final char[] chars = new char[end - start];
+    for (int i = 0; i < chars.length; i++) {
+      chars[i] = toUpper(value.charAt(start + i));
     }
-    return sb.toString();
+    return new String(chars);
   }
 
   /** ASCIIの英大文字だけを小文字にする */

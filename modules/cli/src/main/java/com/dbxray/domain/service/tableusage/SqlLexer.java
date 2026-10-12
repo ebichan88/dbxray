@@ -3,6 +3,7 @@ package com.dbxray.domain.service.tableusage;
 import com.dbxray.domain.model.database.Dbms;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 関数・プロシージャの定義本体を字句（トークン）に分けるクラス<br>
@@ -15,10 +16,6 @@ final class SqlLexer {
 
   /** ドル引用符のタグの長さの上限。超えるものはドル引用符とみなさない（閉じの区切りを探す手間が「本体の長さ×タグの長さ」になるため） */
   static final int MAX_DOLLAR_TAG_LENGTH = 64;
-
-  /** 1つの字句として扱う2文字の演算子・区切り記号 */
-  private static final List<String> TWO_CHAR_SYMBOLS =
-      List.of("::", ":=", "=>", "..", "||", "<<", ">>", "<=", ">=", "<>", "!=");
 
   private final String source;
   private final int to;
@@ -67,7 +64,7 @@ final class SqlLexer {
         tokens.add(
             new SqlToken(
                 kind,
-                source.substring(start, pos),
+                source,
                 start,
                 pos,
                 startLine,
@@ -104,19 +101,17 @@ final class SqlLexer {
       scanQuoted('"', false);
       return SqlTokenKind.QUOTED_IDENTIFIER;
     }
-    final SqlTokenKind dialectKind =
+    final Optional<SqlTokenKind> dialectKind =
         switch (dbms) {
           case POSTGRESQL -> scanPostgresSpecific(c);
           case ORACLE -> scanOracleSpecific(c);
         };
-    if (dialectKind != null) {
-      return dialectKind;
+    if (dialectKind.isPresent()) {
+      return dialectKind.get();
     }
     if (isIdentifierStart(c)) {
       pos++;
-      while (pos < to && isIdentifierPart(source.charAt(pos))) {
-        pos++;
-      }
+      skipIdentifierParts();
       return SqlTokenKind.WORD;
     }
     if (isDigit(c) || (c == '.' && isDigit(peek(1)))) {
@@ -129,70 +124,75 @@ final class SqlLexer {
   /**
    * PostgreSQLに固有の字句（{@code E'...'}・{@code U&'...'}・{@code B'...'}等の接頭辞付きの文字列、ドル引用符、位置パラメータ）を読む
    *
-   * @return 読んだ字句の種類。当てはまらない場合はnull（位置は進めない）
+   * @return 読んだ字句の種類。当てはまらない場合は空（位置は進めない）
    */
-  private SqlTokenKind scanPostgresSpecific(char c) {
+  private Optional<SqlTokenKind> scanPostgresSpecific(char c) {
     if ((c == 'E' || c == 'e') && peek(1) == '\'') {
       pos++;
       scanQuoted('\'', true);
-      return SqlTokenKind.STRING;
+      return Optional.of(SqlTokenKind.STRING);
     }
     if ((c == 'U' || c == 'u') && peek(1) == '&' && (peek(2) == '\'' || peek(2) == '"')) {
       final char quote = peek(2);
       pos += 2;
       scanQuoted(quote, false);
-      return quote == '"' ? SqlTokenKind.QUOTED_IDENTIFIER : SqlTokenKind.STRING;
+      return Optional.of(quote == '"' ? SqlTokenKind.QUOTED_IDENTIFIER : SqlTokenKind.STRING);
     }
     if ("BbXxNn".indexOf(c) >= 0 && peek(1) == '\'') {
       pos++;
       scanQuoted('\'', false);
-      return SqlTokenKind.STRING;
+      return Optional.of(SqlTokenKind.STRING);
     }
     if (c == '$') {
-      return scanPostgresDollar();
+      return Optional.of(scanPostgresDollar());
     }
-    return null;
+    return Optional.empty();
   }
 
   /**
    * Oracleに固有の字句（{@code q'[...]'}・{@code N'...'}の文字列、条件付きコンパイル・問い合わせ指令、バインド変数）を読む
    *
-   * @return 読んだ字句の種類。当てはまらない場合はnull（位置は進めない）
+   * @return 読んだ字句の種類。当てはまらない場合は空（位置は進めない）
    */
-  private SqlTokenKind scanOracleSpecific(char c) {
-    if ((c == 'Q' || c == 'q') && peek(1) == '\'' && scanAlternativeQuote(pos + 2)) {
-      return SqlTokenKind.STRING;
+  private Optional<SqlTokenKind> scanOracleSpecific(char c) {
+    if ((c == 'Q' || c == 'q') && peek(1) == '\'' && hasAlternativeQuoteDelimiter(pos + 2)) {
+      scanAlternativeQuote(pos + 2);
+      return Optional.of(SqlTokenKind.STRING);
     }
     if ((c == 'N' || c == 'n')
         && (peek(1) == 'Q' || peek(1) == 'q')
         && peek(2) == '\''
-        && scanAlternativeQuote(pos + 3)) {
-      return SqlTokenKind.STRING;
+        && hasAlternativeQuoteDelimiter(pos + 3)) {
+      scanAlternativeQuote(pos + 3);
+      return Optional.of(SqlTokenKind.STRING);
     }
     if ((c == 'N' || c == 'n') && peek(1) == '\'') {
       pos++;
       scanQuoted('\'', false);
-      return SqlTokenKind.STRING;
+      return Optional.of(SqlTokenKind.STRING);
     }
     if (c == '$') {
       final int nameStart = peek(1) == '$' ? pos + 2 : pos + 1;
       if (nameStart < to && isIdentifierStart(source.charAt(nameStart))) {
         pos = nameStart;
-        while (pos < to && isIdentifierPart(source.charAt(pos))) {
-          pos++;
-        }
-        return SqlTokenKind.DIRECTIVE;
+        skipIdentifierParts();
+        return Optional.of(SqlTokenKind.DIRECTIVE);
       }
-      return null;
+      return Optional.empty();
     }
     if (c == ':' && (isIdentifierStart(peek(1)) || isDigit(peek(1)))) {
       pos++;
-      while (pos < to && isIdentifierPart(source.charAt(pos))) {
-        pos++;
-      }
-      return SqlTokenKind.PARAMETER;
+      skipIdentifierParts();
+      return Optional.of(SqlTokenKind.PARAMETER);
     }
-    return null;
+    return Optional.empty();
+  }
+
+  /** 識別子の続きの文字を読み飛ばす */
+  private void skipIdentifierParts() {
+    while (pos < to && isIdentifierPart(source.charAt(pos))) {
+      pos++;
+    }
   }
 
   private void scanLineComment() {
@@ -263,27 +263,27 @@ final class SqlLexer {
     incomplete = true;
   }
 
+  /** Oracleの代替引用符（{@code q'[...]'}）の区切り文字があるか（空白・範囲の外は区切りにできない） */
+  private boolean hasAlternativeQuoteDelimiter(int delimiterPos) {
+    return delimiterPos < to && !isWhitespace(source.charAt(delimiterPos));
+  }
+
   /**
-   * Oracleの代替引用符（{@code q'[...]'}）を読む
+   * Oracleの代替引用符（{@code q'[...]'}）を読む。閉じていなければ範囲の終わりまでを読む
    *
-   * @param delimiterPos 区切り文字の位置
-   * @return 代替引用符として読んだ場合はtrue。区切り文字が無い・空白の場合はfalse（位置は進めない）
+   * @param delimiterPos 区切り文字の位置（{@link #hasAlternativeQuoteDelimiter}で確かめたもの）
    */
-  private boolean scanAlternativeQuote(int delimiterPos) {
-    if (delimiterPos >= to || isWhitespace(source.charAt(delimiterPos))) {
-      return false;
-    }
+  private void scanAlternativeQuote(int delimiterPos) {
     final char close = closingDelimiter(source.charAt(delimiterPos));
     pos = delimiterPos + 1;
     while (pos < to) {
       if (source.charAt(pos) == close && peek(1) == '\'') {
         pos += 2;
-        return true;
+        return;
       }
       pos++;
     }
     incomplete = true;
-    return true;
   }
 
   private static char closingDelimiter(char open) {
@@ -371,9 +371,22 @@ final class SqlLexer {
   }
 
   private SqlTokenKind scanSymbol(char c) {
-    final String twoChars = String.valueOf(c) + peek(1);
-    pos += TWO_CHAR_SYMBOLS.contains(twoChars) ? 2 : 1;
+    pos += isTwoCharSymbol(c, peek(1)) ? 2 : 1;
     return SqlTokenKind.SYMBOL;
+  }
+
+  /** 1つの字句として扱う2文字の演算子・区切り記号（{@code ::}・{@code :=}・{@code <>}等）か */
+  private static boolean isTwoCharSymbol(char first, char second) {
+    return switch (first) {
+      case ':' -> second == ':' || second == '=';
+      case '=' -> second == '>';
+      case '.' -> second == '.';
+      case '|' -> second == '|';
+      case '<' -> second == '<' || second == '=' || second == '>';
+      case '>' -> second == '>' || second == '=';
+      case '!' -> second == '=';
+      default -> false;
+    };
   }
 
   /** 範囲の外は{@code \0}として扱う（比べる相手はいずれも{@code \0}以外の文字） */
@@ -405,7 +418,7 @@ final class SqlLexer {
    * 区切りとみなして書き手の意図したテーブルを示す。BOMも読み飛ばす
    */
   private static boolean isWhitespace(char c) {
-    return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '﻿';
+    return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '\uFEFF';
   }
 
   private static boolean isIdentifierStart(char c) {

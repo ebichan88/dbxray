@@ -1,5 +1,6 @@
 package com.dbxray.domain.service.tableusage;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -10,8 +11,8 @@ import java.util.List;
  */
 record SqlLexResult(List<SqlToken> tokens, boolean incomplete) {
 
-  /** 字句のリストは変更不可な複製として保持する */
+  /** 字句のリストは変更不可にして保持する（字句は数百万個になりうるため、複製せず包む。字句を足したレキサー自身はこの後リストに触れない） */
   SqlLexResult {
-    tokens = List.copyOf(tokens);
+    tokens = Collections.unmodifiableList(tokens);
   }
 }

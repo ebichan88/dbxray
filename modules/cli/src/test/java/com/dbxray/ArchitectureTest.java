@@ -134,6 +134,11 @@ public class ArchitectureTest {
         .callMethod(String.class, "split", String.class)
         .orShould()
         .callMethod(String.class, "split", String.class, int.class)
+        .orShould()
+        .callMethod(String.class, "splitWithDelimiters", String.class, int.class)
+        .orShould()
+        .dependOnClassesThat()
+        .haveFullyQualifiedName("java.util.Scanner")
         .because(
             "定義本体はDBでCREATEの権限を持つ別の人が書ける入力で、正規表現の組み合わせはバックトラックで"
                 + "入力の長さに比例しない時間がかかりうる（ReDoS）。1文字ずつ読む字句の解析で読む")
