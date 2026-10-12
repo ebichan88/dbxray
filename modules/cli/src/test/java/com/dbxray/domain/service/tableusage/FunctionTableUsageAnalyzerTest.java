@@ -97,15 +97,19 @@ class FunctionTableUsageAnalyzerTest {
     /** 変形した定義を、このケースの関数の定義として解析する */
     FunctionTableUsage analyzeDefinition(String transformedDefinition) {
       final Tables tables = dbms == Dbms.POSTGRESQL ? POSTGRES_TABLES : ORACLE_TABLES;
-      final FunctionEntity function =
-          function(
-              dbms == Dbms.POSTGRESQL ? "sample" : "SCOTT",
-              functionName,
-              overloadCount,
-              arguments,
-              dbms == Dbms.POSTGRESQL ? "plpgsql" : "PL/SQL",
-              transformedDefinition);
-      return FunctionTableUsageAnalyzer.of(tables, dbms).analyze(function);
+      return FunctionTableUsageAnalyzer.of(tables, dbms)
+          .analyze(functionEntity(transformedDefinition));
+    }
+
+    /** 変形した定義を持つ、このケースの関数 */
+    FunctionEntity functionEntity(String transformedDefinition) {
+      return function(
+          dbms == Dbms.POSTGRESQL ? "sample" : "SCOTT",
+          functionName,
+          overloadCount,
+          arguments,
+          dbms == Dbms.POSTGRESQL ? "plpgsql" : "PL/SQL",
+          transformedDefinition);
     }
 
     /** 期待値に現れるテーブルの名前（変形テストで、コメント・文字列の中に書くDMLの対象に使う） */
@@ -439,9 +443,11 @@ class FunctionTableUsageAnalyzerTest {
                 table("sample", "employee", TableType.VIEW),
                 table("other", "employee", TableType.TABLE)));
 
+    final AnalyzerCase analyzerCase = pg("", "", "SELECT * FROM employee;", "");
+
     final TableUsage usage =
         FunctionTableUsageAnalyzer.of(tables, Dbms.POSTGRESQL)
-            .analyze(pg("", "", "SELECT * FROM employee;", "").function("SELECT * FROM employee;"))
+            .analyze(analyzerCase.functionEntity(analyzerCase.definition()))
             .tables()
             .get(0);
 
@@ -463,7 +469,7 @@ class FunctionTableUsageAnalyzerTest {
     final AnalyzerCase analyzerCase = pg("", header, body, "");
 
     final FunctionTableUsage usage =
-        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> analyzerCase.analyze(body));
+        assertTimeoutPreemptively(Duration.ofSeconds(10), analyzerCase::analyze);
 
     assertEquals("other.employee:R", describe(usage));
   }
