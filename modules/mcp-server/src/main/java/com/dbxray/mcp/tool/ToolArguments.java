@@ -136,15 +136,15 @@ final class ToolArguments {
    * @throws InvalidToolArgumentException 未指定・空の場合、{@code max}を超える件数の場合
    */
   List<String> requiredStringList(String name, int max) {
-    final List<String> values = optionalStringList(name);
-    if (values.isEmpty()) {
+    final List<String> items = optionalStringList(name);
+    if (items.isEmpty()) {
       throw new InvalidToolArgumentException("引数" + name + "を指定してください。");
     }
-    if (values.size() > max) {
+    if (items.size() > max) {
       throw new InvalidToolArgumentException(
-          "引数" + name + "は" + max + "件までにしてください。 [count=" + values.size() + "]");
+          "引数" + name + "は" + max + "件までにしてください。 [count=" + items.size() + "]");
     }
-    return values;
+    return items;
   }
 
   /**

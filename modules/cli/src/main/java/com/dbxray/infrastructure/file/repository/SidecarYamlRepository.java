@@ -310,13 +310,13 @@ public class SidecarYamlRepository implements SidecarRepository {
     final List<String> childColumns = asStringList(relationMap.get(KEY_COLUMNS));
     final List<String> parentColumns = asStringList(relationMap.get(KEY_PARENT_COLUMNS));
     final List<String> missingKeys = new ArrayList<>();
-    if (rawChild == null || rawChild.isBlank()) {
+    if (rawChild.isBlank()) {
       missingKeys.add(KEY_TABLE);
     }
     if (childColumns.isEmpty()) {
       missingKeys.add(KEY_COLUMNS);
     }
-    if (rawParent == null || rawParent.isBlank()) {
+    if (rawParent.isBlank()) {
       missingKeys.add(KEY_PARENT_TABLE);
     }
     if (parentColumns.isEmpty()) {
@@ -357,11 +357,11 @@ public class SidecarYamlRepository implements SidecarRepository {
    * DBに制約が存在せず機械的に判定できないため、YAMLでの明示指定を優先し、
    * 未指定・不正な指定の場合は既定値（{@link Cardinality#DEFAULT_FOR_LOGICAL_RELATION}）を用いる。未指定の場合は既定値へ黙って落とすが、不正な値が指定された場合は気付けるよう警告する
    *
-   * @param label YAMLで指定された多重度のラベル（未指定可）
+   * @param label YAMLで指定された多重度のラベル（未指定の場合は空文字）
    * @param entry 警告に添える、{@code relations}の何件目の定義か
    */
   private Cardinality resolveCardinality(String label, String entry, Path path) {
-    if (label == null || label.isBlank()) {
+    if (label.isBlank()) {
       return Cardinality.DEFAULT_FOR_LOGICAL_RELATION;
     }
     return Cardinality.fromLabel(label)
@@ -417,7 +417,7 @@ public class SidecarYamlRepository implements SidecarRepository {
     final Map<String, String> columnRemarks = new LinkedHashMap<>();
     columns.forEach(
         (columnName, remark) -> {
-          if (columnName != null && !columnName.isBlank()) {
+          if (!columnName.isBlank()) {
             columnRemarks.put(columnName.strip(), asString(remark));
           }
         });
@@ -478,7 +478,7 @@ public class SidecarYamlRepository implements SidecarRepository {
     final List<?> rawList = obj instanceof List<?> list ? list : List.of(obj);
     return rawList.stream()
         .map(this::asString)
-        .map(String::trim)
+        .map(String::strip)
         .filter(Predicate.not(String::isBlank))
         .toList();
   }
