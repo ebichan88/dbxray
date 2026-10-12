@@ -1616,7 +1616,9 @@ public class ExportSchemaUsecaseTest {
 
     assertFalse(result.hasDifference());
     assertTrue(
-        fileRepository.writtenPaths.subList(writtenBeforeCheck, fileRepository.writtenPaths.size())
+        fileRepository
+            .writtenPaths
+            .subList(writtenBeforeCheck, fileRepository.writtenPaths.size())
             .stream()
             .noneMatch(path -> path.toString().contains("insights")));
   }
