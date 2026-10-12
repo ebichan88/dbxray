@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.Dbms;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,19 @@ class SqlTokensTest {
     assertFalse(tokens.isNameAt(5), "数値は名前ではない");
     assertTrue(tokens.isAfterDot(3));
     assertFalse(tokens.isAfterDot(1));
+  }
+
+  @Test
+  @DisplayName("isAnyWordAt: 位置の字句が引用符の無い単語で、大文字にするとキーワードの集合のいずれかと一致するか判定する")
+  void testIsAnyWordAt() {
+    final SqlTokens tokens = tokens("select \"FROM\", where");
+    final Set<String> keywords = Set.of("FROM", "WHERE");
+
+    assertFalse(tokens.isAnyWordAt(0, keywords), "集合に無い語");
+    assertFalse(tokens.isAnyWordAt(1, keywords), "引用符付きは単語ではない");
+    assertFalse(tokens.isAnyWordAt(2, keywords), "記号は単語ではない");
+    assertTrue(tokens.isAnyWordAt(3, keywords), "大文字小文字を区別しない");
+    assertFalse(tokens.isAnyWordAt(4, keywords), "範囲の外");
   }
 
   @Test

@@ -2,6 +2,7 @@ package com.dbxray.domain.service.tableusage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 字句の列と、位置を指定した判定・名前の読み取りをまとめたクラス<br>
@@ -41,6 +42,16 @@ final class SqlTokens {
   boolean isWordAt(int index, String keyword) {
     final SqlToken token = at(index);
     return token != null && token.isWord(keyword);
+  }
+
+  /**
+   * 位置の字句が、引用符の無い単語として、キーワードの集合のいずれかと一致するか
+   *
+   * @param upperCaseKeywords 大文字で書いたキーワード
+   */
+  boolean isAnyWordAt(int index, Set<String> upperCaseKeywords) {
+    final SqlToken token = at(index);
+    return token != null && token.isAnyWord(upperCaseKeywords);
   }
 
   /** 位置の字句が、名前の部品（引用符の無い単語か、引用符付きの識別子）か */
