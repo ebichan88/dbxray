@@ -9,7 +9,7 @@ import java.util.List;
  * @param status 本体を切り出せた場合は{@link TableUsageStatus#ANALYZED}、それ以外は解析しない理由
  * @param language 解析しない言語の名前（{@link TableUsageStatus#UNSUPPORTED_LANGUAGE}の場合だけ。それ以外は空文字）
  * @param segments 本体の字句（空白・コメントを除いたもの）。区別できなかった同名のサブプログラム（Oracle）は本体ごとに分けて持つ
- *     （文の状態が本体をまたがないよう、本体ごとに走査するため）
+ *     （文の状態が本体をまたがないよう、本体ごとに走査するため）。字句のリストは、{@link SqlLexResult}が変更不可で包んだ字句のリストの一部（ビュー）を、複製せずに持つ
  * @param incomplete 閉じていない文字列・コメント等があり、定義の終わりまで字句を読み取れなかったか
  * @param overloadsMerged オーバーロードされた同名のサブプログラムの本体を区別できず、絞りきれなかった本体をすべて持つか（Oracle）
  * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（PostgreSQL。本体の中のSET文・{@code
@@ -25,9 +25,9 @@ record FunctionBody(
     List<String> searchPath,
     boolean invokerRights) {
 
-  /** リストは変更不可な複製として保持する */
+  /** 字句のリストを束ねるリストと検索パスは、変更不可な複製として保持する（字句のリストは数百万個になりうるため、複製しない） */
   FunctionBody {
-    segments = segments.stream().map(List::copyOf).toList();
+    segments = List.copyOf(segments);
     searchPath = List.copyOf(searchPath);
   }
 
@@ -35,12 +35,15 @@ record FunctionBody(
    * 解析しない場合の結果を生成するメソッド
    *
    * @param status 解析しない理由
-   * @throws IllegalArgumentException {@link
-   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}の場合（言語の名前を持てる{@link #unsupportedLanguage}を使う）
+   * @throws IllegalArgumentException {@link TableUsageStatus#UNSUPPORTED_LANGUAGE}（言語の名前を持てる{@link
+   *     #unsupportedLanguage}を使う）か、解析した結果を表す{@link TableUsageStatus#ANALYZED}の場合
    */
   static FunctionBody notAnalyzable(TableUsageStatus status) {
     if (status == TableUsageStatus.UNSUPPORTED_LANGUAGE) {
       throw new IllegalArgumentException("Use unsupportedLanguage for UNSUPPORTED_LANGUAGE");
+    }
+    if (status == TableUsageStatus.ANALYZED) {
+      throw new IllegalArgumentException("ANALYZED is not a reason for skipping the analysis");
     }
     return new FunctionBody(status, "", List.of(), false, false, List.of(), false);
   }

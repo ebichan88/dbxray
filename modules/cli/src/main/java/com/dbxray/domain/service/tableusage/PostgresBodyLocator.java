@@ -46,7 +46,8 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       } else if (depth > 0) {
         continue;
       } else if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
-        searchPath = readSearchPath(tokens, i + 2);
+        final int name = i + 1;
+        searchPath = readSearchPath(tokens, name + 1);
       } else if (token.isWord("AS")
           && tokens.at(i + 1) != null
           && tokens.at(i + 1).kind() == SqlTokenKind.DOLLAR_STRING) {
@@ -103,8 +104,9 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
           && !schema.startsWith("pg_temp")) {
         schemas.add(schema);
       }
-      if (tokens.isSymbolAt(j + 1, ",")) {
-        j += 2;
+      final int comma = j + 1;
+      if (tokens.isSymbolAt(comma, ",")) {
+        j = comma + 1;
       } else {
         break;
       }

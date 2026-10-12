@@ -22,6 +22,9 @@ import java.util.Set;
  */
 final class PackageSubprograms {
 
+  /** {@code END IF}・{@code END LOOP}・{@code END CASE}の字句の数（{@code END}と、閉じる対象を示す語） */
+  private static final int END_WITH_KEYWORD_TOKENS = 2;
+
   /** 直後から文が始まる語（ここに現れる{@code CASE}は{@code CASE}文） */
   private static final Set<String> STATEMENT_PREDECESSORS =
       Set.of("BEGIN", "THEN", "ELSE", "LOOP", "EXCEPTION");
@@ -86,7 +89,8 @@ final class PackageSubprograms {
   /**
    * 字句1つ分の状態の変化
    *
-   * @return 次に読む字句の位置（{@code END IF}等の後ろの語を読み飛ばす場合は{@code i + 2}）
+   * @return 次に読む字句の位置（{@code END IF}等の後ろの語を読み飛ばす場合は、{@code END}から{@link
+   *     #END_WITH_KEYWORD_TOKENS}字句先）
    */
   private int visit(int i) {
     final SqlToken token = tokens.at(i);
@@ -190,7 +194,7 @@ final class PackageSubprograms {
     final boolean closesCaseExpression =
         blocks != null && blocks.block.kind == BlockKind.CASE_EXPRESSION;
     if (!closesCaseExpression && next != null && (next.isWord("IF") || next.isWord("LOOP"))) {
-      return i + 2;
+      return i + END_WITH_KEYWORD_TOKENS;
     }
     if (blocks != null) {
       final Block closed = blocks.block;
@@ -199,7 +203,8 @@ final class PackageSubprograms {
         found.add(closed.header.toSubprogram(i));
       }
     }
-    return !closesCaseExpression && next != null && next.isWord("CASE") ? i + 2 : i + 1;
+    final boolean endsCaseStatement = !closesCaseExpression && next != null && next.isWord("CASE");
+    return endsCaseStatement ? i + END_WITH_KEYWORD_TOKENS : i + 1;
   }
 
   /** 条件付きコンパイルの選択指令（{@code $IF}・{@code $ELSIF}・{@code $ELSE}・{@code $END}・{@code $ERROR}） */
@@ -316,10 +321,12 @@ final class PackageSubprograms {
    */
   static String callSpecLanguage(SqlTokens tokens, int i) {
     if (tokens.isWordAt(i, "LANGUAGE")) {
-      if (tokens.isWordAt(i + 1, "JAVA") && tokens.isWordAt(i + 2, "NAME")) {
+      final int language = i + 1;
+      final int clause = language + 1;
+      if (tokens.isWordAt(language, "JAVA") && tokens.isWordAt(clause, "NAME")) {
         return "JAVA";
       }
-      return tokens.isWordAt(i + 1, "C") && isCSpecificationClauseAt(tokens, i + 2) ? "C" : "";
+      return tokens.isWordAt(language, "C") && isCSpecificationClauseAt(tokens, clause) ? "C" : "";
     }
     return tokens.isWordAt(i, "EXTERNAL") && isCSpecificationClauseAt(tokens, i + 1) ? "C" : "";
   }

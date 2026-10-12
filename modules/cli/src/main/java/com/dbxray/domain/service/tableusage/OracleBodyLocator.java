@@ -17,6 +17,9 @@ import java.util.List;
  */
 final class OracleBodyLocator implements FunctionBodyLocator {
 
+  /** {@code PACKAGE BODY}の字句の数（パッケージ本体の名前は、その次から始まる） */
+  private static final int PACKAGE_BODY_TOKENS = 2;
+
   /** 仕様部とパッケージ本体のつなぎ目の、パッケージ本体の側（取得時に、{@code CREATE OR REPLACE}を補ったパッケージ本体を続ける） */
   private static final String PACKAGE_BODY_PREFIX = "CREATE OR REPLACE ";
 
@@ -197,18 +200,18 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     if (packageBody >= 0) {
       return parsePackageBody(lexed, packageBody, invokerRights);
     }
-    if (lexed.incomplete()) {
-      final OracleDefinition rebuilt = parseWithBrokenSpecification(definition, invokerRights);
-      if (rebuilt != null) {
-        return rebuilt;
-      }
+    // 仕様部の閉じていない文字列が本体のアポストロフィで閉じると、incompleteにならないまま本体の字句まで飲み込まれる
+    final OracleDefinition rebuilt = parseWithBrokenSpecification(definition, invokerRights);
+    if (rebuilt != null) {
+      return rebuilt;
     }
     // 本体の無いパッケージや、仕様部しか見えない権限では、パッケージ本体を取得できない
     return new OracleDefinition.Unanalyzable(TableUsageStatus.NO_DEFINITION);
   }
 
   /**
-   * 仕様部に閉じていない文字列等がある（INVALIDの）場合に、字句が本体まで続いてしまうため、本体の始まりから字句に分け直すメソッド
+   * 仕様部に閉じていない文字列等がある（INVALIDの）場合に、本体の字句まで飲み込まれてしまうため、本体の始まりから字句に分け直すメソッド<br>
+   * 飲み込んだ文字列が本体のアポストロフィで閉じると、字句の解析は不完全にならないため、{@code PACKAGE BODY}が見つからなかったときは常に試す
    *
    * @return パッケージ本体を読めた結果。本体の始まりが見つからなければnull
    */
@@ -234,7 +237,7 @@ final class OracleBodyLocator implements FunctionBodyLocator {
   private static OracleDefinition parsePackageBody(
       SqlLexResult lexed, int packageBody, boolean invokerRights) {
     final SqlTokens tokens = new SqlTokens(lexed.tokens());
-    final int bodyNameEnd = tokens.endOfQualifiedName(packageBody + 2);
+    final int bodyNameEnd = tokens.endOfQualifiedName(packageBody + PACKAGE_BODY_TOKENS);
     if (tokens.isWordAt(bodyNameEnd, "WRAPPED")) {
       return new OracleDefinition.Unanalyzable(TableUsageStatus.WRAPPED);
     }

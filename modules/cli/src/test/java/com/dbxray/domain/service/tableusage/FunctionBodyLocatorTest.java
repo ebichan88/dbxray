@@ -686,6 +686,28 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
+    @DisplayName("locate: 仕様部の閉じていない文字列が本体のアポストロフィで閉じ、不完全に見えなくても、本体の始まりから分け直して切り出す")
+    void testUnterminatedStringClosedByApostropheInBody() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS
+            c CONSTANT VARCHAR2(10) := 'oops;
+            PROCEDURE p;
+          END pkg;
+
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            -- don't touch
+            PROCEDURE p IS BEGIN DELETE FROM t; END p;
+          END pkg;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "", definition);
+
+      assertEquals(TableUsageStatus.ANALYZED, body.status());
+      assertEquals("BEGIN DELETE FROM t ;", text(body));
+    }
+
+    @Test
     @DisplayName("locate: パッケージのサブプログラムの呼び出し仕様は、引数名で決まれば言語名を返し、決まらなければPL/SQLの本体だけを持つ")
     void testPackageCallSpecification() {
       final String definition =

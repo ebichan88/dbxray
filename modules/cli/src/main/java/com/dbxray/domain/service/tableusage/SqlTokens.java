@@ -12,6 +12,9 @@ final class SqlTokens {
   /** スキーマ・テーブルの修飾を含めて名前の部品として読む上限（{@code カタログ.スキーマ.テーブル}） */
   private static final int MAX_NAME_PARTS = 3;
 
+  /** 名前の部品どうしをつなぐ{@code .}と、その次の名前の字句の数 */
+  private static final int DOT_AND_NAME_TOKENS = 2;
+
   private final List<SqlToken> tokens;
 
   SqlTokens(List<SqlToken> tokens) {
@@ -62,7 +65,7 @@ final class SqlTokens {
     }
     int end = index + 1;
     while (isSymbolAt(end, ".") && isNameAt(end + 1)) {
-      end += 2;
+      end += DOT_AND_NAME_TOKENS;
     }
     return end;
   }
@@ -80,7 +83,7 @@ final class SqlTokens {
     int next = index + 1;
     while (parts.size() < MAX_NAME_PARTS && isSymbolAt(next, ".") && isNameAt(next + 1)) {
       parts.add(at(next + 1));
-      next += 2;
+      next += DOT_AND_NAME_TOKENS;
     }
     return parts;
   }
