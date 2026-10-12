@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 外部キーの繋がりからテーブルのまとまり（連結成分）を求めるクラス<br>
@@ -92,22 +93,43 @@ public final class ForeignKeyGroups {
    * @param components 連結成分ごとのまとまりのリスト（ノード数の降順）
    */
   static List<ForeignKeyGroup> pack(List<ForeignKeyGroup> components, NodeLimit limit) {
-    final List<List<ForeignKeyEntity>> groups = new ArrayList<>();
-    final List<Integer> groupNodeCounts = new ArrayList<>();
-    components.forEach(
-        component -> {
-          final int componentNodes = component.nodeCount();
-          for (int i = 0; i < groups.size(); i++) {
-            if (!limit.isExceededBy(groupNodeCounts.get(i) + componentNodes)) {
-              groups.get(i).addAll(component.foreignKeys());
-              groupNodeCounts.set(i, groupNodeCounts.get(i) + componentNodes);
-              return;
-            }
-          }
-          groups.add(new ArrayList<>(component.foreignKeys()));
-          groupNodeCounts.add(componentNodes);
-        });
-    return groups.stream().map(ForeignKeyGroup::of).toList();
+    final List<PackedGroup> groups = new ArrayList<>();
+    for (final ForeignKeyGroup component : components) {
+      final Optional<PackedGroup> fitting =
+          groups.stream().filter(group -> group.fits(component, limit)).findFirst();
+      if (fitting.isPresent()) {
+        fitting.get().add(component);
+      } else {
+        groups.add(new PackedGroup(component));
+      }
+    }
+    return groups.stream().map(PackedGroup::toGroup).toList();
+  }
+
+  /** {@link #pack}でまとめ直している途中のグループ（外部キーと、そのノード数） */
+  private static final class PackedGroup {
+
+    private final List<ForeignKeyEntity> foreignKeys;
+    private int nodeCount;
+
+    private PackedGroup(ForeignKeyGroup first) {
+      this.foreignKeys = new ArrayList<>(first.foreignKeys());
+      this.nodeCount = first.nodeCount();
+    }
+
+    /** 成分を足しても、ノード数が上限を超えないか（成分同士はテーブルを共有しないため、ノード数は足し算になる） */
+    private boolean fits(ForeignKeyGroup component, NodeLimit limit) {
+      return !limit.isExceededBy(nodeCount + component.nodeCount());
+    }
+
+    private void add(ForeignKeyGroup component) {
+      foreignKeys.addAll(component.foreignKeys());
+      nodeCount += component.nodeCount();
+    }
+
+    private ForeignKeyGroup toGroup() {
+      return ForeignKeyGroup.of(foreignKeys);
+    }
   }
 
   /**

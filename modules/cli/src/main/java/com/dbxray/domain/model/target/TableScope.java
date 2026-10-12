@@ -66,32 +66,15 @@ public final class TableScope {
 
   /**
    * 指定されたテーブルがこの出力対象の範囲に含まれるか判定するメソッド<br>
-   *
-   * <ul>
-   *   <li>スキーマ名リスト・テーブル名リストの両方が空の場合、常にtrueを返す
-   *   <li>スキーマ名リストのみ指定されている場合、スキーマ名が一致すればtrueを返す
-   *   <li>テーブル名リストのみ指定されている場合、テーブル名パターンが一致すればtrueを返す
-   *   <li>両方指定されている場合、スキーマ名・テーブル名パターンの両方が一致した場合のみtrueを返す
-   * </ul>
-   *
-   * テーブル名リストはワイルドカード（{@code *}）・除外（先頭に{@code !}）・スキーマ修飾（{@code スキーマ名.テーブル名}）に対応する。
-   * 詳細は{@link TableNamePatterns}を参照
+   * スキーマ名リスト・テーブル名パターンのうち、指定されたものすべてに一致すれば含まれる（どちらも指定されていなければ常に含まれる）。
+   * テーブル名パターンの記法（ワイルドカード・除外・スキーマ修飾）は{@link TableNamePatterns}を参照
    *
    * @return 出力対象の範囲に含まれる場合はtrue
    */
   public boolean matches(TableEntity table) {
-    final boolean hasSchemaList = !targetSchemaList.isEmpty();
-    final boolean hasTableList = !tableNamePatterns.isEmpty();
-    if (!hasSchemaList && !hasTableList) {
-      return true;
-    }
-    if (!hasSchemaList) {
-      return tableNamePatterns.matches(TableKey.of(table));
-    }
-    if (!hasTableList) {
-      return targetSchemaList.contains(table.schemaName());
-    }
-    return targetSchemaList.contains(table.schemaName())
-        && tableNamePatterns.matches(TableKey.of(table));
+    final boolean schemaMatches =
+        targetSchemaList.isEmpty() || targetSchemaList.contains(table.schemaName());
+    // テーブル名パターンは、何も指定されていなければすべてのテーブルに一致する
+    return schemaMatches && tableNamePatterns.matches(TableKey.of(table));
   }
 }
