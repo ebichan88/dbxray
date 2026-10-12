@@ -78,6 +78,19 @@ public class MarkdownTemplateSupportTest {
   }
 
   @Test
+  @DisplayName("row: \\で終わるセルは、次の区切りの|をエスケープしないよう後に空白を置く（途中の\\はそのまま）")
+  void testRowSeparatesTrailingBackslashFromDelimiter() {
+    // 円記号の代わりに\を書いたコメントや、Windowsのパス
+    assertEquals(
+        "|1|格納先 C:\\data\\ |path|",
+        MarkdownTemplateSupport.row(
+            1, MarkdownTemplateSupport.escapeTableCell("格納先 C:\\data\\"), "path"));
+    assertEquals("|単価（\\\\ |price|", MarkdownTemplateSupport.row("単価（\\\\", "price"));
+    assertEquals("|a|b\\ |", MarkdownTemplateSupport.row("a", "b\\"));
+    assertEquals("|C:\\data|path|", MarkdownTemplateSupport.row("C:\\data", "path"));
+  }
+
+  @Test
   @DisplayName("codeFence: 中身の最長のバッククォートの並びより長い囲みにする（最短3個）")
   void testCodeFence() {
     assertEquals("```", MarkdownTemplateSupport.codeFence("select 1"));
