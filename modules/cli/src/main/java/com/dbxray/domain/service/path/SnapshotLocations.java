@@ -75,6 +75,6 @@ public final class SnapshotLocations {
    * @return {@code {種別のファイル名}.jsonl}
    */
   private static String objectFileName(SnapshotKind kind) {
-    return kind.getFileName() + OBJECT_FILE_EXTENSION;
+    return kind.fileName() + OBJECT_FILE_EXTENSION;
   }
 }

@@ -26,7 +26,7 @@ public record PartitionEntity(
    *
    * @return 根と同じスキーマなら名前のみ、異なるスキーマなら {@code スキーマ.名前}
    */
-  public String getDisplayName() {
+  public String displayName() {
     return relativeName(partitionSchemaName, partitionName);
   }
 
@@ -35,7 +35,7 @@ public record PartitionEntity(
    *
    * @return 根と同じスキーマなら名前のみ、異なるスキーマなら {@code スキーマ.名前}
    */
-  public String getDisplayParentName() {
+  public String displayParentName() {
     return relativeName(parentSchemaName, parentName);
   }
 

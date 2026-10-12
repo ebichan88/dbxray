@@ -135,7 +135,7 @@ public class ExportTargetConsistency {
                     Kind.ORPHAN_COLUMN_ANNOTATION,
                     "Column annotation exists for a column that was not found (renamed or dropped?). "
                         + "[table="
-                        + table.getSchemaTableName()
+                        + table.qualifiedName()
                         + ", column="
                         + columnName
                         + "]"))
@@ -186,9 +186,9 @@ public class ExportTargetConsistency {
                   + "(renamed or dropped?). [foreignKey="
                   + foreignKey.foreignKeyName()
                   + ", table="
-                  + foreignKey.getSchemaTableName()
+                  + foreignKey.qualifiedName()
                   + ", referenceTable="
-                  + foreignKey.getReferenceSchemaTableName()
+                  + foreignKey.referenceQualifiedName()
                   + "]"));
     }
     return false;
@@ -212,10 +212,10 @@ public class ExportTargetConsistency {
                 + "(filtered, renamed or dropped?). [relation="
                 + relation.foreignKeyName()
                 + ", table="
-                + relation.getSchemaTableName()
+                + relation.qualifiedName()
                 + (childExists ? "" : " (not found)")
                 + ", parentTable="
-                + relation.getReferenceSchemaTableName()
+                + relation.referenceQualifiedName()
                 + (parentExists ? "" : " (not found)")
                 + "]"));
     return false;

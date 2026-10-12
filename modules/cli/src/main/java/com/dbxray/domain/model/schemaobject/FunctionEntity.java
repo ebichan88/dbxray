@@ -41,13 +41,4 @@ public record FunctionEntity(
   public boolean isOverloaded() {
     return overloadCount > 1;
   }
-
-  /**
-   * 関数・プロシージャのヘッダー表示名を取得するメソッド
-   *
-   * @return ヘッダー表示名（関数・プロシージャ名）
-   */
-  public String getHeaderName() {
-    return functionName;
-  }
 }

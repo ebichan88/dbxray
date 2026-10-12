@@ -39,12 +39,12 @@ public enum SnapshotKind {
    *
    * @return 出力ファイル名（拡張子を除く）
    */
-  public String getFileName() {
+  public String fileName() {
     return fileName;
   }
 
   /** 差分の報告等に用いる種別名を返却するメソッド */
-  public String getLabel() {
+  public String label() {
     return label;
   }
 

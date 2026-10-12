@@ -123,7 +123,7 @@ public class ViewpointWriter {
         new PageLayout(
             ViewpointTemplates.indexFileHeader(outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, ListDocumentType.VIEWPOINT),
-            ListDocumentType.VIEWPOINT.getBackLinkLabel());
+            ListDocumentType.VIEWPOINT.backLinkLabel());
     final String indexSection =
         pagedSectionWriter.writePagedSection(
             new PagedSection<>(

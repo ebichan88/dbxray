@@ -54,7 +54,7 @@ public record TableSnapshot(
         table.schemaName(),
         table.physicalTableName(),
         text(table.logicalTableName()),
-        table.tableType().getName(),
+        table.tableType().id(),
         text(annotation.description()),
         text(annotation.remarks()),
         text(table.definition()),
@@ -80,7 +80,7 @@ public record TableSnapshot(
       return new ViewReference(
           reference.referenceSchemaName(),
           reference.referenceTableName(),
-          reference.referenceTableType().getName());
+          reference.referenceTableType().id());
     }
   }
 

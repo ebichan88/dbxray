@@ -372,7 +372,7 @@ public class SidecarYamlRepository implements SidecarRepository {
                       + "[entry={}, cardinality={}, default={}, annotations={}]",
                   entry,
                   label,
-                  Cardinality.DEFAULT_FOR_LOGICAL_RELATION.getLabel(),
+                  Cardinality.DEFAULT_FOR_LOGICAL_RELATION.label(),
                   path);
               return Cardinality.DEFAULT_FOR_LOGICAL_RELATION;
             });

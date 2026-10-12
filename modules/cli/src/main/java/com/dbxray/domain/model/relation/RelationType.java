@@ -29,7 +29,7 @@ public enum RelationType {
    *
    * @return Mermaidの関連線の線種
    */
-  public String getLineNotation() {
+  public String lineNotation() {
     return lineNotation;
   }
 
@@ -38,7 +38,7 @@ public enum RelationType {
    *
    * @return 「物理」または「論理」
    */
-  public String getLabel() {
+  public String label() {
     return label;
   }
 }

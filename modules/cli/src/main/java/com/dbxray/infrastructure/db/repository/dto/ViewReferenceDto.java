@@ -27,9 +27,9 @@ public record ViewReferenceDto(
     return new ViewReferenceEntity(
         schemaName,
         viewName,
-        TableType.findByName(viewType),
+        TableType.fromId(viewType),
         referenceSchemaName,
         referenceTableName,
-        TableType.findByName(referenceTableType));
+        TableType.fromId(referenceTableType));
   }
 }

@@ -18,41 +18,41 @@ public enum OutputObjectType {
   /** ユーザー定義型 */
   TYPE("type");
 
-  private final String name;
+  private final String id;
 
-  OutputObjectType(String name) {
-    this.name = name;
+  OutputObjectType(String id) {
+    this.id = id;
   }
 
   /**
-   * 出力対象オブジェクト種別名を返却する。
+   * 種別を示す名前を取得するメソッド
    *
-   * @return 出力対象オブジェクト種別名を返却する。
+   * @return 設定ファイルの{@code target.objects}に書く名前（例: {@code trigger}）
    */
-  public String getName() {
-    return name;
+  public String id() {
+    return id;
   }
 
   /**
-   * 出力対象オブジェクト種別に紐づくEnumを返却する。
+   * 名前から種別を求めるメソッド
    *
-   * @return OutputObjectTypeを返却する。
-   * @throws IllegalArgumentException 対象のEnumが存在しない場合にthrowする。
+   * @param id 種別を示す名前（{@link #id()}）
+   * @throws IllegalArgumentException 対応していない名前の場合
    */
-  public static OutputObjectType findByName(String name) {
-    return Arrays.stream(OutputObjectType.values())
-        .filter(e -> Objects.equals(name, e.getName()))
+  public static OutputObjectType fromId(String id) {
+    return Arrays.stream(values())
+        .filter(type -> Objects.equals(id, type.id))
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unknown output object type: " + name));
+        .orElseThrow(() -> new IllegalArgumentException("Unknown output object type: " + id));
   }
 
   /**
-   * 設定ファイルから読み込んだ出力対象オブジェクト種別名のリストから、出力を有効化する種別の集合を解決する。<br>
-   * 種別名は前後の空白を除去して解釈し、空要素は無視する。指定が空の場合は、すべての種別を出力対象とする。
+   * 設定ファイルの{@code target.objects}の値から、出力する種別の集合を求めるメソッド<br>
+   * 種別の名前は前後の空白を除去して解釈し、空要素は無視する。指定が空の場合は、すべての種別を出力対象とする
    *
-   * @param rawList 出力対象オブジェクト種別名のリスト（{@link #getName()}の値。空の場合は全種別を対象とみなす）
-   * @return 出力を有効化する種別の集合（変更不可）
-   * @throws IllegalArgumentException 未知の種別名が含まれる場合にthrowする。
+   * @param rawList 種別の名前（{@link #id()}）のリスト
+   * @return 出力する種別の集合（変更不可）
+   * @throws IllegalArgumentException 未知の種別の名前が含まれる場合
    */
   public static Set<OutputObjectType> parse(List<String> rawList) {
     final List<String> names =
@@ -61,7 +61,7 @@ public enum OutputObjectType {
       return Collections.unmodifiableSet(EnumSet.allOf(OutputObjectType.class));
     }
     final EnumSet<OutputObjectType> result = EnumSet.noneOf(OutputObjectType.class);
-    names.stream().map(OutputObjectType::findByName).forEach(result::add);
+    names.stream().map(OutputObjectType::fromId).forEach(result::add);
     return Collections.unmodifiableSet(result);
   }
 }

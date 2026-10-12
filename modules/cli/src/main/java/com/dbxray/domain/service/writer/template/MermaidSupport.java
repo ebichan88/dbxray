@@ -176,7 +176,7 @@ public final class MermaidSupport {
     return "    "
         + parentId
         + ' '
-        + fk.cardinality().getNotation(fk.relationType())
+        + fk.cardinality().notation(fk.relationType())
         + ' '
         + childId
         + " : \""

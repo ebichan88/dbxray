@@ -41,13 +41,13 @@ public record ConsistencyNotice(Kind kind, String message) {
     }
 
     /** 通知の重要度を返却するメソッド */
-    public Severity getSeverity() {
+    public Severity severity() {
       return severity;
     }
   }
 
   /** 通知の重要度を返却するメソッド */
   public Severity severity() {
-    return kind.getSeverity();
+    return kind.severity();
   }
 }

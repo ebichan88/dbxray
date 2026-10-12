@@ -34,6 +34,6 @@ public class DatabaseDependentModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(SqlSessionFactory.class).toInstance(sqlSessionFactory);
-    bind(CatalogRepository.class).to(databaseType.getRepositoryClass());
+    bind(CatalogRepository.class).to(databaseType.repositoryClass());
   }
 }

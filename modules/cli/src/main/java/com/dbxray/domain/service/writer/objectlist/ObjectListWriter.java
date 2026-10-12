@@ -88,12 +88,12 @@ public class ObjectListWriter {
       RowRenderer<T> rowRenderer,
       OutputRoot outputRoot) {
     final PagedSection<T> section =
-        new PagedSection<>(type.getTitle(), tableHeader, objects, rowRenderer);
+        new PagedSection<>(type.title(), tableHeader, objects, rowRenderer);
     final PageLayout layout =
         new PageLayout(
-            ObjectListTemplates.fileHeader(type.getTitle(), outputRoot.baseInfo()),
+            ObjectListTemplates.fileHeader(type.title(), outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, type),
-            type.getBackLinkLabel());
+            type.backLinkLabel());
     final String objectListSection = pagedSectionWriter.writePagedSection(section, layout);
     final List<String> contents =
         List.of(

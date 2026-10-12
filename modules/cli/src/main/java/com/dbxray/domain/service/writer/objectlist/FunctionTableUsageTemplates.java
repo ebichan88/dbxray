@@ -116,7 +116,7 @@ public final class FunctionTableUsageTemplates {
           MarkdownTemplateSupport.row(
               i + 1,
               MarkdownTemplateSupport.escapeTableCell(displayName(usage)),
-              usage.tableType().map(TableType::getName).orElse(""),
+              usage.tableType().map(TableType::id).orElse(""),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.CREATE)),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.READ)),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.UPDATE)),

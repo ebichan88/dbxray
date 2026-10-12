@@ -12,18 +12,18 @@ import org.junit.jupiter.api.Test;
 public class OutputObjectTypeTest {
 
   @Test
-  @DisplayName("findByName: 各値が対応するEnumに解決される")
+  @DisplayName("fromId: 各値が対応するEnumに解決される")
   void testFindByName() {
-    assertEquals(OutputObjectType.TRIGGER, OutputObjectType.findByName("trigger"));
-    assertEquals(OutputObjectType.FUNCTION, OutputObjectType.findByName("function"));
-    assertEquals(OutputObjectType.SEQUENCE, OutputObjectType.findByName("sequence"));
-    assertEquals(OutputObjectType.TYPE, OutputObjectType.findByName("type"));
+    assertEquals(OutputObjectType.TRIGGER, OutputObjectType.fromId("trigger"));
+    assertEquals(OutputObjectType.FUNCTION, OutputObjectType.fromId("function"));
+    assertEquals(OutputObjectType.SEQUENCE, OutputObjectType.fromId("sequence"));
+    assertEquals(OutputObjectType.TYPE, OutputObjectType.fromId("type"));
   }
 
   @Test
-  @DisplayName("findByName: 未知の値の場合はIllegalArgumentExceptionをスローする")
+  @DisplayName("fromId: 未知の値の場合はIllegalArgumentExceptionをスローする")
   void testFindByNameUnknownThrows() {
-    assertThrows(IllegalArgumentException.class, () -> OutputObjectType.findByName("unknown"));
+    assertThrows(IllegalArgumentException.class, () -> OutputObjectType.fromId("unknown"));
   }
 
   @Test
@@ -65,9 +65,9 @@ public class OutputObjectTypeTest {
   @Test
   @DisplayName("getName: 各Enum値に対応する種別名を返す")
   void testGetName() {
-    assertEquals("trigger", OutputObjectType.TRIGGER.getName());
-    assertEquals("function", OutputObjectType.FUNCTION.getName());
-    assertEquals("sequence", OutputObjectType.SEQUENCE.getName());
-    assertEquals("type", OutputObjectType.TYPE.getName());
+    assertEquals("trigger", OutputObjectType.TRIGGER.id());
+    assertEquals("function", OutputObjectType.FUNCTION.id());
+    assertEquals("sequence", OutputObjectType.SEQUENCE.id());
+    assertEquals("type", OutputObjectType.TYPE.id());
   }
 }

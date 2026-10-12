@@ -45,8 +45,7 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
 
   protected AbstractCatalogRepository(
       DatabaseType databaseType, SqlSessionFactory sqlSessionFactory) {
-    this.baseSqlPath =
-        "com.dbxray.domain.repository." + databaseType.getName() + ".CatalogRepository.";
+    this.baseSqlPath = "com.dbxray.domain.repository." + databaseType.id() + ".CatalogRepository.";
     this.sqlSessionFactory = sqlSessionFactory;
   }
 

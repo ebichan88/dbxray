@@ -180,9 +180,9 @@ public class ErDiagramWriter {
     final PageLayout layout =
         new PageLayout(
             ErDiagramTemplates.fileHeader(
-                ListDocumentType.ER_DIAGRAM.getTitle(), outputRoot.baseInfo()),
+                ListDocumentType.ER_DIAGRAM.title(), outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, ListDocumentType.ER_DIAGRAM),
-            ListDocumentType.ER_DIAGRAM.getBackLinkLabel());
+            ListDocumentType.ER_DIAGRAM.backLinkLabel());
     final String crossSchemaDetail =
         pagedSectionWriter.writePagedSection(crossSchemaSection, layout);
     final List<String> contents =

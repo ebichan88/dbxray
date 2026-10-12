@@ -66,7 +66,7 @@ class SampleDatabaseExportIT {
 
     final DiffCheckResultDto result = controller().checkDiff(request);
 
-    assertFalse(result.hasDifference(), result.getResultMessage());
+    assertFalse(result.hasDifference(), result.resultMessage());
   }
 
   private static ExportSchemaController controller() {

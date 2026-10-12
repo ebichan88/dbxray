@@ -84,7 +84,7 @@ public class Dbxray {
     injector.getInstance(OutputDirectoryValidator.class).validate(request);
     final ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);
     final ResultDto resultDto = createController(injector, connectionSettings).execute(request);
-    System.out.println(resultDto.getResultMessage());
+    System.out.println(resultDto.resultMessage());
     return ExitStatus.SUCCESS;
   }
 
@@ -115,7 +115,7 @@ public class Dbxray {
     final ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);
     final DiffCheckResultDto diffCheckResultDto =
         createController(injector, connectionSettings).checkDiff(request);
-    System.out.println(diffCheckResultDto.getResultMessage());
+    System.out.println(diffCheckResultDto.resultMessage());
     return diffCheckResultDto.exitStatus();
   }
 

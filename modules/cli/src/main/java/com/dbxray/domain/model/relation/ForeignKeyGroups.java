@@ -135,7 +135,7 @@ public final class ForeignKeyGroups {
   /**
    * ノード数が同数の場合の並び順を一意に定めるために利用する
    *
-   * @return 名称の辞書順で先頭となるテーブルの スキーマ.テーブル 形式の名称
+   * @return 名称の辞書順で先頭となるテーブルの{@code スキーマ.テーブル}形式の名称
    */
   private static String firstKeyText(ForeignKeyGroup component) {
     return component.nodes().stream()

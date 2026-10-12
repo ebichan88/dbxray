@@ -28,11 +28,9 @@ public record TableEntity(
   }
 
   /**
-   * スキーマ.テーブル 形式の名称を取得するメソッド
-   *
-   * @return スキーマ.テーブル 形式の名称
+   * {@code スキーマ.テーブル}形式の名称を取得するメソッド
    */
-  public String getSchemaTableName() {
+  public String qualifiedName() {
     return TableKey.of(this).qualifiedName();
   }
 
@@ -41,7 +39,7 @@ public record TableEntity(
    *
    * @return {@code 物理テーブル名（論理テーブル名）}。論理テーブル名が無い場合は物理テーブル名だけ
    */
-  public String getHeaderTableName() {
+  public String headerName() {
     if (logicalTableName == null || logicalTableName.isBlank()) {
       return physicalTableName;
     }

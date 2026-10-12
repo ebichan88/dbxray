@@ -35,7 +35,7 @@ public class TableDefinitionTemplates {
 
   /** テーブル定義ヘッダー */
   public static String fileHeader(TableEntity table) {
-    return MarkdownTemplateSupport.fileHeader(table.getHeaderTableName());
+    return MarkdownTemplateSupport.fileHeader(table.headerName());
   }
 
   /** 基本情報セクション */
@@ -79,7 +79,7 @@ public class TableDefinitionTemplates {
             table.schemaName(),
             MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
             table.physicalTableName(),
-            table.tableType().getName(),
+            table.tableType().id(),
             MarkdownTemplateSupport.escapeTableCell(annotation.remarks()))
         + LINE_SEPARATOR_DOUBLE;
   }
@@ -149,8 +149,8 @@ public class TableDefinitionTemplates {
         (no, p) ->
             row(
                 no,
-                p.getDisplayName(),
-                p.getDisplayParentName(),
+                p.displayName(),
+                p.displayParentName(),
                 MarkdownTemplateSupport.escapeTableCell(p.bound()),
                 MarkdownTemplateSupport.escapeTableCell(p.partitionKey())));
   }
@@ -291,8 +291,8 @@ public class TableDefinitionTemplates {
                 String.join(",", fk.columnNames()),
                 String.join(",", fk.referenceColumnNames()),
                 fk.foreignKeyName(),
-                fk.cardinality().getLabel(),
-                fk.relationType().getLabel()));
+                fk.cardinality().label(),
+                fk.relationType().label()));
   }
 
   /**
@@ -320,7 +320,7 @@ public class TableDefinitionTemplates {
             row(
                 no,
                 reference.referenceTableKey().qualifiedName(),
-                reference.referenceTableType().getName()));
+                reference.referenceTableType().id()));
   }
 
   /**
@@ -345,7 +345,7 @@ public class TableDefinitionTemplates {
         referencingViews,
         header,
         (no, reference) ->
-            row(no, reference.tableKey().qualifiedName(), reference.tableType().getName()));
+            row(no, reference.tableKey().qualifiedName(), reference.tableType().id()));
   }
 
   /**
@@ -358,9 +358,9 @@ public class TableDefinitionTemplates {
         no,
         fk.foreignKeyName(),
         String.join(",", fk.columnNames()),
-        fk.getReferenceSchemaTableName(),
+        fk.referenceQualifiedName(),
         String.join(",", fk.referenceColumnNames()),
-        fk.cardinality().getLabel());
+        fk.cardinality().label());
   }
 
   /**
@@ -370,9 +370,9 @@ public class TableDefinitionTemplates {
     return row(
         no,
         String.join(",", fk.columnNames()),
-        fk.getReferenceSchemaTableName(),
+        fk.referenceQualifiedName(),
         String.join(",", fk.referenceColumnNames()),
-        fk.cardinality().getLabel());
+        fk.cardinality().label());
   }
 
   /**
@@ -487,7 +487,7 @@ public class TableDefinitionTemplates {
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
         MarkdownTemplateSupport.listLinkFromDefinition(ListDocumentType.TABLE, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /**

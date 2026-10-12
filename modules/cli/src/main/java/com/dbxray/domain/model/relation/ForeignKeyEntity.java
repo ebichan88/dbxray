@@ -78,11 +78,9 @@ public record ForeignKeyEntity(
   }
 
   /**
-   * 参照先の スキーマ.テーブル 形式の名称を取得するメソッド
-   *
-   * @return 参照先の スキーマ.テーブル 形式の名称
+   * 参照先（親）テーブルの{@code スキーマ.テーブル}形式の名称を取得するメソッド
    */
-  public String getReferenceSchemaTableName() {
+  public String referenceQualifiedName() {
     return referenceTableKey().qualifiedName();
   }
 

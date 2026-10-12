@@ -36,7 +36,7 @@ public enum ListDocumentType {
    *
    * @return 接頭辞（例: {@code function}）
    */
-  public String getPrefix() {
+  public String prefix() {
     return prefix;
   }
 
@@ -45,7 +45,7 @@ public enum ListDocumentType {
    *
    * @return タイトル（例: {@code 関数・プロシージャ一覧}）
    */
-  public String getTitle() {
+  public String title() {
     return title;
   }
 
@@ -54,7 +54,7 @@ public enum ListDocumentType {
    *
    * @return リンクの表示名（例: {@code 関数・プロシージャ一覧へ}）
    */
-  public String getBackLinkLabel() {
+  public String backLinkLabel() {
     return title + "へ";
   }
 }

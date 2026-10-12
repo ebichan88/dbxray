@@ -154,6 +154,6 @@ public class ObjectListTemplates {
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
         MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        ListDocumentType.TABLE.backLinkLabel());
   }
 }

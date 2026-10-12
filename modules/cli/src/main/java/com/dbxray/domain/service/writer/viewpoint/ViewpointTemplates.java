@@ -112,17 +112,16 @@ public class ViewpointTemplates {
         + LINE_SEPARATOR_DOUBLE
         + String.format(
             "[%s](%s) / [%s](%s)",
-            ListDocumentType.VIEWPOINT.getBackLinkLabel(),
+            ListDocumentType.VIEWPOINT.backLinkLabel(),
             MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.VIEWPOINT, baseInfo),
-            ListDocumentType.TABLE.getBackLinkLabel(),
+            ListDocumentType.TABLE.backLinkLabel(),
             MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo))
         + LINE_SEPARATOR;
   }
 
   /** 観点一覧のファイルヘッダー */
   public static String indexFileHeader(BaseInfoEntity baseInfo) {
-    return MarkdownTemplateSupport.titledFileHeader(
-        ListDocumentType.VIEWPOINT.getTitle(), baseInfo);
+    return MarkdownTemplateSupport.titledFileHeader(ListDocumentType.VIEWPOINT.title(), baseInfo);
   }
 
   /** 観点一覧セクションの見出し */
@@ -160,7 +159,7 @@ public class ViewpointTemplates {
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
         MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /**

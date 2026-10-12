@@ -158,7 +158,7 @@ public class SidecarYamlRepositoryTest {
     assertEquals("logs", relation.tableName());
     assertEquals("user_id", relation.foreignKeyName());
     assertEquals(List.of("user_id"), relation.columnNames());
-    assertEquals("public.users", relation.getReferenceSchemaTableName());
+    assertEquals("public.users", relation.referenceQualifiedName());
     assertEquals(List.of("id"), relation.referenceColumnNames());
     assertEquals(Cardinality.OPTIONAL_ONE_TO_MANY, relation.cardinality());
     assertEquals(RelationType.LOGICAL, relation.relationType());

@@ -130,7 +130,7 @@ public final class MarkdownTemplateSupport {
       String heading, Collection<ListDocumentType> types, BaseInfoEntity baseInfo) {
     final StringBuilder sb = new StringBuilder("## ").append(heading).append(LINE_SEPARATOR_DOUBLE);
     types.forEach(
-        type -> sb.append(linkListItem(type.getTitle(), listLinkFromDatabaseRoot(type, baseInfo))));
+        type -> sb.append(linkListItem(type.title(), listLinkFromDatabaseRoot(type, baseInfo))));
     return sb.append(LINE_SEPARATOR).toString();
   }
 

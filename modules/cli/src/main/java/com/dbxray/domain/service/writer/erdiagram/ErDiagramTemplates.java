@@ -225,7 +225,7 @@ public class ErDiagramTemplates {
             table.schemaName(),
             table.physicalTableName(),
             MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
-            table.tableType().getName(),
+            table.tableType().id(),
             MarkdownTemplateSupport.linkCell(
                 DocumentLocations.linkFromDatabaseRoot(
                     DocumentLocations.tableDefinitionFile(table))))
@@ -255,7 +255,7 @@ public class ErDiagramTemplates {
 
   /** 外部キー一覧セクションの1行分 */
   public static String foreignKeyTableLine(int no, ForeignKeyEntity fk) {
-    return row(no, fk.getSchemaTableName(), fk.foreignKeyName(), fk.getReferenceSchemaTableName())
+    return row(no, fk.qualifiedName(), fk.foreignKeyName(), fk.referenceQualifiedName())
         + LINE_SEPARATOR;
   }
 
@@ -268,16 +268,16 @@ public class ErDiagramTemplates {
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
         MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /** ER図一覧・テーブル一覧へ戻るリンクを並べた文字列を生成するメソッド */
   private static String backLinks(BaseInfoEntity baseInfo) {
     return String.format(
         "[%s](%s) / [%s](%s)",
-        ListDocumentType.ER_DIAGRAM.getBackLinkLabel(),
+        ListDocumentType.ER_DIAGRAM.backLinkLabel(),
         MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.ER_DIAGRAM, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel(),
+        ListDocumentType.TABLE.backLinkLabel(),
         MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo));
   }
 }

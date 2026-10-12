@@ -7,60 +7,52 @@ import com.dbxray.infrastructure.db.repository.PostgresCatalogRepository;
 import java.util.Arrays;
 import java.util.Objects;
 
-/** Databaseの種別をもつ列挙型クラス */
+/** 接続先のDB種別と、DB種別ごとに使い分ける部品（mapperの名前空間・カタログのリポジトリ実装）の対応 */
 public enum DatabaseType {
   /** PostgreSQL */
   POSTGRESQL("postgresql", Dbms.POSTGRESQL, PostgresCatalogRepository.class),
   /** Oracle */
   ORACLE("oracle", Dbms.ORACLE, OracleCatalogRepository.class);
 
-  private final String name;
+  private final String id;
   private final Dbms dbms;
   private final Class<? extends CatalogRepository> repositoryClass;
 
-  DatabaseType(String name, Dbms dbms, Class<? extends CatalogRepository> repositoryClass) {
-    this.name = name;
+  DatabaseType(String id, Dbms dbms, Class<? extends CatalogRepository> repositoryClass) {
+    this.id = id;
     this.dbms = dbms;
     this.repositoryClass = repositoryClass;
   }
 
   /**
-   * Database名を返却する。
+   * DB種別を示す名前を取得するメソッド
    *
-   * @return Database名を返却する。
+   * @return JDBCドライバが返すDBの製品名を小文字にしたもの。mapperの名前空間にも使う（例: {@code postgresql}）
    */
-  public String getName() {
-    return name;
+  public String id() {
+    return id;
   }
 
-  /**
-   * Databaseに紐づくドメインのDBMS種別を返却する。
-   *
-   * @return DBMS種別を返却する。
-   */
-  public Dbms getDbms() {
+  /** DB種別に対応する、ドメインのDBMS種別を取得するメソッド */
+  public Dbms dbms() {
     return dbms;
   }
 
-  /**
-   * Databaseに紐づくリポジトリクラスを返却する。
-   *
-   * @return リポジトリクラスを返却する。
-   */
-  public Class<? extends CatalogRepository> getRepositoryClass() {
+  /** DB種別に対応する、カタログのリポジトリ実装を取得するメソッド */
+  public Class<? extends CatalogRepository> repositoryClass() {
     return repositoryClass;
   }
 
   /**
-   * Database名に紐づくEnumを返却する。
+   * 名前からDB種別を求めるメソッド
    *
-   * @return DatabaseTypeを返却する。
-   * @throws IllegalArgumentException 対象のEnumが存在しない場合にthrowする。
+   * @param id DB種別を示す名前（{@link #id()}）
+   * @throws IllegalArgumentException 対応していないDB種別の場合
    */
-  public static DatabaseType findByName(String name) {
-    return Arrays.stream(DatabaseType.values())
-        .filter(e -> Objects.equals(name, e.getName()))
+  public static DatabaseType fromId(String id) {
+    return Arrays.stream(values())
+        .filter(type -> Objects.equals(id, type.id))
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported database type: " + name));
+        .orElseThrow(() -> new IllegalArgumentException("Unsupported database type: " + id));
   }
 }

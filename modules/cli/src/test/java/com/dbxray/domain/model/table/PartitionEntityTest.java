@@ -15,29 +15,28 @@ public class PartitionEntityTest {
   }
 
   @Test
-  @DisplayName("getDisplayName: パーティション表と同じスキーマのパーティションは名前のみで表す")
+  @DisplayName("displayName: パーティション表と同じスキーマのパーティションは名前のみで表す")
   void testDisplayNameInSameSchema() {
     assertEquals(
-        "sales_2026_01", partition("public", "sales_2026_01", "public", "sales").getDisplayName());
+        "sales_2026_01", partition("public", "sales_2026_01", "public", "sales").displayName());
   }
 
   @Test
-  @DisplayName("getDisplayName: パーティション表と異なるスキーマのパーティションはスキーマ修飾で表す")
+  @DisplayName("displayName: パーティション表と異なるスキーマのパーティションはスキーマ修飾で表す")
   void testDisplayNameInOtherSchema() {
     assertEquals(
-        "archive.sales_2020",
-        partition("archive", "sales_2020", "public", "sales").getDisplayName());
+        "archive.sales_2020", partition("archive", "sales_2020", "public", "sales").displayName());
   }
 
   @Test
-  @DisplayName("getDisplayParentName: 親も、パーティション表と同じスキーマなら名前のみ、異なるスキーマならスキーマ修飾で表す")
+  @DisplayName("displayParentName: 親も、パーティション表と同じスキーマなら名前のみ、異なるスキーマならスキーマ修飾で表す")
   void testDisplayParentName() {
     assertEquals(
         "sales_2026_03",
-        partition("public", "sales_2026_03_a", "public", "sales_2026_03").getDisplayParentName());
+        partition("public", "sales_2026_03_a", "public", "sales_2026_03").displayParentName());
     assertEquals(
         "archive.sales_2020",
-        partition("archive", "sales_2020_q1", "archive", "sales_2020").getDisplayParentName());
+        partition("archive", "sales_2020_q1", "archive", "sales_2020").displayParentName());
   }
 
   @Test

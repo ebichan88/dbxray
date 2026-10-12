@@ -109,7 +109,7 @@ public class ExportSchemaControllerTest {
                 false));
 
     assertEquals("Table definition output is complete.", result.message());
-    assertTrue(result.getResultMessage().startsWith("[result]:SUCCESS"));
+    assertTrue(result.resultMessage().startsWith("[result]:SUCCESS"));
   }
 
   @Test
@@ -164,7 +164,7 @@ public class ExportSchemaControllerTest {
 
     assertFalse(result.hasDifference());
     assertEquals(ExitStatus.SUCCESS, result.exitStatus());
-    assertTrue(result.getResultMessage().startsWith("[result]:SUCCESS"));
+    assertTrue(result.resultMessage().startsWith("[result]:SUCCESS"));
   }
 
   @Test

@@ -54,8 +54,8 @@ public enum Cardinality {
    * @param relationType 関連の由来（物理／論理）
    * @return Mermaidの関連線表記
    */
-  public String getNotation(RelationType relationType) {
-    return parentNotation + relationType.getLineNotation() + childNotation;
+  public String notation(RelationType relationType) {
+    return parentNotation + relationType.lineNotation() + childNotation;
   }
 
   /**
@@ -63,7 +63,7 @@ public enum Cardinality {
    *
    * @return 日本語のラベル
    */
-  public String getLabel() {
+  public String label() {
     return label;
   }
 

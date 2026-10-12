@@ -49,7 +49,7 @@ public final class DocumentLocations {
    * @return {@code {接頭辞}List_{DB名}.md}
    */
   public static String listFile(ListDocumentType type, String dbName) {
-    return String.format(LIST_FILENAME_PATTERN, type.getPrefix(), PathSegments.encode(dbName));
+    return String.format(LIST_FILENAME_PATTERN, type.prefix(), PathSegments.encode(dbName));
   }
 
   /**
@@ -111,7 +111,7 @@ public final class DocumentLocations {
     return String.join(
         PATH_SEPARATOR,
         PathSegments.encode(table.schemaName()),
-        table.tableType().getName(),
+        table.tableType().id(),
         PathSegments.encode(table.physicalTableName()) + MARKDOWN_EXTENSION);
   }
 
@@ -162,7 +162,7 @@ public final class DocumentLocations {
    * @return {@code {スキーマ名}/{区分}}
    */
   public static String schemaObjectDirectory(String schemaName, ListDocumentType kind) {
-    return String.join(PATH_SEPARATOR, PathSegments.encode(schemaName), kind.getPrefix());
+    return String.join(PATH_SEPARATOR, PathSegments.encode(schemaName), kind.prefix());
   }
 
   /**

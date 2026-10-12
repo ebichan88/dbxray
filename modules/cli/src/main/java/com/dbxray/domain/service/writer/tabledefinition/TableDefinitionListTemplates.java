@@ -17,7 +17,7 @@ public class TableDefinitionListTemplates {
 
   /** テーブル定義一覧ヘッダー */
   public static String fileHeader(BaseInfoEntity baseInfo) {
-    return MarkdownTemplateSupport.titledFileHeader(ListDocumentType.TABLE.getTitle(), baseInfo);
+    return MarkdownTemplateSupport.titledFileHeader(ListDocumentType.TABLE.title(), baseInfo);
   }
 
   /** 基本情報セクション */
@@ -61,7 +61,7 @@ public class TableDefinitionListTemplates {
             table.schemaName(),
             MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
             table.physicalTableName(),
-            table.tableType().getName(),
+            table.tableType().id(),
             tableDefinitionLink(table))
         + LINE_SEPARATOR;
   }

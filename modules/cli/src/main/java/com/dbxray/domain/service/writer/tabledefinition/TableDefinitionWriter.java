@@ -56,7 +56,7 @@ public class TableDefinitionWriter {
         new PageLayout(
             TableDefinitionListTemplates.fileHeader(outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, ListDocumentType.TABLE),
-            ListDocumentType.TABLE.getBackLinkLabel());
+            ListDocumentType.TABLE.backLinkLabel());
     final String tableListSection = pagedSectionWriter.writePagedSection(section, layout);
     final List<String> contents =
         List.of(

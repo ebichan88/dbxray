@@ -23,13 +23,13 @@ public class ObjectDefinitionTemplates {
   private static String footer(ListDocumentType listType, BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
         MarkdownTemplateSupport.listLinkFromDefinition(listType, baseInfo),
-        listType.getBackLinkLabel());
+        listType.backLinkLabel());
   }
 
   /** 関数・プロシージャの個別定義ファイル内容 */
   public static String functionFile(FunctionDefinitionContent content, BaseInfoEntity baseInfo) {
     final FunctionEntity function = content.function();
-    return MarkdownTemplateSupport.fileHeader(function.getHeaderName())
+    return MarkdownTemplateSupport.fileHeader(function.functionName())
         + baseInfo(baseInfo)
         + FunctionTableUsageTemplates.section(content)
         + "## 定義"

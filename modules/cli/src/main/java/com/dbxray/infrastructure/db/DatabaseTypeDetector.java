@@ -69,7 +69,7 @@ public final class DatabaseTypeDetector {
    */
   static DatabaseType toDatabaseType(String productName) {
     try {
-      return DatabaseType.findByName(productName.toLowerCase(Locale.ROOT));
+      return DatabaseType.fromId(productName.toLowerCase(Locale.ROOT));
     } catch (IllegalArgumentException e) {
       throw new UserCorrectableException(
           e.getMessage() + ". Connect to a supported database (PostgreSQL or Oracle).", e);

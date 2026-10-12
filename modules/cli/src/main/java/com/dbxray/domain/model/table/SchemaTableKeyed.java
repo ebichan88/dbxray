@@ -10,11 +10,9 @@ public interface SchemaTableKeyed {
   String tableName();
 
   /**
-   * スキーマ.テーブル 形式の名称を取得するメソッド
-   *
-   * @return スキーマ.テーブル 形式の名称
+   * 所属するテーブルの{@code スキーマ.テーブル}形式の名称を取得するメソッド
    */
-  default String getSchemaTableName() {
+  default String qualifiedName() {
     return tableKey().qualifiedName();
   }
 

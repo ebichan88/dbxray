@@ -137,7 +137,7 @@ public class SnapshotDiff {
    * @return 表示名（例: {@code table sample.employee}）
    */
   private String label(SnapshotKind kind, String line) {
-    return kind.getLabel() + " " + kind.identify(serializer.deserialize(line));
+    return kind.label() + " " + kind.identify(serializer.deserialize(line));
   }
 
   private List<String> labels(Map<Target, List<String>> targets, Predicate<Target> condition) {
