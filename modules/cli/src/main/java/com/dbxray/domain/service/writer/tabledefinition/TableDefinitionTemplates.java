@@ -290,8 +290,8 @@ public final class TableDefinitionTemplates {
             row(
                 no,
                 fk.tableKey().qualifiedName(),
-                String.join(",", fk.columnNames()),
-                String.join(",", fk.referenceColumnNames()),
+                columnList(fk.columnNames()),
+                columnList(fk.referenceColumnNames()),
                 fk.foreignKeyName(),
                 fk.cardinality().label(),
                 fk.relationType().label()));
@@ -350,6 +350,11 @@ public final class TableDefinitionTemplates {
             row(no, reference.tableKey().qualifiedName(), reference.tableType().id()));
   }
 
+  /** 関連のカラムリストの表記（外部キー・論理リレーション・被参照の表で揃える） */
+  private static String columnList(List<String> columnNames) {
+    return String.join(",", columnNames);
+  }
+
   /**
    * 多重度のラベル表記は{@link com.dbxray.domain.model.relation.Cardinality}に集約している
    *
@@ -359,9 +364,9 @@ public final class TableDefinitionTemplates {
     return row(
         no,
         fk.foreignKeyName(),
-        String.join(",", fk.columnNames()),
+        columnList(fk.columnNames()),
         fk.referenceQualifiedName(),
-        String.join(",", fk.referenceColumnNames()),
+        columnList(fk.referenceColumnNames()),
         fk.cardinality().label());
   }
 
@@ -371,9 +376,9 @@ public final class TableDefinitionTemplates {
   private static String logicalRelationTableLine(int no, ForeignKeyEntity fk) {
     return row(
         no,
-        String.join(",", fk.columnNames()),
+        columnList(fk.columnNames()),
         fk.referenceQualifiedName(),
-        String.join(",", fk.referenceColumnNames()),
+        columnList(fk.referenceColumnNames()),
         fk.cardinality().label());
   }
 
