@@ -11,9 +11,9 @@ import java.util.Optional;
  * --}はコメントにせず、コメントの中の{@code '}で文字列を始めない）ため、同時に左から読まないと区別できない。
  * 規則はDBごとに異なる（PostgreSQLはブロックコメントを入れ子にでき、ドル引用符を持つ。Oracleは入れ子にできず、{@code q'[...]'}を持つ）。
  * 閉じていない文字列・コメント等は範囲の終わりまでをその要素とし、例外にはしない（コンパイルに失敗した本体もDBに残りうるため）<br>
- * 読んでいる位置は可変の{@code pos}1つで持つ。{@code scan...}は{@code pos}から要素を1つ読み、
- * 読み終えた直後まで{@code pos}を進める。{@code skip...}は読み飛ばすだけで、
- * {@code peek}・{@code lookingAt}・{@code is...}・{@code has...}は{@code pos}を動かさない
+ * 読んでいる位置は可変の{@code pos}1つで持つ<br>
+ * {@code scan...}は{@code pos}から要素を1つ読み、読み終えた直後まで{@code pos}を進める<br>
+ * {@code skip...}は読み飛ばすだけ。{@code peek}・{@code lookingAt}・{@code is...}・{@code has...}は動かさない
  */
 final class SqlLexer {
 
