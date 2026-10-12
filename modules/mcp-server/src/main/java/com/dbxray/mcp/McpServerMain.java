@@ -1,5 +1,6 @@
 package com.dbxray.mcp;
 
+import com.dbxray.mcp.catalog.FunctionTableUsageEntry;
 import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.ViewpointEntry;
 import com.dbxray.mcp.insight.InsightsDirectoryReader;
@@ -60,12 +61,16 @@ public final class McpServerMain {
     final SchemaCatalog catalog;
     try {
       final ServerArguments arguments = ServerArguments.parse(args);
+      final InsightsDirectoryReader insightsReader = new InsightsDirectoryReader();
       final List<ViewpointEntry> viewpoints =
-          new InsightsDirectoryReader().readViewpoints(arguments.snapshotDirectory());
+          insightsReader.readViewpoints(arguments.snapshotDirectory());
+      final List<FunctionTableUsageEntry> functionTableUsages =
+          insightsReader.readFunctionTableUsages(arguments.snapshotDirectory());
       catalog =
           new SnapshotDirectoryReader()
               .read(arguments.snapshotDirectory())
-              .withViewpoints(viewpoints);
+              .withViewpoints(viewpoints)
+              .withFunctionTableUsages(functionTableUsages);
       System.err.println(
           "[info]:"
               + catalog.tables().all().size()
