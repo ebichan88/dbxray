@@ -23,7 +23,6 @@ final class SqlLexer {
   private final String source;
   private final int to;
   private final Dbms dbms;
-  private final boolean keepTrivia;
   private final List<SqlToken> tokens = new ArrayList<>();
   private int pos;
   private int line;
@@ -34,11 +33,10 @@ final class SqlLexer {
 
   private int contentEnd = -1;
 
-  private SqlLexer(String source, int from, int to, int firstLine, Dbms dbms, boolean keepTrivia) {
+  private SqlLexer(String source, int from, int to, int firstLine, Dbms dbms) {
     this.source = source;
     this.to = to;
     this.dbms = dbms;
-    this.keepTrivia = keepTrivia;
     this.pos = from;
     this.line = firstLine;
   }
@@ -56,15 +54,7 @@ final class SqlLexer {
    * @param firstLine 範囲の開始位置の行番号
    */
   static SqlLexResult lex(String source, int from, int to, int firstLine, Dbms dbms) {
-    return new SqlLexer(source, from, to, firstLine, dbms, false).run();
-  }
-
-  /**
-   * 空白・コメントも含めて字句に分けるメソッド<br>
-   * 返す字句をつなぐと入力に戻る（字句の分け方が入力を漏れなく重なりなく覆うことを確かめられる）
-   */
-  static List<SqlToken> lexWithTrivia(String source, Dbms dbms) {
-    return new SqlLexer(source, 0, source.length(), 1, dbms, true).run().tokens();
+    return new SqlLexer(source, from, to, firstLine, dbms).run();
   }
 
   private SqlLexResult run() {
@@ -73,7 +63,7 @@ final class SqlLexer {
       final int startLine = line;
       contentStart = -1;
       final SqlTokenKind kind = scanOne();
-      if (keepTrivia || !kind.isTrivia()) {
+      if (!kind.isTrivia()) {
         tokens.add(
             new SqlToken(
                 kind,

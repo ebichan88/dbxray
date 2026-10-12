@@ -42,6 +42,8 @@ dependencies {
 }
 
 test {
+    // 5MB程度の本体を字句に分けるテストが、Gradleの既定（512MB）に収まるか怪しいため（字句は入力の20倍ほどのメモリを使う）
+    maxHeapSize = '1g'
     finalizedBy jacocoTestReport
 }
 

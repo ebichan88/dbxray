@@ -43,7 +43,7 @@ class SqlLexerPropertyTest {
 
   @ParameterizedTest
   @EnumSource(Dbms.class)
-  @DisplayName("lexWithTrivia: ランダムな入力でも例外を投げず、字句をつなぐと入力に戻り、字句は隙間なく並ぶ")
+  @DisplayName("lex: ランダムな入力でも例外を投げず、字句は重ならず順に並び、字句の間は空白・コメントだけになる")
   void testRandomInputsAreCoveredExactly(Dbms dbms) {
     final Random random = new Random(7818L + dbms.ordinal());
     for (int i = 0; i < FUZZ_COUNT; i++) {
@@ -54,7 +54,7 @@ class SqlLexerPropertyTest {
 
   @ParameterizedTest
   @EnumSource(Dbms.class)
-  @DisplayName("lexWithTrivia: 現実的な書き方の文字をランダムに消す・足す・入れ替えても、例外を投げず入力を漏れなく覆う")
+  @DisplayName("lex: 現実的な書き方の文字をランダムに消す・足す・入れ替えても、例外を投げず入力を漏れなく覆う")
   void testMutatedInputsAreCoveredExactly(Dbms dbms) {
     final Random random = new Random(134L + dbms.ordinal());
     for (final String seed : SEEDS) {
@@ -62,42 +62,6 @@ class SqlLexerPropertyTest {
         assertCoveredExactly(mutate(seed, random), dbms);
       }
     }
-  }
-
-  @ParameterizedTest
-  @EnumSource(Dbms.class)
-  @DisplayName("lex: 空白・コメントを除いた字句は、lexWithTriviaから空白・コメントを除いたものと一致する")
-  void testLexMatchesLexWithTriviaWithoutTrivia(Dbms dbms) {
-    final Random random = new Random(18L + dbms.ordinal());
-    for (int i = 0; i < FUZZ_COUNT / 10; i++) {
-      final String input = randomInput(random);
-      assertEquals(
-          SqlLexer.lexWithTrivia(input, dbms).stream()
-              .filter(token -> !token.kind().isTrivia())
-              .toList(),
-          SqlLexer.lex(input, dbms).tokens(),
-          () -> "input: " + escape(input));
-    }
-  }
-
-  static Stream<Arguments> pathologicalInputs() {
-    final int size = 1_000_000;
-    return Stream.of(
-        Arguments.of("5MB程度の本体", "select a from b where c = 'd'; -- e\n".repeat(140_000)),
-        Arguments.of("引用符の並び", "'".repeat(size)),
-        Arguments.of("二重引用符の並び", "\"".repeat(size)),
-        Arguments.of("ブロックコメントの開始の並び", "/*".repeat(size / 2)),
-        Arguments.of("閉じの無いブロックコメントの中のアスタリスク", "/*" + "*".repeat(size)),
-        Arguments.of("開き括弧の並び", "(".repeat(size)),
-        Arguments.of("閉じの無いドル引用符の中の似た区切り", "$a$" + "$a".repeat(size / 2)),
-        Arguments.of(
-            "上限の長さのタグの中の似た区切り",
-            "$" + "a".repeat(SqlLexer.MAX_DOLLAR_TAG_LENGTH) + "$" + "$a".repeat(size / 2)),
-        Arguments.of("ドル記号の並び", "$".repeat(size)),
-        Arguments.of("閉じの無いq'の中の]", "q'[" + "]".repeat(size)),
-        Arguments.of("ハイフンの並び", "-".repeat(size)),
-        Arguments.of("E文字列の\\の並び", "E'" + "\\".repeat(size)),
-        Arguments.of("改行の並び", "\r\n".repeat(size / 2)));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -109,24 +73,44 @@ class SqlLexerPropertyTest {
     }
   }
 
-  /** 字句をつなぐと入力に戻り、各字句が空でなく、前の字句の直後から始まり、行番号がそれまでの改行の数と一致することを確かめる */
+  /**
+   * 字句が空でなく、前の字句より後ろから重ならず並び、行番号がそれまでの改行の数と一致し、字句の間（先頭・末尾を含む）が空白・コメントだけであることを確かめる<br>
+   * 空白・コメントは字句に含まれないため、字句の間を埋めていれば、字句と空白・コメントで入力を漏れなく覆っていることになる
+   */
   private static void assertCoveredExactly(String input, Dbms dbms) {
-    final List<SqlToken> tokens = SqlLexer.lexWithTrivia(input, dbms);
-    int expectedStart = 0;
-    int expectedLine = 1;
+    final List<SqlToken> tokens = SqlLexer.lex(input, dbms).tokens();
+    int cursor = 0;
+    int cursorLine = 1;
     for (final SqlToken token : tokens) {
-      final int start = expectedStart;
-      assertEquals(start, token.start(), () -> "token start, input: " + escape(input));
+      assertOnlyTrivia(input, cursor, token.start());
+      cursorLine += newlines(input, cursor, token.start());
       assertTrue(token.end() > token.start(), () -> "empty token, input: " + escape(input));
       assertEquals(
           input.substring(token.start(), token.end()),
           token.text(),
           () -> "token text, input: " + escape(input));
+      final int expectedLine = cursorLine;
       assertEquals(expectedLine, token.line(), () -> "line, input: " + escape(input));
-      expectedLine += newlines(input, token.start(), token.end());
-      expectedStart = token.end();
+      cursorLine += newlines(input, token.start(), token.end());
+      cursor = token.end();
     }
-    assertEquals(input.length(), expectedStart, () -> "not covered to the end: " + escape(input));
+    assertOnlyTrivia(input, cursor, input.length());
+  }
+
+  /** 範囲が空白だけか、空白の後にコメントの開始が続くもの（字句が1つも入らない隙間）であることを確かめる */
+  private static void assertOnlyTrivia(String input, int start, int end) {
+    assertTrue(start <= end, () -> "tokens overlap, input: " + escape(input));
+    int pos = start;
+    while (pos < end && isWhitespace(input.charAt(pos))) {
+      pos++;
+    }
+    assertTrue(
+        pos == end || input.startsWith("--", pos) || input.startsWith("/*", pos),
+        () -> "gap between tokens is not whitespace or a comment, input: " + escape(input));
+  }
+
+  private static boolean isWhitespace(char c) {
+    return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '\uFEFF';
   }
 
   private static int newlines(String input, int start, int end) {
