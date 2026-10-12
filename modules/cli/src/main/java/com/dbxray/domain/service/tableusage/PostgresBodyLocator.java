@@ -41,32 +41,51 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       final SqlToken token = tokens.at(i);
       if (token.isSymbol("(")) {
         depth++;
-      } else if (token.isSymbol(")")) {
-        depth = Math.max(0, depth - 1);
-      } else if (depth > 0) {
         continue;
-      } else if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
+      }
+      if (token.isSymbol(")")) {
+        depth = Math.max(0, depth - 1);
+        continue;
+      }
+      if (depth > 0) {
+        // 引数の並び・既定値等の括弧の中には、本体の区切りも関数の属性も無い
+        continue;
+      }
+      if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
         final int searchPathIndex = i + 1;
         searchPath = readSearchPath(tokens, searchPathIndex + 1);
-      } else if (token.isWord("AS")
-          && tokens.at(i + 1) != null
-          && tokens.at(i + 1).kind() == SqlTokenKind.DOLLAR_STRING) {
+      } else if (isDollarQuotedBodyAt(tokens, i)) {
         final SqlToken body = tokens.at(i + 1);
         final SqlLexResult inner =
             SqlLexer.lex(
                 definition, body.contentStart(), body.contentEnd(), body.line(), Dbms.POSTGRESQL);
         return new FunctionBody.Postgres(
             inner.tokens(), lexed.incomplete() || inner.incomplete(), searchPath);
-      } else if (tokens.isAfterDot(i)) {
-        continue;
-      } else if ((token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC"))
-          || token.isWord("RETURN")) {
+      } else if (isStandardBodyStartAt(tokens, i)) {
         return new FunctionBody.Postgres(
             all.subList(i, all.size()), lexed.incomplete(), searchPath);
       }
     }
     // 本体の区切りが無い定義の字句は見出しのため、本体と誤らないよう解析しない
     return new FunctionBody.NotAnalyzable(TableUsageStatus.NO_DEFINITION);
+  }
+
+  /** 位置の{@code AS}の直後が、本体を囲むドル引用符か */
+  private static boolean isDollarQuotedBodyAt(SqlTokens tokens, int i) {
+    final SqlToken next = tokens.at(i + 1);
+    return tokens.isWordAt(i, "AS") && next != null && next.kind() == SqlTokenKind.DOLLAR_STRING;
+  }
+
+  /**
+   * 位置が、SQL標準の本体（{@code BEGIN ATOMIC}・{@code RETURN}）の始まりか<br>
+   * {@code .}の直後の語は、スキーマで修飾した関数名・型名の部品のため区切りとしない
+   */
+  private static boolean isStandardBodyStartAt(SqlTokens tokens, int i) {
+    if (tokens.isAfterDot(i)) {
+      return false;
+    }
+    final SqlToken token = tokens.at(i);
+    return (token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC")) || token.isWord("RETURN");
   }
 
   private static boolean isSearchPathAt(SqlTokens tokens, int i) {

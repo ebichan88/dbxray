@@ -217,22 +217,26 @@ final class PackageSubprograms {
         final Conditional conditional = conditionals.peek();
         if (conditional != null) {
           endBranch(conditional);
-          blocks = conditional.start.blocks;
-          parenDepth = conditional.start.parenDepth;
-          header = copyOf(conditional.start.header);
+          // 次の分岐は$IFの時点から読む。見出しは分岐ごとに読み進めるため複製する
+          restore(conditional.start, copyOf(conditional.start.header));
         }
       }
       case "$END" -> {
         final Conditional conditional = conditionals.poll();
         if (conditional != null) {
           endBranch(conditional);
-          blocks = conditional.first.blocks;
-          parenDepth = conditional.first.parenDepth;
-          header = conditional.first.header;
+          restore(conditional.first, conditional.first.header);
         }
       }
       default -> {}
     }
+  }
+
+  /** 読み進めている状態を、覚えた状態へ戻す */
+  private void restore(State state, Header restoredHeader) {
+    blocks = state.blocks;
+    parenDepth = state.parenDepth;
+    header = restoredHeader;
   }
 
   /**

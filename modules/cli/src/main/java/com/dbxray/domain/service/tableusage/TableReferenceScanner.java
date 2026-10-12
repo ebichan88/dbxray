@@ -608,8 +608,10 @@ final class TableReferenceScanner {
 
   /**
    * 文1つの中で覚えておく状態<br>
-   * 文の終わり（{@code ;}・最上位の{@code LOOP}）で新しく作ることで、前の文の状態を持ち越さない。深さを覚える項目は、
-   * 括弧の深さを{@link #NONE}（その文には無い）で初期化し、現在の深さと同じかどうかを{@code isXxxLevel}で問い合わせる。括弧の深さには{@code []}も数える
+   * 文の終わり（{@code ;}・最上位の{@code LOOP}）で新しく作ることで、前の文の状態を持ち越さない。
+   * 値を覚えるだけの項目（{@link #mergeTarget}等）は、走査する側がフィールドを直接読み書きする。
+   * 括弧の深さと組み合わせて判定する項目はprivateにし、{@code enterXxx}で覚えて{@code isXxxLevel}で問い合わせる。
+   * 深さは{@link #NONE}（その文には無い）で初期化する。括弧の深さには{@code []}も数える
    */
   private static final class StatementState {
 
@@ -687,7 +689,7 @@ final class TableReferenceScanner {
     /** 名前が、いま見えるCTEの名前か（CTEは、定義した括弧の中とその内側でだけ見える） */
     boolean isCommonTableExpression(String name) {
       for (final Frame frame : frames) {
-        if (frame.commonTableExpressions.contains(name)) {
+        if (frame.definesCommonTableExpression(name)) {
           return true;
         }
       }
@@ -755,39 +757,47 @@ final class TableReferenceScanner {
     }
   }
 
-  /** 括弧1段分の状態 */
+  /**
+   * 括弧1段分の状態<br>
+   * {@link StatementState}と同じく、値を覚えるだけの項目は走査する側がフィールドを直接読み書きする
+   */
   private static final class Frame {
 
     /**
      * 括弧の直前の語が、{@code FROM}をテーブルの指定以外の意味で使う関数（{@link TableReferenceScanner#FROM_SYNTAX_FUNCTIONS}）か
      */
-    private final boolean fromIsFunctionSyntax;
+    final boolean fromIsFunctionSyntax;
 
     /** この括弧がCTEの本体なら、そのCTEの名前。そうでなければnull */
-    private final String commonTableExpressionName;
+    final String commonTableExpressionName;
+
+    /** カンマの直後をテーブルの位置とするカンマ区切りの並びの中にいる場合の操作（FROM・USINGはR、TRUNCATEはD）。並びの中にいなければnull */
+    CrudOperation listOperation;
+
+    /** 開いたままの{@code CASE}の数 */
+    int caseDepth;
+
+    /** この括弧の中の{@code WITH}が{@code RECURSIVE}か */
+    boolean recursiveWith;
 
     /** この括弧の中で定義したCTEの名前（カタログでの名前）。この括弧を閉じると見えなくなる */
     private Set<String> commonTableExpressions = Set.of();
-
-    /** カンマの直後をテーブルの位置とするカンマ区切りの並びの中にいる場合の操作（FROM・USINGはR、TRUNCATEはD）。並びの中にいなければnull */
-    private CrudOperation listOperation;
-
-    /** 開いたままの{@code CASE}の数 */
-    private int caseDepth;
-
-    /** この括弧の中の{@code WITH}が{@code RECURSIVE}か */
-    private boolean recursiveWith;
 
     private Frame(boolean fromIsFunctionSyntax, String commonTableExpressionName) {
       this.fromIsFunctionSyntax = fromIsFunctionSyntax;
       this.commonTableExpressionName = commonTableExpressionName;
     }
 
-    private void addCommonTableExpression(String name) {
+    void addCommonTableExpression(String name) {
       if (commonTableExpressions.isEmpty()) {
         commonTableExpressions = new HashSet<>();
       }
       commonTableExpressions.add(name);
+    }
+
+    /** この括弧の中で定義したCTEの名前か */
+    boolean definesCommonTableExpression(String name) {
+      return commonTableExpressions.contains(name);
     }
   }
 }
