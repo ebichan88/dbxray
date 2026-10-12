@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
+import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.table.TableType;
 import com.dbxray.domain.model.viewpoint.Viewpoint;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +92,49 @@ public class DocumentLocationsTest {
             "testdb", "public", "calc", 2, 2, "FUNCTION", "a text", "int", "sql", "");
     assertEquals("calc_1", DocumentLocations.functionDefinitionName(first));
     assertEquals("calc_2", DocumentLocations.functionDefinitionName(second));
+  }
+
+  @Test
+  @DisplayName("functionsSharingDefinitionFile: オーバーロードに付けた番号が別の関数の名前と重なる場合は、同じファイルを書く関数を取得順に返す")
+  void testFunctionsSharingDefinitionFile() {
+    var calc1 = function("public", "calc", 1, 2, "a integer");
+    var calc2 = function("public", "calc", 2, 2, "a text");
+    var calcOne = function("public", "calc_1", 1, 1, "");
+    // 別のスキーマの同じ名前は、ファイルが別のため重ならない
+    var otherSchema = function("sales", "calc_1", 1, 1, "");
+
+    assertEquals(
+        Map.of("public/function/calc_1.md", List.of(calc1, calcOne)),
+        DocumentLocations.functionsSharingDefinitionFile(
+            Functions.of(List.of(calc1, calc2, calcOne, otherSchema))));
+  }
+
+  @Test
+  @DisplayName("functionsSharingDefinitionFile: オーバーロードがあってもファイルが重ならなければ空を返す")
+  void testFunctionsSharingDefinitionFileWithoutCollision() {
+    assertEquals(
+        Map.of(),
+        DocumentLocations.functionsSharingDefinitionFile(
+            Functions.of(
+                List.of(
+                    function("public", "calc", 1, 2, "a integer"),
+                    function("public", "calc", 2, 2, "a text"),
+                    function("public", "calc_v2", 1, 1, "")))));
+  }
+
+  private static FunctionEntity function(
+      String schema, String name, int overloadIndex, int overloadCount, String arguments) {
+    return new FunctionEntity(
+        "testdb",
+        schema,
+        name,
+        overloadIndex,
+        overloadCount,
+        "FUNCTION",
+        arguments,
+        "int",
+        "sql",
+        "");
   }
 
   @Test

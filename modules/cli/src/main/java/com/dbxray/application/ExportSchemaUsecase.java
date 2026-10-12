@@ -2,11 +2,13 @@ package com.dbxray.application;
 
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.NodeLimit;
+import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.target.ExportTargets;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.export.InsightExportSinkFactory;
 import com.dbxray.domain.service.export.MarkdownExportSinkFactory;
 import com.dbxray.domain.service.export.SnapshotExportSinkFactory;
+import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -53,6 +55,7 @@ public class ExportSchemaUsecase {
         schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
     final DiagramBoxes diagramBoxes =
         schemaExportPipeline.fetchDiagramBoxes(targets, request.chunkSize());
+    warnFunctionsSharingDefinitionFile(targets.functions());
     if (!request.previewFeatures().isEmpty()) {
       logger.info(
           "Preview features enabled. [features={}]",
@@ -79,6 +82,25 @@ public class ExportSchemaUsecase {
             insightSinkFactory.create(outputBaseDir)),
         request.chunkSize(),
         request.previewFeatures());
+  }
+
+  /**
+   * 個別定義のファイルが同じになる関数・プロシージャを警告するメソッド<br>
+   * 後に書いたほうの定義だけが残り、関数一覧のリンクもすべて同じファイルを指すため、出力を見ても気付けない
+   */
+  private static void warnFunctionsSharingDefinitionFile(Functions functions) {
+    DocumentLocations.functionsSharingDefinitionFile(functions)
+        .forEach(
+            (file, sharing) ->
+                logger.warn(
+                    "Function documents share the same file name, so only the one written last is kept. "
+                        + "[file={}, functions={}]",
+                    file,
+                    sharing.stream()
+                        .map(
+                            function ->
+                                function.functionName() + "(" + function.functionArguments() + ")")
+                        .collect(Collectors.joining(", "))));
   }
 
   /**
