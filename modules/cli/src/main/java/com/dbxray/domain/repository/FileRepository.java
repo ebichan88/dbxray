@@ -60,7 +60,7 @@ public interface FileRepository {
 
   /**
    * ファイルを1つ削除するメソッド<br>
-   * ファイルが存在しない場合は何もしない
+   * 通常のファイルでない場合（存在しない・ディレクトリ）は何もしない。ディレクトリの削除には{@link #deleteDirectory}を使う
    */
   public void deleteFile(Path filePath);
 }

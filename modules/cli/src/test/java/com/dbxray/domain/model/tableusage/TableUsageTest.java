@@ -121,4 +121,21 @@ class TableUsageTest {
     assertEquals("EXECUTE IMMEDIATE", DynamicSqlKind.EXECUTE_IMMEDIATE.label());
     assertEquals("dblink", DynamicSqlKind.DBLINK.label());
   }
+
+  @Test
+  @DisplayName("TableUsageStatus・DynamicSqlKind: 参考情報（JSON）に出す値は、定数の名前によらず固定する")
+  void testIds() {
+    assertEquals(
+        List.of(
+            "not_analyzed",
+            "analyzed",
+            "unsupported_language",
+            "no_definition",
+            "wrapped",
+            "subprogram_not_found"),
+        EnumSet.allOf(TableUsageStatus.class).stream().map(TableUsageStatus::id).toList());
+    assertEquals(
+        List.of("EXECUTE", "EXECUTE IMMEDIATE", "DBMS_SQL", "OPEN FOR", "dblink"),
+        EnumSet.allOf(DynamicSqlKind.class).stream().map(DynamicSqlKind::id).toList());
+  }
 }

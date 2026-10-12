@@ -10,6 +10,7 @@ import com.dbxray.presentation.dto.DiffCheckResultDto;
 import com.dbxray.testsupport.ExportBaseline;
 import com.dbxray.testsupport.OracleSampleDatabase;
 import java.nio.file.Path;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,8 @@ class OracleSampleDatabaseExportIT {
   @Test
   @DisplayName("通常実行: 出力がベースラインと一致する")
   void testExportMatchesBaseline(@TempDir Path outputDir) {
-    final ExportSchemaRequest request = properties(outputDir).toExportSchemaRequest(false, false);
+    final ExportSchemaRequest request =
+        properties(outputDir).toExportSchemaRequest(false, Set.of());
 
     controller().execute(request);
 

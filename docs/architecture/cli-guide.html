@@ -1027,7 +1027,7 @@ Please wait a moment ...
 
 [result]:FAIL
 Failed to output database documents.
- [errmsg]:Unknown argument: --chek (values are not shown; specify a value as --name=value) (available arguments: --check, --rm-dist, --help, --version, --config=&lt;path&gt;, --db-driver=&lt;value&gt;, …, --annotation-path=&lt;value&gt;)</code></pre>
+ [errmsg]:Unknown argument: --chek (values are not shown; specify a value as --name=value) (available arguments: --check, --rm-dist, --preview, --help, --version, --config=&lt;path&gt;, --db-driver=&lt;value&gt;, …, --annotation-path=&lt;value&gt;)</code></pre>
 <pre><code><span class="c">$ java -jar … --chunk-size=abc --output-objects=trigger,view --table='sample.,!'</span>
 [result]:FAIL
 Failed to output database documents.
@@ -2301,7 +2301,7 @@ erDiagram
   <li>DB由来の名前を<code>Path.resolve</code>や<code>String.format</code>で直接パス・Markdownにつなぐ（<code>…Locations</code>・<code>OutputPathResolver</code>と、エスケープの部品を通す。10章の「DB由来の文字列を信頼しない」）。</li>
   <li>CLI引数・設定値・接続URLの値を、例外のメッセージやログにそのまま含める（書き誤りの引数にパスワードが入り得る）。</li>
   <li>関数の定義本体を読むコードに正規表現を使う、定義本体の字句の読み取りで例外を投げる（DB由来の入力でバックトラックによる極端な遅さ・処理の中断を招く。9.9節）。</li>
-  <li><code>InsightWriter</code>以外でファイルを削除する、削除の対象を広げる（ファイルの削除は、前回の<code>functionTableUsages.json</code>を1つ消す1箇所だけ。ディレクトリの削除は<code>--rm-dist</code>の出力先だけ）。</li>
+  <li><code>InsightWriter</code>以外でファイルを削除する、削除の対象を広げる（ファイルの削除は、前回の<code>functionTableUsages.json</code>を1つ消す1箇所だけで、<code>ArchitectureTest</code>が<code>InsightWriter</code>以外の<code>deleteFile</code>の呼び出しを検知する。ディレクトリの削除は<code>--rm-dist</code>の出力先だけ）。</li>
   <li>プレビューの機能の結果を、スナップショットに入れる（<code>--check</code>の比較対象が変わり、互換性の対象外のものを契約に混ぜることになる）。</li>
 </ul>
 

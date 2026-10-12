@@ -14,6 +14,7 @@ import com.dbxray.domain.model.tableusage.DynamicSqlKind;
 import com.dbxray.domain.model.tableusage.FunctionTableUsage;
 import com.dbxray.domain.model.tableusage.SchemaResolution;
 import com.dbxray.domain.model.tableusage.TableUsage;
+import com.dbxray.domain.model.tableusage.TableUsageStatus;
 import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.viewpoint.Viewpoint;
 import com.dbxray.domain.model.viewpoint.ViewpointContent;
@@ -24,6 +25,7 @@ import com.dbxray.infrastructure.snapshot.JacksonSnapshotSerializer;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,9 @@ class InsightWriterTest {
     private final List<Path> createdDirectories = new ArrayList<>();
     private final List<Path> deletedFiles = new ArrayList<>();
 
+    /** 前回の実行が出力済みのファイル（{@link #exists}が真を返す） */
+    private final Set<Path> existingFiles = new HashSet<>();
+
     @Override
     public void writeFile(Path filePath, List<String> contents) {
       files.put(filePath, String.join("", contents));
@@ -64,7 +69,7 @@ class InsightWriterTest {
 
     @Override
     public boolean exists(Path path) {
-      return false;
+      return existingFiles.contains(path);
     }
 
     @Override
@@ -262,6 +267,7 @@ class InsightWriterTest {
   @DisplayName("writeFunctionTableUsages: 抽出を行わない実行では、ファイルを出力せず、以前のプレビューの実行が出力したファイルを削除する")
   void testWriteFunctionTableUsagesNotAnalyzedDeletesPreviousFile() {
     final Path file = INSIGHTS_DIR.resolve("sample").resolve("functionTableUsages.json");
+    fileRepository.existingFiles.add(file);
 
     writer.writeFunctionTableUsages(
         "sample", List.of(functionContent("f", "", "", FunctionTableUsage.notAnalyzed())), ROOT);
@@ -269,6 +275,68 @@ class InsightWriterTest {
     assertTrue(fileRepository.files.isEmpty());
     assertEquals(List.of(file), fileRepository.deletedFiles);
     assertTrue(fileRepository.createdDirectories.isEmpty());
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 抽出を行わない実行で、前回のファイルが無ければ何も削除しない")
+  void testWriteFunctionTableUsagesNotAnalyzedWithoutPreviousFile() {
+    writer.writeFunctionTableUsages(
+        "sample", List.of(functionContent("f", "", "", FunctionTableUsage.notAnalyzed())), ROOT);
+
+    assertTrue(fileRepository.deletedFiles.isEmpty());
+    assertTrue(fileRepository.files.isEmpty());
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 抽出を行ったものと行っていないものが混ざる場合は、抽出を行ったものだけを出力する")
+  void testWriteFunctionTableUsagesWritesOnlyAnalyzed() {
+    writer.writeFunctionTableUsages(
+        "sample",
+        List.of(
+            functionContent("skipped", "", "", FunctionTableUsage.notAnalyzed()),
+            functionContent("py", "", "", FunctionTableUsage.unsupportedLanguage("c"))),
+        ROOT);
+
+    assertEquals(
+        "{\"formatVersion\":1,\"database\":\"testdb\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"py\",\"status\":\"unsupported_language\",\"language\":\"c\"}]}\n",
+        fileRepository.files.get(
+            INSIGHTS_DIR.resolve("sample").resolve("functionTableUsages.json")));
+  }
+
+  @Test
+  @DisplayName("writeFunctionTableUsages: 状態・動的SQLの種類は、定数の名前ではなく固定の値で出力する（MCPサーバーが読む値）")
+  void testWriteFunctionTableUsagesPinsStatusAndDynamicSqlValues() {
+    writer.writeFunctionTableUsages(
+        "sample",
+        List.of(
+            functionContent(
+                "a", "", "", FunctionTableUsage.notAnalyzable(TableUsageStatus.NO_DEFINITION)),
+            functionContent(
+                "b", "", "", FunctionTableUsage.notAnalyzable(TableUsageStatus.WRAPPED)),
+            functionContent(
+                "c",
+                "",
+                "",
+                FunctionTableUsage.notAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND)),
+            functionContent(
+                "d",
+                "",
+                "",
+                FunctionTableUsage.analyzed(
+                    List.of(), List.of(DynamicSqlKind.values()), false, false))),
+        ROOT);
+
+    assertEquals(
+        "{\"formatVersion\":1,\"database\":\"testdb\",\"schema\":\"sample\",\"functions\":["
+            + "{\"name\":\"a\",\"status\":\"no_definition\"},"
+            + "{\"name\":\"b\",\"status\":\"wrapped\"},"
+            + "{\"name\":\"c\",\"status\":\"subprogram_not_found\"},"
+            + "{\"name\":\"d\",\"status\":\"analyzed\","
+            + "\"dynamicSql\":[\"EXECUTE\",\"EXECUTE IMMEDIATE\",\"DBMS_SQL\","
+            + "\"OPEN FOR\",\"dblink\"]}]}\n",
+        fileRepository.files.get(
+            INSIGHTS_DIR.resolve("sample").resolve("functionTableUsages.json")));
   }
 
   @Test

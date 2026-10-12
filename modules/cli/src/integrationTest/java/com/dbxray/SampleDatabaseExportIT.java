@@ -10,6 +10,7 @@ import com.dbxray.presentation.dto.DiffCheckResultDto;
 import com.dbxray.testsupport.ExportBaseline;
 import com.dbxray.testsupport.SampleDatabase;
 import java.nio.file.Path;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -35,7 +36,7 @@ class SampleDatabaseExportIT {
   @DisplayName("通常実行: 出力がベースラインと一致する（詳細情報の分割取得の単位を変えても出力は変わらない）")
   void testExportMatchesBaseline(String chunkSize, @TempDir Path outputDir) {
     final ExportSchemaRequest request =
-        properties(outputDir, chunkSize).toExportSchemaRequest(false, false);
+        properties(outputDir, chunkSize).toExportSchemaRequest(false, Set.of());
 
     controller().execute(request);
 

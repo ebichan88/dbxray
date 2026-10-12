@@ -29,7 +29,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | クラス | 役割 |
 |---|---|
 | `Dbxray` | `main()`。処理全体（入力の検証・DBへの接続・DIコンテナの組み立てを含む）を1つのtry-catchで囲んで例外を1箇所で捕捉し、`FailureReporter`で報告したうえで、終了状態を終了コードへ変換する |
-| `CliArguments`（パッケージプライベート） | CLI引数の解析（`--check`・`--rm-dist`、DB接続情報・実行時設定の上書き値）。実行時設定のCLI引数名は設定ファイルのキーから導く。解釈できない引数（書き誤り等）は`requireKnownArguments()`で誤りとする |
+| `CliArguments`（パッケージプライベート） | CLI引数の解析（`--check`・`--rm-dist`・`--preview`（`previewFeatures()`で有効にするプレビューの機能に変換する）、DB接続情報・実行時設定の上書き値）。実行時設定のCLI引数名は設定ファイルのキーから導く。解釈できない引数（書き誤り等）は`requireKnownArguments()`で誤りとする |
 | `OutputDirectoryValidator`（パッケージプライベート） | 出力先（`output.path`）をDBへ接続する前に検証する。既存のファイル（ディレクトリではないもの）を指す場合と、`--rm-dist`指定時に削除してはならないディレクトリ（`OutputPathResolver.isRemovableOutputDir`）を指す場合は`UserCorrectableException`を投げる。DB種別に依存しない部品のDIコンテナから取得する |
 | `DbxrayProperties`（パッケージプライベート） | 設定ファイル（`conf/config.yml`）のうち`database`以外の設定項目の仕様（位置・CLI引数名・既定値・値の形式）と検証を1箇所に持つ（ファイルの読み込みは`ConfigFile`に委ねる）。CLI引数による上書き値で上書きしてから検証する。キーの省略＝未指定、未知のキー・リストでない値・整数として読めない値・出力対象の条件の誤りは、まとめて`InvalidConfigurationException`で報告する |
 
@@ -130,7 +130,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `TableReferenceScanner` | 本体の字句から、テーブルを指す位置（`INSERT INTO`・`FROM`の並び・`JOIN`等）の名前と操作、動的SQLを拾う。完全な構文解析はせず、きっかけのキーワードと前後の字句で判定し、`;`で文の状態（`StatementState`）を作り直す |
 | | `SqlTokens` | 字句の列に対する、位置を指定した判定（キーワード・記号・名前）と`スキーマ.名前`の読み取り。範囲の外の位置は偽・nullにし、前後を覗く処理で位置の検査を繰り返さない |
 | | `SqlNames` | 字句からカタログでの名前を求める（引用符の無い名前はPostgreSQLは小文字・Oracleは大文字へ、ASCIIの英字だけ畳み込む） |
-| `domain.service.insight` | `InsightWriter` | 参考情報の書き込み（`snapshot`の兄弟の`insights/`へ。`--check`では使わない）。対象が無い場合はファイル自体を出力しない |
+| `domain.service.insight` | `InsightWriter` | 参考情報の書き込み（`snapshot`の兄弟の`insights/`へ。`--check`では使わない）。対象が無い場合はファイル自体を出力しない。プレビューの機能を有効にしない実行では、前回の`functionTableUsages.json`があれば削除する（ファイルの削除はここだけ） |
 | `domain.service.snapshot` | `SchemaSnapshotWriter` | スキーマのスナップショット（JSON Lines）の書き込み。テーブルはスキーマ単位のファイルへ1行ずつ追記する |
 | | `SnapshotDiff` | 生成したスナップショットとコミット済みスナップショットを、オブジェクト単位（追加/削除/内容不一致）で比較する（`--check`モードで使用）。内容が一致しないものは、`SnapshotSerializer.formatForDiff`で整形した上で`UnifiedDiffGenerator`によりunified diffを付ける |
 | | `SnapshotSerializer` | スナップショットのrecordとJSON文字列の変換IF（実装はインフラ層）。差分表示用に1項目1行へ整形する`formatForDiff`も持つ |

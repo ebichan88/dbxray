@@ -36,7 +36,7 @@ cli（`modules/cli/`）とMCPサーバー（`modules/mcp-server/`）のコード
   [overview.mdの「レイヤー構成」](../architecture/overview.md#レイヤー構成)を参照。
   `ArchitectureTest`は、依存方向に加えて、`shared.exception`の制約、`domain.model`配下のパッケージの循環
   （向きそのものは[domain-model.md](../architecture/domain-model.md)に従う）、`java.nio.file.Files`・引数なしの`now()`・Guiceへの依存、
-  接尾辞とパッケージの対応、関数の定義本体を読むパッケージ（`domain.service.tableusage`・`domain.model.tableusage`）で正規表現を使わないことを検査する。
+  接尾辞とパッケージの対応、関数の定義本体を読むパッケージ（`domain.service.tableusage`・`domain.model.tableusage`）で正規表現を使わないこと、`FileRepository#deleteFile`を`InsightWriter`以外が呼ばないことを検査する。
 - クラス名の接尾辞は[package-structure.mdの「命名」](../architecture/package-structure.md#命名)の表に揃える。
   名前の本体は[domain-model.mdの用語集](../architecture/domain-model.md)の用語（利用者向けのドキュメントで使っている呼び方）に揃え、
   同じものに別の名前を付けない。
@@ -176,6 +176,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 - **削除**：ディレクトリの削除は`--rm-dist`の出力先だけで行い、削除してよいかは`OutputPathResolver.isRemovableOutputDir`で判定する。
   削除の対象を広げる変更をしない。
   ファイルの削除は、`--preview`を付けない実行が、プレビューの機能が出力した前回の参考情報`functionTableUsages.json`を消す1箇所だけ（`InsightWriter`。パスは`OutputPathResolver`で解決したもの）。
+  `FileRepository#deleteFile`は通常のファイルだけを消し（ディレクトリは消さない）、`InsightWriter`以外が呼ぶと`ArchitectureTest`が失敗する。
 - **依存ライブラリ**：更新はDependabot（`.github/dependabot.yml`）が提案する。依存を足す・上げるときは、既知の脆弱性
   （GitHub Advisory Database等）が無い版を選ぶ。
 - **デシリアライズ・SQL**：YAMLは`SafeConstructor`で読み、JSONのデシリアライズで型情報からクラスを生成する設定

@@ -131,4 +131,27 @@ public class LocalFileRepositoryTest {
   void testDeleteFileDoesNothingWhenFileDoesNotExist(@TempDir Path dir) {
     assertDoesNotThrow(() -> repository.deleteFile(dir.resolve("not-exist.json")));
   }
+
+  @Test
+  @DisplayName("deleteFile: ディレクトリは削除しない（空のディレクトリも残す）")
+  void testDeleteFileKeepsDirectory(@TempDir Path dir) throws IOException {
+    Path emptyDirectory = Files.createDirectory(dir.resolve("empty"));
+    Path directory = Files.createDirectory(dir.resolve("withFile"));
+    Path inside = Files.writeString(directory.resolve("inside.json"), "x");
+
+    repository.deleteFile(emptyDirectory);
+    repository.deleteFile(directory);
+
+    assertTrue(Files.isDirectory(emptyDirectory));
+    assertTrue(Files.exists(inside));
+  }
+
+  @Test
+  @DisplayName("deleteFile: 親がファイルのパス（ディレクトリのはずの場所にファイルがある）でも何もしない")
+  void testDeleteFileDoesNothingWhenParentIsFile(@TempDir Path dir) throws IOException {
+    Path file = Files.writeString(dir.resolve("viewpoints.json"), "x");
+
+    assertDoesNotThrow(() -> repository.deleteFile(file.resolve("functionTableUsages.json")));
+    assertTrue(Files.exists(file));
+  }
 }

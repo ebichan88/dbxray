@@ -128,8 +128,11 @@ public class LocalFileRepository implements FileRepository {
   /** {@inheritDoc} */
   @Override
   public void deleteFile(Path filePath) {
+    if (!Files.isRegularFile(filePath)) {
+      return;
+    }
     try {
-      Files.deleteIfExists(filePath);
+      Files.delete(filePath);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

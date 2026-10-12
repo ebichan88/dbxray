@@ -1,16 +1,19 @@
 package com.dbxray;
 
 import com.dbxray.DbxrayProperties.SettingOverride;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.shared.exception.UserCorrectableException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -132,6 +135,15 @@ final class CliArguments {
   /** {@code --preview}（プレビューの機能の有効化）が指定されたか */
   boolean isPreview() {
     return preview;
+  }
+
+  /**
+   * {@code --preview}で有効にするプレビューの機能
+   *
+   * @return {@code --preview}が指定された場合はすべての機能。指定されていない場合は空
+   */
+  Set<PreviewFeature> previewFeatures() {
+    return preview ? EnumSet.allOf(PreviewFeature.class) : Set.of();
   }
 
   /** {@code --help}（使い方の表示）が指定されたか */

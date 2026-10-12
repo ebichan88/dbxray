@@ -8,7 +8,6 @@ import com.dbxray.config.ConfigFile;
 import com.dbxray.config.InvalidConfigurationException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,9 +171,9 @@ final class DbxrayProperties {
    * 通常実行のユースケースへの入力に変換する
    *
    * @param rmDist trueの場合、書き込みを開始する前に出力先ディレクトリを再帰的に削除する（{@code --rm-dist}）
-   * @param preview trueの場合、プレビューの機能をすべて有効にする（{@code --preview}）
+   * @param previewFeatures 有効にするプレビューの機能（{@code --preview}）
    */
-  ExportSchemaRequest toExportSchemaRequest(boolean rmDist, boolean preview) {
+  ExportSchemaRequest toExportSchemaRequest(boolean rmDist, Set<PreviewFeature> previewFeatures) {
     return new ExportSchemaRequest(
         targetSelection,
         sidecarPath,
@@ -183,7 +182,7 @@ final class DbxrayProperties {
         erDiagramMaxNodes,
         erDiagramDistance,
         rmDist,
-        preview ? EnumSet.allOf(PreviewFeature.class) : Set.of());
+        previewFeatures);
   }
 
   /** 通常実行と異なり、Markdownの描画・ER図の生成を行わないため{@code erDiagramMaxNodes}・{@code erDiagramDistance}は含めない */
