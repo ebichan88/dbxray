@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dbxray 読解ガイド</title>
+<meta name="description" content="dbxray の開発者向け読解ガイド（cli・mcp-server）">
+<style>
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --fg: #17202a; --muted: #586474; --line: #d5dbe3;
+  --accent: #0a6c73; --accent-soft: #e2f1f1;
+  --font-body: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #10151b; --surface: #171e26; --fg: #e2e7ed; --muted: #9ba7b6; --line: #2a3441; --accent: #5ec4cb; --accent-soft: #15302f; }
+}
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.7; }
+main { max-width: 44rem; margin: 0 auto; padding: 2.5rem 16px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); margin: 0; }
+h1 { margin: 0.2rem 0 0.6rem; font-size: 1.8rem; }
+a { color: var(--accent); }
+ul.guides { list-style: none; padding: 0; margin: 1.5rem 0; display: grid; gap: 0.8rem; }
+ul.guides a { display: block; padding: 0.9rem 1.1rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-decoration: none; color: var(--fg); }
+ul.guides a:hover { border-color: var(--accent); }
+ul.guides b { display: block; color: var(--accent); }
+.muted { color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">dbxray __TAG__</p>
+  <h1>読解ガイド</h1>
+  <p>dbxrayのコードを初めて読む開発者向けに、実行の流れ・データの持ち方・ソースごとの役割と繋がりを図でまとめたガイドです。</p>
+  <ul class="guides">
+    <li><a href="./cli-guide.html"><b>cli 読解ガイド</b>DBのカタログを読み、テーブル定義書・ER図・スナップショットを出力するCLI</a></li>
+    <li><a href="./mcp-server-guide.html"><b>mcp-server 読解ガイド</b>スナップショットをAIからツールで検索できるようにするMCPサーバー</a></li>
+  </ul>
+  <p class="muted">__TAG__のタグの時点のファイルを公開しています。ガイドはある時点のコードを読んで書いたもので、クラス名・行数等が食い違う場合は、リポジトリの<a href="__REPO_URL__/blob/__TAG__/docs/architecture/overview.md">アーキテクチャのドキュメント</a>とコードを正とします。</p>
+</main>
+</body>
+</html>

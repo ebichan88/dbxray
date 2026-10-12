@@ -180,3 +180,7 @@ git tag -d v0.2.0
 ```
 
 タグに`-`を含む版（`v0.2.0-rc.1`等）はプレリリースになり、READMEが案内する最新版（`releases/latest`）には出ません。
+
+同じタグのpushで、[Pagesワークフロー](./.github/workflows/pages.yml)が、そのタグの時点の読解ガイド
+（`docs/architecture/*-guide.html`）を[GitHub Pages](https://ebichan88.github.io/dbxray/)に公開し直します（プレリリースのタグでは公開しません）。
+ガイドだけを公開し直したいときは、Actionsの画面からPagesワークフローを手動で実行し、公開するタグを指定します。
