@@ -91,8 +91,8 @@ public class ErDiagramWriter {
               ErDiagramTemplates.schemaFooter(outputRoot.baseInfo()),
               pages);
       case PageComposition.Grouped(List<ForeignKeyGroup> groups, int nodeCount) -> {
-        for (int groupNo = 1; groupNo <= groups.size(); groupNo++) {
-          writeGroupErDiagram(schemaName, groupNo, groups.get(groupNo - 1), pages);
+        for (int groupNumber = 1; groupNumber <= groups.size(); groupNumber++) {
+          writeGroupErDiagram(schemaName, groupNumber, groups.get(groupNumber - 1), pages);
         }
         writeSchemaGroupIndex(schemaName, groups, nodeCount, pages);
       }
@@ -100,15 +100,15 @@ public class ErDiagramWriter {
   }
 
   /**
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    */
   private void writeGroupErDiagram(
-      String schemaName, int groupNo, ForeignKeyGroup group, DiagramPages pages) {
+      String schemaName, int groupNumber, ForeignKeyGroup group, DiagramPages pages) {
     final OutputRoot outputRoot = pages.outputRoot();
     writeErDiagramPage(
         new PageLayout(
-            ErDiagramTemplates.groupFileHeader(schemaName, groupNo, outputRoot.baseInfo()),
-            outputPathResolver.resolveErDiagramGroupFile(outputRoot, schemaName, groupNo),
+            ErDiagramTemplates.groupFileHeader(schemaName, groupNumber, outputRoot.baseInfo()),
+            outputPathResolver.resolveErDiagramGroupFile(outputRoot, schemaName, groupNumber),
             ER_DIAGRAM_BACK_LABEL),
         group,
         ErDiagramTemplates.groupFooter(schemaName, outputRoot.baseInfo()),

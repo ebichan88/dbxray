@@ -45,11 +45,13 @@ public class InsightWriter {
    *
    * @param contents 出力対象の観点ごとの出力内容（{@code Viewpoint.resolve}で求めたもの）
    */
-  public void writeViewpoints(List<ViewpointContent> contents, OutputRoot root) {
+  public void writeViewpoints(List<ViewpointContent> contents, OutputRoot outputRoot) {
     if (contents.isEmpty()) {
       return;
     }
-    write(outputPathResolver.resolveViewpointsInsightFile(root), ViewpointsInsight.of(contents));
+    write(
+        outputPathResolver.resolveViewpointsInsightFile(outputRoot),
+        ViewpointsInsight.of(contents));
   }
 
   /**
@@ -61,16 +63,18 @@ public class InsightWriter {
    * @param contents 当該スキーマの関数・プロシージャの出力内容
    */
   public void writeFunctionTableUsages(
-      String schemaName, List<FunctionDefinitionContent> contents, OutputRoot root) {
+      String schemaName, List<FunctionDefinitionContent> contents, OutputRoot outputRoot) {
     final Path filePath =
-        outputPathResolver.resolveFunctionTableUsagesInsightFile(root, schemaName);
+        outputPathResolver.resolveFunctionTableUsagesInsightFile(outputRoot, schemaName);
     final List<FunctionDefinitionContent> analyzed =
         contents.stream().filter(content -> content.tableUsage().isAttempted()).toList();
     if (analyzed.isEmpty()) {
       deletePrevious(filePath);
       return;
     }
-    write(filePath, FunctionTableUsagesInsight.of(root.baseInfo().dbName(), schemaName, analyzed));
+    write(
+        filePath,
+        FunctionTableUsagesInsight.of(outputRoot.baseInfo().dbName(), schemaName, analyzed));
   }
 
   private void deletePrevious(Path filePath) {

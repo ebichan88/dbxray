@@ -59,8 +59,8 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
 
   /** {@inheritDoc} */
   @Override
-  public List<TableEntity> selectTableList(List<String> schemaList) {
-    return selectTableDefinition(schemaList, List.of(), "selectTableInfo", TableDto::toEntity);
+  public List<TableEntity> selectTableList(List<String> schemaNames) {
+    return selectTableDefinition(schemaNames, List.of(), "selectTableInfo", TableDto::toEntity);
   }
 
   /**
@@ -69,17 +69,17 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
    */
   @Override
   public List<TableDetail> selectTableDetails(List<TableEntity> tables) {
-    final List<String> schemaList =
+    final List<String> schemaNames =
         tables.stream().map(TableEntity::schemaName).distinct().toList();
-    final List<String> tableList =
+    final List<String> tableNames =
         tables.stream().map(TableEntity::physicalTableName).distinct().toList();
     final List<ColumnEntity> columns =
-        selectTableDefinition(schemaList, tableList, "selectColumnInfo", ColumnDto::toEntity);
+        selectTableDefinition(schemaNames, tableNames, "selectColumnInfo", ColumnDto::toEntity);
     final List<IndexEntity> indexes =
-        selectTableDefinition(schemaList, tableList, "selectIndexInfo", IndexDto::toEntity);
+        selectTableDefinition(schemaNames, tableNames, "selectIndexInfo", IndexDto::toEntity);
     final List<ConstraintEntity> constraints =
         selectTableDefinition(
-            schemaList, tableList, "selectConstraintInfo", ConstraintDto::toEntity);
+            schemaNames, tableNames, "selectConstraintInfo", ConstraintDto::toEntity);
     return TableDetail.assembleAll(tables, columns, indexes, constraints);
   }
 
@@ -93,10 +93,10 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
     if (tables.isEmpty()) {
       return List.of();
     }
-    final List<String> schemaList = tables.stream().map(TableKey::schema).distinct().toList();
-    final List<String> tableList = tables.stream().map(TableKey::table).distinct().toList();
+    final List<String> schemaNames = tables.stream().map(TableKey::schema).distinct().toList();
+    final List<String> tableNames = tables.stream().map(TableKey::table).distinct().toList();
     final Set<TableKey> keys = Set.copyOf(tables);
-    return selectTableDefinition(schemaList, tableList, "selectColumnInfo", ColumnDto::toEntity)
+    return selectTableDefinition(schemaNames, tableNames, "selectColumnInfo", ColumnDto::toEntity)
         .stream()
         .filter(column -> keys.contains(column.tableKey()))
         .toList();
@@ -104,60 +104,60 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
 
   /** {@inheritDoc} */
   @Override
-  public List<ForeignKeyEntity> selectForeignKeyList(List<String> schemaList) {
+  public List<ForeignKeyEntity> selectForeignKeyList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectForeignKeyInfo", ForeignKeyDto::toEntity);
+        schemaNames, List.of(), "selectForeignKeyInfo", ForeignKeyDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<TriggerEntity> selectTriggerList(List<String> schemaList) {
-    return selectTableDefinition(schemaList, List.of(), "selectTriggerInfo", TriggerDto::toEntity);
+  public List<TriggerEntity> selectTriggerList(List<String> schemaNames) {
+    return selectTableDefinition(schemaNames, List.of(), "selectTriggerInfo", TriggerDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<PartitionEntity> selectPartitionList(List<String> schemaList) {
+  public List<PartitionEntity> selectPartitionList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectPartitionInfo", PartitionDto::toEntity);
+        schemaNames, List.of(), "selectPartitionInfo", PartitionDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<ViewReferenceEntity> selectViewReferenceList(List<String> schemaList) {
+  public List<ViewReferenceEntity> selectViewReferenceList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectViewReferenceInfo", ViewReferenceDto::toEntity);
+        schemaNames, List.of(), "selectViewReferenceInfo", ViewReferenceDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<FunctionEntity> selectFunctionList(List<String> schemaList) {
+  public List<FunctionEntity> selectFunctionList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectFunctionInfo", FunctionDto::toEntity);
+        schemaNames, List.of(), "selectFunctionInfo", FunctionDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<FunctionEntity> selectFunctionDefList(List<String> schemaList) {
+  public List<FunctionEntity> selectFunctionDefList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectFunctionDefInfo", FunctionDto::toEntity);
+        schemaNames, List.of(), "selectFunctionDefInfo", FunctionDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<SequenceEntity> selectSequenceList(List<String> schemaList) {
+  public List<SequenceEntity> selectSequenceList(List<String> schemaNames) {
     return selectTableDefinition(
-        schemaList, List.of(), "selectSequenceInfo", SequenceDto::toEntity);
+        schemaNames, List.of(), "selectSequenceInfo", SequenceDto::toEntity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public List<TypeEntity> selectTypeList(List<String> schemaList) {
-    return selectTableDefinition(schemaList, List.of(), "selectTypeInfo", TypeDto::toEntity);
+  public List<TypeEntity> selectTypeList(List<String> schemaNames) {
+    return selectTableDefinition(schemaNames, List.of(), "selectTypeInfo", TypeDto::toEntity);
   }
 
   private <D, E> List<E> selectTableDefinition(
-      List<String> schemaList, List<String> tableList, String sqlId, Function<D, E> mapper) {
+      List<String> schemaNames, List<String> tableNames, String sqlId, Function<D, E> mapper) {
     final List<D> dtoList =
         select(
             sqlId,
@@ -165,7 +165,7 @@ public abstract class AbstractCatalogRepository implements CatalogRepository {
                 session.selectList(
                     sqlPath,
                     Map.ofEntries(
-                        Map.entry("schemaList", schemaList), Map.entry("tableList", tableList))));
+                        Map.entry("schemaList", schemaNames), Map.entry("tableList", tableNames))));
     // DTO→エンティティの変換の失敗（未知の区分等）は、SQLの失敗と取り違えないよう包まずに伝える
     return dtoList.stream().map(mapper).toList();
   }

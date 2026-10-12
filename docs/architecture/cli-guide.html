@@ -1069,7 +1069,7 @@ Failed to output database documents.
 <h2 id="pipeline"><span class="n">6</span>取得と書き出しの段取り（SchemaExportPipeline）</h2>
 <p>通常実行のユースケースは短く、取得と書き出しの段取りを<code>SchemaExportPipeline</code>（パッケージプライベート）に任せています。<code>--check</code>のユースケースも同じパイプラインを使い、違いは渡す<code>ExportSink</code>のリストだけです。</p>
 <pre><code><span class="c">// ExportSchemaUsecase.exportSchema</span>
-<span class="k">final</span> Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+<span class="k">final</span> Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
 <span class="k">final</span> ExportTargets targets =
     schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());   <span class="c">// 一括取得</span>
 <span class="k">final</span> DiagramBoxes diagramBoxes =
@@ -1218,7 +1218,7 @@ schemaExportPipeline.export(
 <h2 id="check"><span class="n">7</span>差分検知（--check）</h2>
 <p><code>--check</code>は「DBの今の状態から作ったスナップショット」と「出力先にコミット済みのスナップショット」を比べます。取得は通常実行と同じパイプラインで、Sinkをスナップショットの1つに減らし、書き込み先を一時ディレクトリにするだけです。</p>
 <pre><code><span class="c">// CheckDocumentDiffUsecase.checkDocumentDiff</span>
-<span class="k">final</span> Path committedDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+<span class="k">final</span> Path committedDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
 <span class="k">final</span> Path generatedDir = fileRepository.createTempDirectory(CHECK_TEMP_DIR_PREFIX);
 <span class="k">try</span> {
   <span class="k">final</span> ExportTargets targets =

@@ -65,7 +65,7 @@ class OutputDirectoryValidator {
    * @throws UserCorrectableException 既存のファイルを指す場合
    */
   private Path requireDirectoryOrAbsent(String outputPath) {
-    final Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(outputPath);
+    final Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(outputPath);
     if (fileRepository.exists(outputBaseDir) && !fileRepository.isDirectory(outputBaseDir)) {
       throw new UserCorrectableException(
           "output.path points to an existing file, not a directory. "

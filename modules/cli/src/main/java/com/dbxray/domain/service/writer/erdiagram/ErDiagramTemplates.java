@@ -48,11 +48,13 @@ public class ErDiagramTemplates {
   /**
    * グループ別ER図ページのファイルヘッダー
    *
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    */
-  public static String groupFileHeader(String schemaName, int groupNo, BaseInfoEntity baseInfo) {
+  public static String groupFileHeader(
+      String schemaName, int groupNumber, BaseInfoEntity baseInfo) {
     return MarkdownTemplateSupport.fileHeader(
-        String.format("ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNo));
+        String.format(
+            "ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNumber));
   }
 
   /** 基本情報セクション */
@@ -150,16 +152,17 @@ public class ErDiagramTemplates {
                 | No. | テーブル数 | 外部キー数 | 主なテーブル | Link |
                 |:---|:---|:---|:---|:---|
                 """);
-    for (int groupNo = 1; groupNo <= groups.size(); groupNo++) {
-      final ForeignKeyGroup group = groups.get(groupNo - 1);
+    for (int groupNumber = 1; groupNumber <= groups.size(); groupNumber++) {
+      final ForeignKeyGroup group = groups.get(groupNumber - 1);
       sb.append(
           groupIndexLine(
-              groupNo,
+              groupNumber,
               group.nodeCount(),
               group.foreignKeys().size(),
               group.mainTable(),
               DocumentLocations.linkFromDatabaseRoot(
-                  DocumentLocations.erDiagramGroupFile(baseInfo.dbName(), schemaName, groupNo))));
+                  DocumentLocations.erDiagramGroupFile(
+                      baseInfo.dbName(), schemaName, groupNumber))));
     }
     return sb.append(LINE_SEPARATOR).toString();
   }

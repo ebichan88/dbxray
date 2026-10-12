@@ -31,23 +31,23 @@ public class DefaultOutputPathResolverTest {
   }
 
   @Test
-  @DisplayName("resolveBaseOutputDir: 指定したパスをそのまま返す")
+  @DisplayName("resolveOutputBaseDir: 指定したパスをそのまま返す")
   void testResolveBaseOutputDirUsesSpecifiedPath() {
-    Path result = resolver.resolveBaseOutputDir("custom_out");
+    Path result = resolver.resolveOutputBaseDir("custom_out");
     assertEquals(Path.of("custom_out"), result);
   }
 
   @Test
-  @DisplayName("resolveBaseOutputDir: nullの場合は./outputへフォールバックする")
+  @DisplayName("resolveOutputBaseDir: nullの場合は./outputへフォールバックする")
   void testResolveBaseOutputDirFallbackWhenNull() {
-    Path result = resolver.resolveBaseOutputDir(null);
+    Path result = resolver.resolveOutputBaseDir(null);
     assertEquals(Path.of("./output"), result);
   }
 
   @Test
-  @DisplayName("resolveBaseOutputDir: 空白のみの場合も./outputへフォールバックする")
+  @DisplayName("resolveOutputBaseDir: 空白のみの場合も./outputへフォールバックする")
   void testResolveBaseOutputDirFallbackWhenWhitespace() {
-    Path result = resolver.resolveBaseOutputDir("   ");
+    Path result = resolver.resolveOutputBaseDir("   ");
     assertEquals(Path.of("./output"), result);
   }
 

@@ -186,7 +186,7 @@ public class MarkdownExportSinkFactory {
           content,
           foreignKeys.neighborhoodOf(content.table(), tableDiagramDistance, erDiagramLimit),
           diagramBoxes,
-          outputBaseDir);
+          new OutputRoot(outputBaseDir, content.baseInfo()));
     }
 
     /**

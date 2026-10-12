@@ -13,11 +13,11 @@ import java.util.Objects;
  */
 public final class TableScope {
 
-  private final List<String> targetSchemaList;
+  private final List<String> schemaNames;
   private final TableNamePatterns tableNamePatterns;
 
-  private TableScope(List<String> targetSchemaList, TableNamePatterns tableNamePatterns) {
-    this.targetSchemaList = targetSchemaList;
+  private TableScope(List<String> schemaNames, TableNamePatterns tableNamePatterns) {
+    this.schemaNames = schemaNames;
     this.tableNamePatterns = tableNamePatterns;
   }
 
@@ -25,23 +25,23 @@ public final class TableScope {
    * テーブル定義出力対象のスキーマ・テーブルのリストから{@link TableScope}を生成する静的ファクトリメソッド<br>
    * スキーマ名は前後の空白を除去し、空要素を除く
    *
-   * @param targetSchemaList テーブル定義出力対象のスキーマのリスト（未指定の場合は空リストまたはnull）
-   * @param targetTableList テーブル定義出力対象のテーブルのリスト（ワイルドカード・除外・スキーマ修飾を指定可。
+   * @param schemaNames テーブル定義出力対象のスキーマのリスト（未指定の場合は空リストまたはnull）
+   * @param tablePatterns テーブル定義出力対象のテーブル名パターンのリスト（ワイルドカード・除外・スキーマ修飾を指定可。
    *     未指定の場合は空リストまたはnull）
    * @return 生成したTableScope
    * @throws IllegalArgumentException テーブル名またはスキーマ名の部分が空のテーブル名パターンが含まれる場合
    *     （{@link TableNamePatterns#of}）
    */
-  public static TableScope of(List<String> targetSchemaList, List<String> targetTableList) {
+  public static TableScope of(List<String> schemaNames, List<String> tablePatterns) {
     return new TableScope(
-        targetSchemaList == null
+        schemaNames == null
             ? List.of()
-            : targetSchemaList.stream()
+            : schemaNames.stream()
                 .filter(Objects::nonNull)
                 .map(String::strip)
                 .filter(schemaName -> !schemaName.isEmpty())
                 .toList(),
-        TableNamePatterns.of(targetTableList));
+        TableNamePatterns.of(tablePatterns));
   }
 
   /**
@@ -51,7 +51,7 @@ public final class TableScope {
    * @return スキーマ名のリスト。未指定の場合は空リスト（全スキーマが対象）
    */
   public List<String> schemaNames() {
-    return targetSchemaList;
+    return schemaNames;
   }
 
   /**
@@ -61,7 +61,7 @@ public final class TableScope {
    * @return スキーマ・テーブルのいずれかが1件以上指定されている場合はtrue
    */
   public boolean isFiltered() {
-    return !targetSchemaList.isEmpty() || !tableNamePatterns.isEmpty();
+    return !schemaNames.isEmpty() || !tableNamePatterns.isEmpty();
   }
 
   /**
@@ -72,8 +72,7 @@ public final class TableScope {
    * @return 出力対象の範囲に含まれる場合はtrue
    */
   public boolean matches(TableEntity table) {
-    final boolean schemaMatches =
-        targetSchemaList.isEmpty() || targetSchemaList.contains(table.schemaName());
+    final boolean schemaMatches = schemaNames.isEmpty() || schemaNames.contains(table.schemaName());
     // テーブル名パターンは、何も指定されていなければすべてのテーブルに一致する
     return schemaMatches && tableNamePatterns.matches(TableKey.of(table));
   }

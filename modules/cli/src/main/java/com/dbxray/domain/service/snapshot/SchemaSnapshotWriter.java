@@ -88,8 +88,7 @@ public class SchemaSnapshotWriter {
   }
 
   /** 追記先は{@link #initTableFile}で作成済みであること */
-  public void appendTable(TableDefinitionContent content, Path outputBaseDir) {
-    final OutputRoot outputRoot = new OutputRoot(outputBaseDir, content.baseInfo());
+  public void appendTable(TableDefinitionContent content, OutputRoot outputRoot) {
     final Path filePath =
         outputPathResolver.resolveSnapshotFile(
             outputRoot, content.table().schemaName(), SnapshotKind.TABLE);

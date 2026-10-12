@@ -219,7 +219,7 @@ public class TableDefinitionWriterTest {
             1,
             1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
 
     Path expectedFile =
         OUT.resolve("testdb").resolve("public").resolve("table").resolve("orders.md");
@@ -288,7 +288,7 @@ public class TableDefinitionWriterTest {
             List.of()),
         new DiagramNeighborhood(List.of(), 1, 1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
     writer.writeTableDefinition(
         new TableDefinitionContent(
             baseInfo(),
@@ -307,7 +307,7 @@ public class TableDefinitionWriterTest {
             List.of()),
         new DiagramNeighborhood(List.of(), 1, 1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
 
     String salesContent = definitionOf("sales");
     assertTrue(salesContent.contains("## パーティション情報"));

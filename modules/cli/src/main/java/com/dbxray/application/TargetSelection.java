@@ -23,20 +23,19 @@ public record TargetSelection(TableScope tableScope, Set<OutputObjectType> outpu
    * 設定ファイルから読み込んだ値から出力対象の絞り込み条件を生成する静的ファクトリメソッド<br>
    * 各リストの要素は前後の空白を除去して解釈する
    *
-   * @param targetSchemaList テーブル定義出力対象のスキーマのリスト
-   * @param targetTableList テーブル定義出力対象のテーブルのリスト（ワイルドカード・除外・スキーマ修飾を指定可）
-   * @param outputObjectList 出力対象とする追加オブジェクト種別名（{@link OutputObjectType#id()}）のリスト。
+   * @param schemaNames テーブル定義出力対象のスキーマのリスト
+   * @param tablePatterns テーブル定義出力対象のテーブル名パターンのリスト（ワイルドカード・除外・スキーマ修飾を指定可）
+   * @param objectTypeIds 出力対象とする追加オブジェクト種別名（{@link OutputObjectType#id()}）のリスト。
    *     空の場合は全種別を出力対象とする
    * @throws IllegalArgumentException テーブル名パターンの書き誤りや、未知の出力対象オブジェクト種別名が含まれる場合。
    *     両方に誤りがある場合は、1件ずつではなくまとめて（1行に1件）示す
    */
   public static TargetSelection of(
-      List<String> targetSchemaList, List<String> targetTableList, List<String> outputObjectList) {
+      List<String> schemaNames, List<String> tablePatterns, List<String> objectTypeIds) {
     final List<String> errors = new ArrayList<>();
-    final TableScope tableScope =
-        parse(() -> TableScope.of(targetSchemaList, targetTableList), errors);
+    final TableScope tableScope = parse(() -> TableScope.of(schemaNames, tablePatterns), errors);
     final Set<OutputObjectType> outputObjectTypes =
-        parse(() -> OutputObjectType.parse(outputObjectList), errors);
+        parse(() -> OutputObjectType.parse(objectTypeIds), errors);
     if (!errors.isEmpty()) {
       throw new IllegalArgumentException(String.join(System.lineSeparator(), errors));
     }

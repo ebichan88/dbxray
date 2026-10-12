@@ -65,15 +65,15 @@ public final class DocumentLocations {
   /**
    * ノード数の上限を超えたため分割したスキーマ別ER図の、1グループ分のファイル名
    *
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    * @return {@code erDiagram_{DB名}_{スキーマ名}_group{グループ番号}.md}
    */
-  public static String erDiagramGroupFile(String dbName, String schemaName, int groupNo) {
+  public static String erDiagramGroupFile(String dbName, String schemaName, int groupNumber) {
     return String.format(
         ER_DIAGRAM_GROUP_FILENAME_PATTERN,
         PathSegments.encode(dbName),
         PathSegments.encode(schemaName),
-        groupNo);
+        groupNumber);
   }
 
   /**
@@ -88,17 +88,17 @@ public final class DocumentLocations {
   /**
    * 分割ページは本体ページと同じディレクトリに置く
    *
-   * @param pageIndex ページ番号（1始まり）
+   * @param pageNumber ページ番号（1始まり）
    * @return 本体ページのファイル名の拡張子の前に{@code _{ページ番号}}を付けたファイル名
    * @throws IllegalArgumentException 本体ページのファイル名がMarkdownの拡張子で終わらない場合
    */
-  public static String pageFile(String fileName, int pageIndex) {
+  public static String pageFile(String fileName, int pageNumber) {
     if (!fileName.endsWith(MARKDOWN_EXTENSION)) {
       throw new IllegalArgumentException("Not a markdown file name: " + fileName);
     }
     return fileName.substring(0, fileName.length() - MARKDOWN_EXTENSION.length())
         + "_"
-        + pageIndex
+        + pageNumber
         + MARKDOWN_EXTENSION;
   }
 

@@ -47,7 +47,7 @@ public class OutputPathContainmentTest {
           "x\n../../y");
 
   /** 利用者が指定する出力先そのものを解決するため、DB由来の名前を受け取らないメソッド */
-  private static final Set<String> NOT_TARGETS = Set.of("resolveBaseOutputDir");
+  private static final Set<String> NOT_TARGETS = Set.of("resolveOutputBaseDir");
 
   /** 利用者が指定しうる出力先（"."は正規化すると空のパスになる） */
   private static final List<Path> BASE_DIRS =

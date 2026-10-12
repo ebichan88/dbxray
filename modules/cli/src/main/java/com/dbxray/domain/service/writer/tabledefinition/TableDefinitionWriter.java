@@ -79,8 +79,7 @@ public class TableDefinitionWriter {
       TableDefinitionContent content,
       DiagramNeighborhood neighborhood,
       DiagramBoxes boxes,
-      Path outputDirectoryPath) {
-    final OutputRoot outputRoot = new OutputRoot(outputDirectoryPath, content.baseInfo());
+      OutputRoot outputRoot) {
     final Path directoryPath =
         outputPathResolver.resolveTableDefinitionDirectory(outputRoot, content.table());
     final Path filePath =

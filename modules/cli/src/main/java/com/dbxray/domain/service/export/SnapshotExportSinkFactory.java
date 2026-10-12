@@ -76,7 +76,7 @@ public class SnapshotExportSinkFactory {
     /** {@inheritDoc} */
     @Override
     public void writeTableDefinition(TableDefinitionContent content) {
-      snapshotWriter.appendTable(content, outputBaseDir);
+      snapshotWriter.appendTable(content, new OutputRoot(outputBaseDir, content.baseInfo()));
     }
   }
 }

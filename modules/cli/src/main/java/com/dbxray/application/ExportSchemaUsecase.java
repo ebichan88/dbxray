@@ -50,7 +50,7 @@ public class ExportSchemaUsecase {
 
   /** DBから取得したスキーマ情報を、Markdownのドキュメントとスキーマのスナップショットとして出力するメソッド */
   public void exportSchema(ExportSchemaRequest request) {
-    final Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+    final Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
     final ExportTargets targets =
         schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
     final DiagramBoxes diagramBoxes =

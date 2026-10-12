@@ -18,13 +18,13 @@ public interface OutputPathResolver {
    * 基本出力ディレクトリを解決する。<br>
    * 設定された出力先パスが未指定・空白の場合は、デフォルトの出力先にフォールバックする
    */
-  Path resolveBaseOutputDir(String outputPath);
+  Path resolveOutputBaseDir(String outputPath);
 
   /**
    * 出力先ベースディレクトリを、書き込み前にディレクトリごと削除してよいか判定する。<br>
    * カレントディレクトリ・ホームディレクトリ自体と、それらを含む上位のディレクトリ（ルートを含む）は、設定誤りで削除すると被害が甚大なため削除を認めない
    */
-  boolean isRemovableOutputDir(Path baseOutputDir);
+  boolean isRemovableOutputDir(Path outputBaseDir);
 
   /**
    * データベース単位ディレクトリを返す。<br>
@@ -32,59 +32,59 @@ public interface OutputPathResolver {
    * Markdownドキュメント（テーブル定義書・一覧・ER図・観点ページ・README）はすべてこの配下にまとめる。<br>
    * 例: {base}/{DB名}/
    */
-  Path resolveDatabaseDirectory(OutputRoot root);
+  Path resolveDatabaseDirectory(OutputRoot outputRoot);
 
   /**
    * テーブル定義書の出力ディレクトリを返す。<br>
    * 例: {base}/{DB名}/{スキーマ名}/{テーブル種別}/
    */
-  Path resolveTableDefinitionDirectory(OutputRoot root, TableEntity table);
+  Path resolveTableDefinitionDirectory(OutputRoot outputRoot, TableEntity table);
 
   /**
    * テーブル定義書の出力ファイルパスを返す。<br>
    * 例: {base}/{DB名}/{スキーマ名}/{テーブル種別}/{物理テーブル名}.md
    */
-  Path resolveTableDefinitionFile(OutputRoot root, TableEntity table);
+  Path resolveTableDefinitionFile(OutputRoot outputRoot, TableEntity table);
 
   /**
    * 一覧（テーブル／ER図／関数・プロシージャ／シーケンス／ユーザー定義型／トリガー／観点）のパス。<br>
    * 例: {base}/{DB名}/{接頭辞}List_{DB名}.md
    */
-  Path resolveListFile(OutputRoot root, ListDocumentType type);
+  Path resolveListFile(OutputRoot outputRoot, ListDocumentType type);
 
   /**
    * スキーマ別ER図のパス。<br>
    * 例: {base}/{DB名}/erDiagram_{DB名}_{スキーマ名}.md
    */
-  Path resolveErDiagramFile(OutputRoot root, String schemaName);
+  Path resolveErDiagramFile(OutputRoot outputRoot, String schemaName);
 
   /**
    * スキーマ別ER図をテーブルのまとまりごとに分割したページのパス。<br>
-   * 例: {base}/{DB名}/erDiagram_{DB名}_{スキーマ名}_group{groupNo}.md
+   * 例: {base}/{DB名}/erDiagram_{DB名}_{スキーマ名}_group{groupNumber}.md
    *
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    */
-  Path resolveErDiagramGroupFile(OutputRoot root, String schemaName, int groupNo);
+  Path resolveErDiagramGroupFile(OutputRoot outputRoot, String schemaName, int groupNumber);
 
   /**
    * 観点ページのパス。<br>
    * 例: {base}/{DB名}/viewpoint_{DB名}_{観点の識別子}.md
    */
-  Path resolveViewpointFile(OutputRoot root, Viewpoint viewpoint);
+  Path resolveViewpointFile(OutputRoot outputRoot, Viewpoint viewpoint);
 
   /**
    * データベース単位ディレクトリにまとめたドキュメントへのリンクを集約するREADMEのパスを返す。<br>
    * 例: {base}/{DB名}/README.md
    */
-  Path resolveReadmeFile(OutputRoot root);
+  Path resolveReadmeFile(OutputRoot outputRoot);
 
   /**
    * 行数の多い表を分割した場合の、分割ページのパス。<br>
    * 本体ページと同じディレクトリに置く。例: {base}/{DB名}/tableList_{DB名}.md の2ページ目は {base}/{DB名}/tableList_{DB名}_2.md
    *
-   * @param pageIndex ページインデックス（1始まり）
+   * @param pageNumber ページ番号（1始まり）
    */
-  Path resolvePageFile(Path file, int pageIndex);
+  Path resolvePageFile(Path file, int pageNumber);
 
   /**
    * スキーマ配下オブジェクト（関数/シーケンス/型）の出力ディレクトリを返す。<br>
@@ -93,7 +93,8 @@ public interface OutputPathResolver {
    * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
    *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    */
-  Path resolveSchemaObjectDirectory(OutputRoot root, String schemaName, ListDocumentType kind);
+  Path resolveSchemaObjectDirectory(
+      OutputRoot outputRoot, String schemaName, ListDocumentType kind);
 
   /**
    * スキーマ配下オブジェクト（関数/シーケンス/型）の出力ファイルパスを返す。<br>
@@ -104,25 +105,25 @@ public interface OutputPathResolver {
    * @param name ファイル名（拡張子を除く）
    */
   Path resolveSchemaObjectFile(
-      OutputRoot root, String schemaName, ListDocumentType kind, String name);
+      OutputRoot outputRoot, String schemaName, ListDocumentType kind, String name);
 
   /**
    * スキーマのスナップショットの出力ディレクトリ（スナップショット全体のルート）を返す。<br>
    * Markdownのドキュメントとは混在させず、専用のディレクトリ配下にまとめる。例: {base}/snapshot/
    */
-  Path resolveSnapshotDirectory(Path baseOutputDir);
+  Path resolveSnapshotDirectory(Path outputBaseDir);
 
   /**
    * スナップショットのうち、DB全体の情報の出力ファイルパスを返す。<br>
    * 例: {base}/snapshot/{DB名}/database.json
    */
-  Path resolveSnapshotDatabaseFile(OutputRoot root);
+  Path resolveSnapshotDatabaseFile(OutputRoot outputRoot);
 
   /**
    * スナップショットのうち、スキーマ配下のオブジェクト（テーブル/関数/シーケンス/型）の出力ファイルパスを返す。<br>
    * 種別ごとに1ファイル（1行1オブジェクトのJSON Lines）とする。例: {base}/snapshot/{DB名}/{スキーマ名}/tables.jsonl
    */
-  Path resolveSnapshotFile(OutputRoot root, String schemaName, SnapshotKind kind);
+  Path resolveSnapshotFile(OutputRoot outputRoot, String schemaName, SnapshotKind kind);
 
   /**
    * スナップショットのファイルパスから、出力しているオブジェクトの種別を判定する。<br>
@@ -136,17 +137,17 @@ public interface OutputPathResolver {
    * 参考情報（{@code insights}）全体を置くディレクトリを返す。<br>
    * スナップショットとは混在させず、専用のディレクトリ配下にまとめる。例: {base}/insights/
    */
-  Path resolveInsightsDirectory(Path baseOutputDir);
+  Path resolveInsightsDirectory(Path outputBaseDir);
 
   /**
    * 観点の参考情報の出力ファイルパスを返す。<br>
    * 例: {base}/insights/{DB名}/viewpoints.json
    */
-  Path resolveViewpointsInsightFile(OutputRoot root);
+  Path resolveViewpointsInsightFile(OutputRoot outputRoot);
 
   /**
    * 関数・プロシージャの利用しているテーブルの参考情報の出力ファイルパスを返す。<br>
    * 例: {base}/insights/{DB名}/{スキーマ名}/functionTableUsages.json
    */
-  Path resolveFunctionTableUsagesInsightFile(OutputRoot root, String schemaName);
+  Path resolveFunctionTableUsagesInsightFile(OutputRoot outputRoot, String schemaName);
 }

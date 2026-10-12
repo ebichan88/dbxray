@@ -26,7 +26,7 @@ public class DefaultOutputPathResolver implements OutputPathResolver {
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveBaseOutputDir(String outputPath) {
+  public Path resolveOutputBaseDir(String outputPath) {
     return Optional.ofNullable(outputPath)
         .filter(Predicate.not(String::isBlank))
         .map(Paths::get)
@@ -35,8 +35,8 @@ public class DefaultOutputPathResolver implements OutputPathResolver {
 
   /** {@inheritDoc} */
   @Override
-  public boolean isRemovableOutputDir(Path baseOutputDir) {
-    final Path absolute = baseOutputDir.toAbsolutePath().normalize();
+  public boolean isRemovableOutputDir(Path outputBaseDir) {
+    final Path absolute = outputBaseDir.toAbsolutePath().normalize();
     final Path cwd = Path.of("").toAbsolutePath().normalize();
     final Path home = Path.of(System.getProperty("user.home")).toAbsolutePath().normalize();
     // startsWithはPathの要素単位で比べるため、カレント・ホーム自体とその上位のディレクトリだけが一致する。
@@ -46,102 +46,108 @@ public class DefaultOutputPathResolver implements OutputPathResolver {
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveDatabaseDirectory(OutputRoot root) {
-    return within(root.baseDir(), DocumentLocations.databaseDirectory(root.baseInfo().dbName()));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Path resolveTableDefinitionDirectory(OutputRoot root, TableEntity table) {
-    return resolveTableDefinitionFile(root, table).getParent();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Path resolveTableDefinitionFile(OutputRoot root, TableEntity table) {
-    return within(resolveDatabaseDirectory(root), DocumentLocations.tableDefinitionFile(table));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Path resolveListFile(OutputRoot root, ListDocumentType type) {
+  public Path resolveDatabaseDirectory(OutputRoot outputRoot) {
     return within(
-        resolveDatabaseDirectory(root), DocumentLocations.listFile(type, root.baseInfo().dbName()));
+        outputRoot.baseDir(), DocumentLocations.databaseDirectory(outputRoot.baseInfo().dbName()));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveErDiagramFile(OutputRoot root, String schemaName) {
+  public Path resolveTableDefinitionDirectory(OutputRoot outputRoot, TableEntity table) {
+    return resolveTableDefinitionFile(outputRoot, table).getParent();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Path resolveTableDefinitionFile(OutputRoot outputRoot, TableEntity table) {
     return within(
-        resolveDatabaseDirectory(root),
-        DocumentLocations.erDiagramFile(root.baseInfo().dbName(), schemaName));
+        resolveDatabaseDirectory(outputRoot), DocumentLocations.tableDefinitionFile(table));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveErDiagramGroupFile(OutputRoot root, String schemaName, int groupNo) {
+  public Path resolveListFile(OutputRoot outputRoot, ListDocumentType type) {
     return within(
-        resolveDatabaseDirectory(root),
-        DocumentLocations.erDiagramGroupFile(root.baseInfo().dbName(), schemaName, groupNo));
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.listFile(type, outputRoot.baseInfo().dbName()));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveViewpointFile(OutputRoot root, Viewpoint viewpoint) {
+  public Path resolveErDiagramFile(OutputRoot outputRoot, String schemaName) {
     return within(
-        resolveDatabaseDirectory(root),
-        DocumentLocations.viewpointFile(root.baseInfo().dbName(), viewpoint));
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.erDiagramFile(outputRoot.baseInfo().dbName(), schemaName));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveReadmeFile(OutputRoot root) {
-    return within(resolveDatabaseDirectory(root), DocumentLocations.readmeFile());
+  public Path resolveErDiagramGroupFile(OutputRoot outputRoot, String schemaName, int groupNumber) {
+    return within(
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.erDiagramGroupFile(
+            outputRoot.baseInfo().dbName(), schemaName, groupNumber));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolvePageFile(Path file, int pageIndex) {
+  public Path resolveViewpointFile(OutputRoot outputRoot, Viewpoint viewpoint) {
+    return within(
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.viewpointFile(outputRoot.baseInfo().dbName(), viewpoint));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Path resolveReadmeFile(OutputRoot outputRoot) {
+    return within(resolveDatabaseDirectory(outputRoot), DocumentLocations.readmeFile());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Path resolvePageFile(Path file, int pageNumber) {
     return file.resolveSibling(
-        DocumentLocations.pageFile(String.valueOf(file.getFileName()), pageIndex));
+        DocumentLocations.pageFile(String.valueOf(file.getFileName()), pageNumber));
   }
 
   /** {@inheritDoc} */
   @Override
   public Path resolveSchemaObjectDirectory(
-      OutputRoot root, String schemaName, ListDocumentType kind) {
+      OutputRoot outputRoot, String schemaName, ListDocumentType kind) {
     return within(
-        resolveDatabaseDirectory(root), DocumentLocations.schemaObjectDirectory(schemaName, kind));
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.schemaObjectDirectory(schemaName, kind));
   }
 
   /** {@inheritDoc} */
   @Override
   public Path resolveSchemaObjectFile(
-      OutputRoot root, String schemaName, ListDocumentType kind, String name) {
+      OutputRoot outputRoot, String schemaName, ListDocumentType kind, String name) {
     return within(
-        resolveDatabaseDirectory(root), DocumentLocations.schemaObjectFile(schemaName, kind, name));
+        resolveDatabaseDirectory(outputRoot),
+        DocumentLocations.schemaObjectFile(schemaName, kind, name));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveSnapshotDirectory(Path baseOutputDir) {
-    return baseOutputDir.resolve(SnapshotLocations.snapshotDirectory());
+  public Path resolveSnapshotDirectory(Path outputBaseDir) {
+    return outputBaseDir.resolve(SnapshotLocations.snapshotDirectory());
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveSnapshotDatabaseFile(OutputRoot root) {
+  public Path resolveSnapshotDatabaseFile(OutputRoot outputRoot) {
     return within(
-        resolveSnapshotDirectory(root.baseDir()),
-        SnapshotLocations.databaseFile(root.baseInfo().dbName()));
+        resolveSnapshotDirectory(outputRoot.baseDir()),
+        SnapshotLocations.databaseFile(outputRoot.baseInfo().dbName()));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveSnapshotFile(OutputRoot root, String schemaName, SnapshotKind kind) {
+  public Path resolveSnapshotFile(OutputRoot outputRoot, String schemaName, SnapshotKind kind) {
     return within(
-        resolveSnapshotDirectory(root.baseDir()),
-        SnapshotLocations.objectFile(root.baseInfo().dbName(), schemaName, kind));
+        resolveSnapshotDirectory(outputRoot.baseDir()),
+        SnapshotLocations.objectFile(outputRoot.baseInfo().dbName(), schemaName, kind));
   }
 
   /** {@inheritDoc} */
@@ -152,24 +158,24 @@ public class DefaultOutputPathResolver implements OutputPathResolver {
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveInsightsDirectory(Path baseOutputDir) {
-    return baseOutputDir.resolve(InsightLocations.insightsDirectory());
+  public Path resolveInsightsDirectory(Path outputBaseDir) {
+    return outputBaseDir.resolve(InsightLocations.insightsDirectory());
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveViewpointsInsightFile(OutputRoot root) {
+  public Path resolveViewpointsInsightFile(OutputRoot outputRoot) {
     return within(
-        resolveInsightsDirectory(root.baseDir()),
-        InsightLocations.viewpointsFile(root.baseInfo().dbName()));
+        resolveInsightsDirectory(outputRoot.baseDir()),
+        InsightLocations.viewpointsFile(outputRoot.baseInfo().dbName()));
   }
 
   /** {@inheritDoc} */
   @Override
-  public Path resolveFunctionTableUsagesInsightFile(OutputRoot root, String schemaName) {
+  public Path resolveFunctionTableUsagesInsightFile(OutputRoot outputRoot, String schemaName) {
     return within(
-        resolveInsightsDirectory(root.baseDir()),
-        InsightLocations.functionTableUsagesFile(root.baseInfo().dbName(), schemaName));
+        resolveInsightsDirectory(outputRoot.baseDir()),
+        InsightLocations.functionTableUsagesFile(outputRoot.baseInfo().dbName(), schemaName));
   }
 
   /**
