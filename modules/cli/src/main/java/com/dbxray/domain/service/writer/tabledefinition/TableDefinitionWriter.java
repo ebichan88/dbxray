@@ -107,6 +107,6 @@ public class TableDefinitionWriter {
             TableDefinitionTemplates.footer(content.baseInfo()));
     fileRepository.createDirectory(directoryPath);
     fileRepository.writeFile(filePath, contents);
-    logger.debug("exportTableDefinition complete. [filePath={}]", filePath.toString());
+    logger.debug("Wrote a table definition. [filePath={}]", filePath);
   }
 }

@@ -148,7 +148,7 @@ public class ErDiagramWriter {
             detailSection, // 掲載テーブル または 外部キー一覧
             footer);
     fileRepository.writeFile(layout.file(), contents);
-    logger.debug("exportErDiagram complete. [filePath={}]", layout.file());
+    logger.debug("Wrote an ER diagram. [filePath={}]", layout.file());
   }
 
   private void writeSchemaGroupIndex(

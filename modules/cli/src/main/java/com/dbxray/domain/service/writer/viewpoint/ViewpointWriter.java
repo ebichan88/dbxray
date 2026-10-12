@@ -108,7 +108,7 @@ public class ViewpointWriter {
             ViewpointTemplates.outsideRelations(content.outsideRelations()), // 観点外のテーブルとの関連
             ViewpointTemplates.footer(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
-    logger.debug("exportViewpoint complete. [filePath={}]", layout.file());
+    logger.debug("Wrote a viewpoint document. [filePath={}]", layout.file());
   }
 
   /**

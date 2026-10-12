@@ -145,6 +145,6 @@ public class ObjectListWriter {
     fileRepository.createDirectory(
         outputPathResolver.resolveSchemaObjectDirectory(outputRoot, schemaName, kind));
     fileRepository.writeFile(filePath, List.of(content));
-    logger.debug("exportSchemaObjectDefinition complete. [kind={}, filePath={}]", kind, filePath);
+    logger.debug("Wrote a schema object definition. [kind={}, filePath={}]", kind, filePath);
   }
 }

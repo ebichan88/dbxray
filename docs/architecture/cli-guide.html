@@ -679,8 +679,8 @@ erDiagram
   <li><strong>ArchUnit</strong>（<code>ArchitectureTest</code>）：レイヤーの依存方向や置き場所などの規約を、単体テストとして検査する。違反するとビルドが失敗する。規約の一覧は3章。</li>
 </ul>
 <p>サンプルDBに対して通常実行したときの、既定のレベルのログファイルの全体です（日時とスレッド名を省き、長いパスを短くしています）。</p>
-<pre><code>INFO  MyBatisSqlSessionFactories Initializing SqlSessionFactory from mybatis-config.xml
-INFO  MyBatisSqlSessionFactories SqlSessionFactory initialization completed.
+<pre><code>INFO  MyBatisSqlSessionFactories Initializing SqlSessionFactory. [config=mybatis-config.xml]
+INFO  MyBatisSqlSessionFactories Initialized SqlSessionFactory.
 INFO  DatabaseTypeDetector Connected to the database. [product=PostgreSQL 16.15 (…), driver=PostgreSQL JDBC Driver 42.7.13]
 INFO  ExportSchemaController [START] exportSchema
 INFO  SidecarYamlRepository Loaded sidecar. [annotations=…/annotations.sample.yml, tableCount=2, relationCount=1, viewpointCount=3]

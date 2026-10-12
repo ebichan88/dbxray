@@ -87,6 +87,6 @@ public class InsightWriter {
   private void write(Path filePath, Object insight) {
     fileRepository.createDirectory(filePath.getParent());
     fileRepository.writeFile(filePath, List.of(serializer.serialize(insight) + LINE_SEPARATOR));
-    logger.debug("exportInsight complete. [filePath={}]", filePath);
+    logger.debug("Wrote an insight. [filePath={}]", filePath);
   }
 }

@@ -113,7 +113,7 @@ public class SchemaSnapshotWriter {
   private void write(Path filePath, List<?> snapshots) {
     fileRepository.createDirectory(filePath.getParent());
     fileRepository.writeFile(filePath, snapshots.stream().map(this::toLine).toList());
-    logger.debug("exportSchemaSnapshot complete. [filePath={}]", filePath);
+    logger.debug("Wrote a schema snapshot. [filePath={}]", filePath);
   }
 
   private String toLine(Object snapshot) {
