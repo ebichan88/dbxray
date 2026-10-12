@@ -54,7 +54,7 @@ public final class MarkdownTemplateSupport {
    * Markdownの表の1行を組み立てるメソッド<br>
    * 各引数を{@code |}区切りで連結し、先頭・末尾にも{@code |}を付与する（末尾の改行は含まない）。 セルの値は{@link
    * String#valueOf}相当で文字列化し、行全体に{@link #escapeTableRow}を適用する。 {@code |}を含みうる自由記述文字列は、呼び出し側で{@link
-   * #escapeTableCell}等を適用した上で渡すこと
+   * #escapeTableCell}等を適用した上で渡すこと。 {@code \}で終わるセルの後には空白を1つ置く（表示ではセルの前後の空白は除かれる）
    *
    * @param cells セルの値（先頭から順に列として並ぶ）
    * @return {@code |cell1|cell2|...|} 形式の1行分の文字列
@@ -62,7 +62,12 @@ public final class MarkdownTemplateSupport {
   public static String row(Object... cells) {
     final StringBuilder sb = new StringBuilder();
     for (Object cell : cells) {
-      sb.append('|').append(cell);
+      final String value = String.valueOf(cell);
+      sb.append('|').append(value);
+      // GFMの表では\|がセルの区切りではなく文字の|と解釈され、値が\で終わると次のセルと1つにつながって列がずれる
+      if (value.endsWith("\\")) {
+        sb.append(' ');
+      }
     }
     return escapeTableRow(sb.append('|').toString());
   }

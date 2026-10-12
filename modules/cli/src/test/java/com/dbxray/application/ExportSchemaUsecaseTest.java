@@ -718,6 +718,38 @@ public class ExportSchemaUsecaseTest {
   }
 
   @Test
+  @DisplayName("オーバーロードに番号を付けたファイル名が別の関数の名前と同じになる場合は、後に書いた定義だけが残ることを警告する")
+  void testFunctionsSharingDefinitionFileAreWarned() {
+    setUp();
+    repository.tables.add(table("public", "t1"));
+    repository.functions.add(
+        new FunctionEntity("testdb", "public", "calc", 1, 2, "FUNCTION", "a integer", "", "", ""));
+    repository.functions.add(
+        new FunctionEntity("testdb", "public", "calc", 2, 2, "FUNCTION", "a text", "", "", ""));
+    repository.functions.add(
+        new FunctionEntity("testdb", "public", "calc_1", 1, 1, "FUNCTION", "", "", "", ""));
+
+    try (CapturedLogs logs = CapturedLogs.of(ExportSchemaUsecase.class)) {
+      usecase.exportSchema(
+          new ExportSchemaRequest(
+              TargetSelection.of(List.of(), List.of(), List.of()),
+              null,
+              null,
+              0,
+              80,
+              1,
+              false,
+              Set.of()));
+
+      assertEquals(
+          List.of(
+              "Function documents share the same file name, so only the one written last is kept."
+                  + " [file=public/function/calc_1.md, functions=calc(a integer), calc_1()]"),
+          logs.messages(Level.WARN));
+    }
+  }
+
+  @Test
   @DisplayName("targetTableListで対象外となったテーブルは個別の定義書にもテーブル一覧にも掲載されない")
   void testTargetFilterExcludesTableFromDefinitionAndListing() {
     setUp();

@@ -507,6 +507,54 @@ public class TableDefinitionTemplatesTest {
   }
 
   @Test
+  @DisplayName("erDiagram: 日本語のテーブル名のように識別子が衝突する場合は、連番で区別して別の箱として描く（自テーブルが先）")
+  void testErDiagramResolvesIdCollisionOfNonAsciiNames() {
+    // 英数字以外はアンダースコアに置き換わるため、同じ文字数の日本語のテーブル名はどれも public___ になる
+    TableEntity table = newTable("public", "社員", "", "table", "");
+    var outgoing = ForeignKeyFixtures.physical("public", "社員", "fk_社員_部署", "public", "部署");
+    var incoming = ForeignKeyFixtures.physical("public", "勤怠", "fk_勤怠_社員", "public", "社員");
+
+    assertMarkdownEquals(
+        """
+        ## ER図
+
+        ```mermaid
+        erDiagram
+            public___["社員"]
+            public____2["部署"]
+            public____3["勤怠"]
+            public____2 ||--o{ public___ : "fk_社員_部署"
+            public___ ||--o{ public____3 : "fk_勤怠_社員"
+        ```
+
+        """,
+        TableDefinitionTemplates.erDiagram(
+            table,
+            List.of(),
+            neighborhood(List.of(outgoing), List.of(incoming)),
+            DiagramBoxesFixtures.none()));
+  }
+
+  @Test
+  @DisplayName("erDiagram: スキーマ名・テーブル名の区切りのアンダースコアで識別子が衝突する場合も、連番で区別する")
+  void testErDiagramResolvesIdCollisionAcrossSchemas() {
+    // sales.archive_orders と sales_archive.orders はどちらも sales_archive_orders になる
+    TableEntity table = newTable("sales", "archive_orders", "", "table", "");
+    var outgoing =
+        ForeignKeyFixtures.physical(
+            "sales", "archive_orders", "fk_archive_orders", "sales_archive", "orders");
+
+    String section =
+        TableDefinitionTemplates.erDiagram(
+            table,
+            List.of(),
+            neighborhood(List.of(outgoing), List.of()),
+            DiagramBoxesFixtures.none());
+
+    assertTrue(section.contains("sales_archive_orders_2 ||--o{ sales_archive_orders : "));
+  }
+
+  @Test
   @DisplayName("erDiagram: 参照先・参照元それぞれの多重度に応じた関係線を出力する")
   void testErDiagramCardinality() {
     TableEntity table = newTable("public", "orders", "受注", "table", "");

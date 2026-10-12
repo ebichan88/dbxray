@@ -3,6 +3,7 @@ package com.dbxray.domain.model.sidecar;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -30,16 +31,20 @@ public class TableAnnotationTest {
   }
 
   @Test
-  @DisplayName("orphanColumnNames: 実在カラムに含まれない付帯情報側カラム名のみ抽出する")
+  @DisplayName("orphanColumnNames: 実在カラムに含まれない付帯情報側カラム名のみを、付帯情報の記述順に抽出する")
   void testOrphanColumnNames() {
+    // 記述順は名前の順とは異なる並びにする（順序を保たない複製では並びが変わることを検知するため）
     var columnRemarks = new LinkedHashMap<String, String>();
+    columnRemarks.put("zip_code", "旧カラムの備考1");
     columnRemarks.put("id", "主キー");
-    columnRemarks.put("removed_col", "旧カラムの備考");
+    columnRemarks.put("removed_col", "旧カラムの備考2");
+    columnRemarks.put("address", "旧カラムの備考3");
+    columnRemarks.put("note", "旧カラムの備考4");
     var annotation = new TableAnnotation("", "", columnRemarks);
 
-    Set<String> orphans = annotation.orphanColumnNames(Set.of("id", "name"));
+    List<String> orphans = annotation.orphanColumnNames(Set.of("id", "name"));
 
-    assertEquals(Set.of("removed_col"), orphans);
+    assertEquals(List.of("zip_code", "removed_col", "address", "note"), orphans);
   }
 
   @Test

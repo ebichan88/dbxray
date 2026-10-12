@@ -11,9 +11,11 @@ import com.dbxray.domain.service.writer.erdiagram.ErDiagramTemplates;
 import com.dbxray.domain.service.writer.tabledefinition.TableDefinitionTemplates;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -25,12 +27,30 @@ public final class MermaidSupport {
   private MermaidSupport() {}
 
   /**
-   * Mermaid記法のエンティティ識別子を生成するメソッド<br>
-   * スキーマ名を含めることで、同名テーブルが複数スキーマに存在する場合の識別子衝突を避ける
+   * 図に描画するノードごとに、一意なMermaidのエンティティ識別子を採番するメソッド<br>
+   * 識別子のサニタイズでは英数字以外がすべてアンダースコアに潰れるため、別のテーブルが同じ識別子になり1つの箱に融合することがある （例: {@code a_b.c}と{@code
+   * a.b_c}、同じ文字数の日本語のテーブル名）。衝突した場合は連番を付けて区別する
    *
-   * @return サニタイズ済みのエンティティ識別子
+   * @param nodes 図に描画するノードのテーブルキー（重複無し。この順に採番するため、衝突した場合は後のものに連番が付く）
+   * @return テーブルキーごとの識別子
    */
-  public static String mermaidId(TableKey key) {
+  public static Map<TableKey, String> assignNodeIds(Collection<TableKey> nodes) {
+    final Map<TableKey, String> ids = new LinkedHashMap<>();
+    final Set<String> usedIds = new HashSet<>();
+    nodes.forEach(
+        key -> {
+          final String baseId = mermaidId(key);
+          String id = baseId;
+          for (int suffix = 2; !usedIds.add(id); suffix++) {
+            id = baseId + "_" + suffix;
+          }
+          ids.put(key, id);
+        });
+    return ids;
+  }
+
+  /** スキーマ名を含めることで、同名テーブルが複数スキーマに存在する場合の識別子衝突を避ける */
+  private static String mermaidId(TableKey key) {
     return sanitizeIdentifier(key.schema() + "_" + key.table());
   }
 

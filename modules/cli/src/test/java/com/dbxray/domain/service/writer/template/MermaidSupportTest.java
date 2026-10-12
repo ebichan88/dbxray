@@ -21,9 +21,33 @@ import org.junit.jupiter.api.Test;
 public class MermaidSupportTest {
 
   @Test
-  @DisplayName("mermaidId: スキーマ名とテーブル名をアンダースコアで連結する")
-  void testMermaidId() {
-    assertEquals("public_orders", MermaidSupport.mermaidId(TableKey.of("public", "orders")));
+  @DisplayName("assignNodeIds: スキーマ名とテーブル名をアンダースコアで連結し、英数字以外はアンダースコアにする")
+  void testAssignNodeIds() {
+    assertEquals(
+        Map.of(
+            TableKey.of("public", "orders"),
+            "public_orders",
+            TableKey.of("sales", "v-1"),
+            "sales_v_1"),
+        MermaidSupport.assignNodeIds(
+            List.of(TableKey.of("public", "orders"), TableKey.of("sales", "v-1"))));
+  }
+
+  @Test
+  @DisplayName("assignNodeIds: 置き換えの結果が衝突する場合は、渡した順で後のものに連番を付ける。連番の結果が別のテーブルの識別子と重なる場合も区別する")
+  void testAssignNodeIdsResolvesCollision() {
+    var first = TableKey.of("public", "社員");
+    var second = TableKey.of("public", "部署");
+    // 置き換えの結果が、連番を付けた識別子（public____2）と同じになるテーブル
+    var lookalike = TableKey.of("public", "社員_2");
+    var third = TableKey.of("public", "勤怠");
+
+    var ids = MermaidSupport.assignNodeIds(List.of(first, second, lookalike, third));
+
+    assertEquals("public___", ids.get(first));
+    assertEquals("public____2", ids.get(second));
+    assertEquals("public____2_2", ids.get(lookalike));
+    assertEquals("public____3", ids.get(third));
   }
 
   @Test

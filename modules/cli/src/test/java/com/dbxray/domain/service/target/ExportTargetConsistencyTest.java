@@ -19,6 +19,7 @@ import com.dbxray.domain.model.viewpoint.Viewpoints;
 import com.dbxray.domain.service.target.ExportTargetConsistency.ResolvedForeignKeys;
 import com.dbxray.testsupport.EntityFixtures;
 import com.dbxray.testsupport.ForeignKeyFixtures;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -163,6 +164,49 @@ public class ExportTargetConsistencyTest {
   }
 
   @Test
+  @DisplayName("resolveForeignKeys: 論理リレーションの除外の通知は、参照元・参照先のうち見つからなかった側に(not found)を付ける")
+  void testResolveForeignKeysReportsWhichSideOfLogicalRelationIsMissing() {
+    var tables = Tables.of(List.of(table("public", "orders")));
+    var missingChild =
+        ForeignKeyFixtures.logical("public", "audit_log", "rel_audit_orders", "public", "orders");
+    var missingBoth =
+        ForeignKeyFixtures.logical("public", "old_items", "rel_items_coupon", "public", "coupons");
+
+    List<String> messages =
+        service
+            .resolveForeignKeys(List.of(), List.of(missingChild, missingBoth), tables, false)
+            .consistencyNotices()
+            .stream()
+            .map(ConsistencyNotice::message)
+            .toList();
+
+    assertEquals(
+        List.of(
+            "Skipping logical relation because the table was not found in the output target"
+                + " (filtered, renamed or dropped?). [relation=rel_audit_orders,"
+                + " table=public.audit_log (not found), parentTable=public.orders]",
+            "Skipping logical relation because the table was not found in the output target"
+                + " (filtered, renamed or dropped?). [relation=rel_items_coupon,"
+                + " table=public.old_items (not found), parentTable=public.coupons (not found)]",
+            "Merged logical relations declared in the sidecar. [relationCount=0]"),
+        messages);
+  }
+
+  @Test
+  @DisplayName("resolveForeignKeys: 参照元が出力対象に無い物理外部キーも除外し、絞り込みが無ければ通知する")
+  void testResolveForeignKeysExcludesPhysicalForeignKeyWithMissingChild() {
+    var tables = Tables.of(List.of(table("public", "orders")));
+    var missingChild =
+        ForeignKeyFixtures.physical("public", "items", "fk_items_orders", "public", "orders");
+
+    ResolvedForeignKeys result =
+        service.resolveForeignKeys(List.of(missingChild), List.of(), tables, false);
+
+    assertEquals(List.of(), result.foreignKeys().referencingTo(table("public", "orders")));
+    assertEquals(List.of(Kind.UNRESOLVED_FOREIGN_KEY), kinds(result.consistencyNotices()));
+  }
+
+  @Test
   @DisplayName("findOrphanTableAnnotations: 実在しないテーブルに対する付帯情報を通知する")
   void testFindOrphanTableAnnotations() {
     var annotations =
@@ -228,6 +272,35 @@ public class ExportTargetConsistencyTest {
         "Column annotation exists for a column that was not found (renamed or dropped?)."
             + " [table=public.orders, column=removed_column]",
         consistencyNotices.get(0).message());
+  }
+
+  @Test
+  @DisplayName("findOrphanColumnAnnotations: 実在しないカラムが複数ある場合は、サイドカーYAMLの記述順に通知する")
+  void testFindOrphanColumnAnnotationsInDeclarationOrder() {
+    var orders = table("public", "orders");
+    var columnRemarks = new LinkedHashMap<String, String>();
+    columnRemarks.put("shipped_on", "削除済み");
+    columnRemarks.put("id", "ID");
+    columnRemarks.put("coupon_code", "削除済み");
+    columnRemarks.put("amount_old", "削除済み");
+    var annotations =
+        Annotations.of(Map.of(TableKey.of(orders), new TableAnnotation("", "", columnRemarks)));
+    var detail =
+        new TableDetail(
+            orders,
+            List.of(EntityFixtures.column("public", "orders", "id", "int", true)),
+            List.of(),
+            List.of());
+
+    List<String> messages =
+        service.findOrphanColumnAnnotations(detail, annotations).stream()
+            .map(ConsistencyNotice::message)
+            .toList();
+
+    assertEquals(3, messages.size());
+    assertTrue(messages.get(0).endsWith("column=shipped_on]"));
+    assertTrue(messages.get(1).endsWith("column=coupon_code]"));
+    assertTrue(messages.get(2).endsWith("column=amount_old]"));
   }
 
   @Test

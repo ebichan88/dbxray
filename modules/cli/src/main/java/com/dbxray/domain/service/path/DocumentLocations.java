@@ -2,8 +2,14 @@ package com.dbxray.domain.service.path;
 
 import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
+import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.table.TableEntity;
 import com.dbxray.domain.model.viewpoint.Viewpoint;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 出力するMarkdownドキュメントの配置（ファイル名と、データベース単位ディレクトリからの相対パス）を一元的に定めるクラス<br>
@@ -118,6 +124,34 @@ public final class DocumentLocations {
       return function.functionName();
     }
     return function.functionName() + OVERLOAD_SEPARATOR + function.overloadIndex();
+  }
+
+  /**
+   * 個別定義のファイルが同じになる関数・プロシージャを求めるメソッド<br>
+   * オーバーロードに付けた番号が別の関数の名前と重なると（{@code calc}のオーバーロードの{@code calc_1}と、別の関数{@code
+   * calc_1}）、後に書いたほうが先に書いたファイルを上書きする
+   *
+   * @return 個別定義ファイルの相対パス（{@link #schemaObjectFile}）ごとの、そのファイルを書く関数・プロシージャ（取得順）。
+   *     ファイルが同じになるものだけを含み、無ければ空
+   */
+  public static Map<String, List<FunctionEntity>> functionsSharingDefinitionFile(
+      Functions functions) {
+    final Map<String, List<FunctionEntity>> byFile = new LinkedHashMap<>();
+    functions
+        .asList()
+        .forEach(
+            function ->
+                byFile
+                    .computeIfAbsent(
+                        schemaObjectFile(
+                            function.schemaName(),
+                            ListDocumentType.FUNCTION,
+                            functionDefinitionName(function)),
+                        file -> new ArrayList<>())
+                    .add(function));
+    byFile.values().removeIf(sharing -> sharing.size() < 2);
+    byFile.replaceAll((file, sharing) -> List.copyOf(sharing));
+    return Collections.unmodifiableMap(byFile);
   }
 
   /**

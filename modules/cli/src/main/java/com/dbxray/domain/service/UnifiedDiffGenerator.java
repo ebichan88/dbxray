@@ -38,14 +38,10 @@ public class UnifiedDiffGenerator {
     if (committed.equals(generated)) {
       return List.of();
     }
-    final List<Hunk> hunks = buildHunks(diff(committed, generated));
-    if (hunks.isEmpty()) {
-      return List.of();
-    }
     final List<String> lines = new ArrayList<>();
     lines.add("--- " + committedLabel);
     lines.add("+++ " + generatedLabel);
-    for (final Hunk hunk : hunks) {
+    for (final Hunk hunk : buildHunks(diff(committed, generated))) {
       lines.add(hunk.header());
       hunk.ops().forEach(op -> lines.add(op.render()));
     }
@@ -175,12 +171,12 @@ public class UnifiedDiffGenerator {
     return ops;
   }
 
-  /** 変更箇所（連続する非EQUAL区間）の間が{@code 2 * CONTEXT_LINES}行以内の場合は1つのhunkへ結合する */
+  /**
+   * 変更箇所（連続する非EQUAL区間）の間が{@code 2 * CONTEXT_LINES}行以内の場合は1つのhunkへ結合する<br>
+   * {@code ops}は変更箇所を1つ以上含むこと（内容が異なる行リスト同士の編集手順は必ず含む）
+   */
   private List<Hunk> buildHunks(List<Op> ops) {
     final List<int[]> clusters = findClusters(ops);
-    if (clusters.isEmpty()) {
-      return List.of();
-    }
     final List<Hunk> hunks = new ArrayList<>();
     int groupStart = clusters.get(0)[0];
     int groupEnd = clusters.get(0)[1];

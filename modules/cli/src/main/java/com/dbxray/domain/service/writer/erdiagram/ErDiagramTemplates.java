@@ -20,11 +20,8 @@ import com.dbxray.domain.service.writer.tabledefinition.TableDefinitionTemplates
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import com.dbxray.domain.service.writer.template.MermaidSupport;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * スキーマ単位のER図（全体ER図）書き込みに利用するMarkdownのテンプレートを扱うクラス<br>
@@ -118,7 +115,7 @@ public class ErDiagramTemplates {
           .append(LINE_SEPARATOR_DOUBLE)
           .toString();
     }
-    final Map<TableKey, String> ids = assignNodeIds(group.nodes());
+    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(group.nodes());
     final Map<TableKey, String> labels = MermaidSupport.assignLabels(group.nodes(), boxes);
     sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
     group
@@ -184,7 +181,7 @@ public class ErDiagramTemplates {
                 no,
                 tableCount,
                 fkCount,
-                mainTable == null ? "" : mainTable.qualifiedName(),
+                mainTable.qualifiedName(),
                 MarkdownTemplateSupport.linkCell(href)))
         + LINE_SEPARATOR;
   }
@@ -302,25 +299,5 @@ public class ErDiagramTemplates {
   private static String listLink(ListDocumentType type, BaseInfoEntity baseInfo) {
     return DocumentLocations.linkFromDatabaseRoot(
         DocumentLocations.listFile(type, baseInfo.dbName()));
-  }
-
-  /**
-   * ノードごとに一意なMermaid識別子を採番するメソッド<br>
-   * 識別子のサニタイズでは記号がすべてアンダースコアに潰れるため、 多数のテーブルを1つの図に載せると別テーブルが同一識別子となり1ノードに融合する恐れがある。
-   * 衝突した場合は連番を付与して一意性を担保する
-   */
-  private static Map<TableKey, String> assignNodeIds(List<TableKey> nodes) {
-    final Map<TableKey, String> ids = new LinkedHashMap<>();
-    final Set<String> usedIds = new HashSet<>();
-    nodes.forEach(
-        key -> {
-          final String baseId = MermaidSupport.mermaidId(key);
-          String id = baseId;
-          for (int suffix = 2; !usedIds.add(id); suffix++) {
-            id = baseId + "_" + suffix;
-          }
-          ids.put(key, id);
-        });
-    return ids;
   }
 }

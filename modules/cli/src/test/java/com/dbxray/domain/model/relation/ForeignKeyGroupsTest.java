@@ -120,6 +120,34 @@ public class ForeignKeyGroupsTest {
   }
 
   @Test
+  @DisplayName("pack: 後の成分は、最後のグループだけでなく、収まる最初のグループへ戻って詰める")
+  void testPackFillsEarliestGroupThatFits() {
+    // 4ノード・3ノード・2ノードの成分を上限6で詰める。3ノードは4ノードのグループに収まらず2つ目のグループになるが、
+    // 2ノードは1つ目のグループ（4+2=6）に収まるため、最後のグループ（3ノード）ではなく1つ目へ戻って詰める
+    var four =
+        List.of(
+            fk("public", "a", "fk_a", "public", "b"),
+            fk("public", "b", "fk_b", "public", "c"),
+            fk("public", "c", "fk_c", "public", "d"));
+    var three =
+        List.of(fk("public", "p", "fk_p", "public", "q"), fk("public", "q", "fk_q", "public", "r"));
+    var two = List.of(fk("public", "x", "fk_x", "public", "y"));
+
+    var groups =
+        ForeignKeyGroups.pack(
+            List.of(ForeignKeyGroup.of(four), ForeignKeyGroup.of(three), ForeignKeyGroup.of(two)),
+            NodeLimit.of(6));
+
+    assertEquals(
+        List.of(List.of("fk_a", "fk_b", "fk_c", "fk_x"), List.of("fk_p", "fk_q")),
+        groups.stream()
+            .map(
+                group ->
+                    group.foreignKeys().stream().map(ForeignKeyEntity::foreignKeyName).toList())
+            .toList());
+  }
+
+  @Test
   @DisplayName("pack: 単独で上限を超える成分はそれ単独のグループになる")
   void testPackKeepsOversizedComponentAlone() {
     var oversized =
