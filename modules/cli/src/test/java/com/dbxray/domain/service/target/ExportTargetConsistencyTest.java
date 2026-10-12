@@ -19,6 +19,7 @@ import com.dbxray.domain.model.viewpoint.Viewpoints;
 import com.dbxray.domain.service.target.ExportTargetConsistency.ResolvedForeignKeys;
 import com.dbxray.testsupport.EntityFixtures;
 import com.dbxray.testsupport.ForeignKeyFixtures;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -228,6 +229,35 @@ public class ExportTargetConsistencyTest {
         "Column annotation exists for a column that was not found (renamed or dropped?)."
             + " [table=public.orders, column=removed_column]",
         consistencyNotices.get(0).message());
+  }
+
+  @Test
+  @DisplayName("findOrphanColumnAnnotations: 実在しないカラムが複数ある場合は、サイドカーYAMLの記述順に通知する")
+  void testFindOrphanColumnAnnotationsInDeclarationOrder() {
+    var orders = table("public", "orders");
+    var columnRemarks = new LinkedHashMap<String, String>();
+    columnRemarks.put("shipped_on", "削除済み");
+    columnRemarks.put("id", "ID");
+    columnRemarks.put("coupon_code", "削除済み");
+    columnRemarks.put("amount_old", "削除済み");
+    var annotations =
+        Annotations.of(Map.of(TableKey.of(orders), new TableAnnotation("", "", columnRemarks)));
+    var detail =
+        new TableDetail(
+            orders,
+            List.of(EntityFixtures.column("public", "orders", "id", "int", true)),
+            List.of(),
+            List.of());
+
+    List<String> messages =
+        service.findOrphanColumnAnnotations(detail, annotations).stream()
+            .map(ConsistencyNotice::message)
+            .toList();
+
+    assertEquals(3, messages.size());
+    assertTrue(messages.get(0).endsWith("column=shipped_on]"));
+    assertTrue(messages.get(1).endsWith("column=coupon_code]"));
+    assertTrue(messages.get(2).endsWith("column=amount_old]"));
   }
 
   @Test
