@@ -63,7 +63,8 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
         return FunctionBody.postgres(all.subList(i, all.size()), lexed.incomplete(), searchPath);
       }
     }
-    return FunctionBody.postgres(all, lexed.incomplete(), searchPath);
+    // 本体の区切りが無い定義の字句は見出しのため、本体と誤らないよう解析しない
+    return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
   }
 
   private static boolean isSearchPathAt(SqlTokens tokens, int i) {

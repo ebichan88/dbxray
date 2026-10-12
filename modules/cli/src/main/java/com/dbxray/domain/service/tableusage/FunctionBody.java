@@ -11,7 +11,7 @@ import java.util.List;
  * @param segments 本体の字句（空白・コメントを除いたもの）。区別できなかった同名のサブプログラム（Oracle）は本体ごとに分けて持つ
  *     （文の状態が本体をまたがないよう、本体ごとに走査するため）
  * @param incomplete 閉じていない文字列・コメント等があり、定義の終わりまで字句を読み取れなかったか
- * @param overloadsMerged 同名のサブプログラムの本体を区別できず、すべての本体を持つか（Oracle）
+ * @param overloadsMerged オーバーロードされた同名のサブプログラムの本体を区別できず、絞りきれなかった本体をすべて持つか（Oracle）
  * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（PostgreSQL。本体の中のSET文・{@code
  *     set_config}は含まない。{@code $user}・{@code pg_catalog}・{@code pg_temp}を除く。指定が無ければ空）
  * @param invokerRights 実行者権限（{@code AUTHID CURRENT_USER}）か（Oracle）

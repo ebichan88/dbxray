@@ -8,7 +8,7 @@ public enum TableUsageStatus {
   ANALYZED,
   /** 言語がSQL・PL/pgSQL・PL/SQL以外のため解析しない（plpython3u・C・Javaの呼び出し仕様等） */
   UNSUPPORTED_LANGUAGE,
-  /** 定義本体を取得できなかった（権限が無くOracleのALL_SOURCEが見えない等） */
+  /** 解析する定義本体が無い（権限が無くOracleのALL_SOURCEが見えない・本体の無い定義等） */
   NO_DEFINITION,
   /** 定義本体がwrap（難読化）されている（Oracle） */
   WRAPPED,

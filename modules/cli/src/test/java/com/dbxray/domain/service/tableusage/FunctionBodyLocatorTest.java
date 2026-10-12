@@ -153,12 +153,16 @@ class FunctionBodyLocatorTest {
                       + " SELECT 1 $$")
               .searchPath());
       assertEquals(
-          List.of("unterminated"),
-          locate("sql", "CREATE FUNCTION f() SET search_path TO 'unterminated").searchPath());
-      assertEquals(
           List.of(),
-          locate("sql", "CREATE FUNCTION f() SET search_path TO").searchPath(),
+          locate("sql", "CREATE FUNCTION f() SET search_path AS $$ SELECT 1 $$").searchPath(),
           "値の無いSET search_pathは指定が無いものとする");
+      assertEquals(
+          TableUsageStatus.NO_DEFINITION,
+          locate("sql", "CREATE FUNCTION f() SET search_path TO 'unterminated").status(),
+          "閉じていない文字列が残りを飲み込み、本体の区切りが無い");
+      assertEquals(
+          TableUsageStatus.NO_DEFINITION,
+          locate("sql", "CREATE FUNCTION f() SET search_path TO").status());
     }
 
     @Test
@@ -248,11 +252,15 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
-    @DisplayName("locate: 本体の区切りが見つからない定義は、全体を本体とする")
-    void testFallbackToWholeDefinition() {
-      assertEquals("SELECT * FROM t", text(locate("sql", "SELECT * FROM t")));
+    @DisplayName("locate: 本体の区切りが見つからない定義は、見出しを本体と誤らないようNO_DEFINITION")
+    void testNoBodyDelimiter() {
+      assertEquals(TableUsageStatus.NO_DEFINITION, locate("sql", "SELECT * FROM t").status());
       assertEquals(
-          "CREATE FUNCTION f ( ) AS 'x'", text(locate("sql", "CREATE FUNCTION f() AS 'x'")));
+          TableUsageStatus.NO_DEFINITION, locate("sql", "CREATE FUNCTION f() AS 'x'").status());
+      final FunctionBody header =
+          locate("sql", "CREATE FUNCTION sample.f() RETURNS SETOF sample.employee LANGUAGE sql");
+      assertEquals(TableUsageStatus.NO_DEFINITION, header.status());
+      assertEquals(List.of(), header.segments(), "見出しの型のテーブル名を拾わない");
     }
 
     @Test
@@ -403,17 +411,70 @@ class FunctionBodyLocatorTest {
       assertEquals(
           "C",
           locate("P", "", "CREATE OR REPLACE PROCEDURE p IS LANGUAGE C NAME \"p\";").language());
-      assertEquals("LANGUAGE", locate("P", "", "CREATE PROCEDURE p IS LANGUAGE;").language());
     }
 
     @Test
-    @DisplayName("locate: 定義が空ならNO_DEFINITION、想定外の形の定義は全体、IS・ASの無い単独の定義は名前の後ろを本体とする")
+    @DisplayName("locate: LANGUAGE・EXTERNALを局所変数の名前に使っても、呼び出し仕様と誤らずPL/SQLの本体として切り出す")
+    void testLanguageAndExternalAsVariableNames() {
+      final FunctionBody language =
+          locate(
+              "P",
+              "",
+              "CREATE OR REPLACE PROCEDURE p IS language VARCHAR2(10) := 'en'; BEGIN DELETE FROM t;"
+                  + " END;");
+      assertEquals(TableUsageStatus.ANALYZED, language.status());
+      assertTrue(text(language).startsWith("language VARCHAR2 ( 10 )"), text(language));
+      assertTrue(text(language).endsWith("BEGIN DELETE FROM t ; END ;"), text(language));
+      assertEquals(
+          TableUsageStatus.ANALYZED,
+          locate(
+                  "P",
+                  "",
+                  "CREATE OR REPLACE PROCEDURE p IS external BOOLEAN; BEGIN DELETE FROM t; END;")
+              .status());
+      assertEquals(
+          "LANGUAGE ;",
+          text(locate("P", "", "CREATE PROCEDURE p IS LANGUAGE;")),
+          "続きの無いLANGUAGEは呼び出し仕様ではない");
+
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p; PROCEDURE q; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p IS language CONSTANT VARCHAR2(2) := 'en'; BEGIN DELETE FROM tp; END p;
+            PROCEDURE q IS external BOOLEAN; BEGIN DELETE FROM tq; END q;
+          END;
+          """;
+      final FunctionBody p = locate("PKG.P", "", definition);
+      assertEquals(TableUsageStatus.ANALYZED, p.status());
+      assertTrue(text(p).startsWith("language CONSTANT VARCHAR2"), text(p));
+      assertTrue(text(p).endsWith("BEGIN DELETE FROM tp ;"), text(p));
+      assertTrue(text(locate("PKG.Q", "", definition)).endsWith("BEGIN DELETE FROM tq ;"));
+    }
+
+    @Test
+    @DisplayName("locate: 定義が空・IS・ASの無い単独の定義（本体が無い）はNO_DEFINITION、想定外の形の定義は全体を本体とする")
     void testUnusualDefinitions() {
       assertEquals(TableUsageStatus.NO_DEFINITION, locate("F", "", "").status());
       assertEquals("SELECT 1 FROM dual", text(locate("F", "", "SELECT 1 FROM dual")));
       assertEquals(
-          "RETURN NUMBER ;", text(locate("F", "", "CREATE OR REPLACE FUNCTION f RETURN NUMBER;")));
-      assertEquals("", text(locate("F", "", "CREATE OR REPLACE FUNCTION")));
+          TableUsageStatus.NO_DEFINITION,
+          locate("F", "", "CREATE OR REPLACE FUNCTION f RETURN NUMBER;").status());
+      assertEquals(
+          TableUsageStatus.NO_DEFINITION, locate("F", "", "CREATE OR REPLACE FUNCTION").status());
+    }
+
+    @Test
+    @DisplayName("locate: AGGREGATE USING・PIPELINED USINGの定義は本体が無く、見出しの型のテーブル名を拾わない")
+    void testHeaderOnlyDefinition() {
+      final FunctionBody body =
+          locate(
+              "F",
+              "X NUMBER",
+              "CREATE OR REPLACE FUNCTION f(x NUMBER) RETURN t%ROWTYPE AGGREGATE USING impl;");
+
+      assertEquals(TableUsageStatus.NO_DEFINITION, body.status());
+      assertEquals(List.of(), body.segments());
     }
 
     @Test
@@ -461,10 +522,76 @@ class FunctionBodyLocatorTest {
           END;
           """;
 
-      final FunctionBody body = locate("PKG.P", "A NUMBER", definition);
+      final FunctionBody body = locate("PKG.P", "A NUMBER", definition, 2);
 
       assertTrue(body.overloadsMerged());
       assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(body));
+    }
+
+    @Test
+    @DisplayName("locate: 引数名が一致するものが複数あれば、引数名の違う同名のサブプログラムは含めず、一致しなければ同名のすべてを持つ")
+    void testOverloadsNarrowedToMatchingParameterNames() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p(a NUMBER); PROCEDURE p(a VARCHAR2); PROCEDURE p(b NUMBER); END;
+
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p(a NUMBER) IS BEGIN DELETE FROM t1; END;
+            PROCEDURE p(a VARCHAR2) IS BEGIN DELETE FROM t2; END;
+            PROCEDURE p(b NUMBER) IS BEGIN DELETE FROM t3; END;
+          END;
+          """;
+
+      final FunctionBody sameNames = locate("PKG.P", "A NUMBER", definition, 3);
+      assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(sameNames));
+      assertTrue(sameNames.overloadsMerged());
+
+      final FunctionBody unmatched = locate("PKG.P", "C NUMBER", definition, 3);
+      assertEquals(
+          "BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ; || BEGIN DELETE FROM t3 ;",
+          text(unmatched));
+      assertTrue(unmatched.overloadsMerged());
+    }
+
+    @Test
+    @DisplayName("locate: カタログ上オーバーロードされていないサブプログラムを、条件付きコンパイルで複数書いても、まとめた印は立てない")
+    void testSameNameWithoutCatalogOverload() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            $IF $$v12 $THEN
+            PROCEDURE p IS BEGIN DELETE FROM t1; END p;
+            $ELSE
+            PROCEDURE p IS BEGIN DELETE FROM t2; END p;
+            $END
+          END;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "", definition, 1);
+
+      assertEquals("BEGIN DELETE FROM t1 ; || BEGIN DELETE FROM t2 ;", text(body));
+      assertFalse(body.overloadsMerged());
+      assertTrue(locate("PKG.P", "", definition, 2).overloadsMerged());
+    }
+
+    @Test
+    @DisplayName("locate: 絞った同名のサブプログラムがすべて呼び出し仕様なら、本体を持たずに言語名を返す")
+    void testAllOverloadsAreCallSpecifications() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p(a NUMBER); PROCEDURE p(a VARCHAR2); END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p(a NUMBER) AS LANGUAGE JAVA NAME 'X.p(int)';
+            PROCEDURE p(a VARCHAR2) AS LANGUAGE JAVA NAME 'X.p(java.lang.String)';
+          END;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "A NUMBER", definition, 2);
+
+      assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, body.status());
+      assertEquals("JAVA", body.language());
+      assertEquals(List.of(), body.segments());
     }
 
     @Test
@@ -575,7 +702,7 @@ class FunctionBodyLocatorTest {
       assertEquals(TableUsageStatus.UNSUPPORTED_LANGUAGE, java.status());
       assertEquals("JAVA", java.language());
       assertEquals("C", locate("PKG.P", "C_ARG NUMBER", definition).language());
-      final FunctionBody merged = locate("PKG.P", "B DATE", definition);
+      final FunctionBody merged = locate("PKG.P", "B DATE", definition, 2);
       assertTrue(merged.overloadsMerged());
       assertEquals("BEGIN DELETE FROM t ;", text(merged));
     }
@@ -622,6 +749,10 @@ class FunctionBodyLocatorTest {
           "BEGIN NULL ; END ;",
           text(locate("P", "", "CREATE OR REPLACE PROCEDURE p IS BEGIN NULL; END;")));
       assertEquals("BEGIN RETURN g_count ;", text(locate("PKG.F1", "", PACKAGE)));
+      assertEquals(
+          "BEGIN RETURN g_total_count ;",
+          text(locate("PKG.F1", "", PACKAGE.replace("g_count", "g_total_count"))),
+          "同じ名前のパッケージでも、定義の長さが変われば読み直す");
     }
 
     @Test
@@ -675,6 +806,89 @@ class FunctionBodyLocatorTest {
     }
 
     @Test
+    @DisplayName("locate: 実行部・宣言途中のカーソルの問い合わせにある別名のfunction・procedure（ASの後ろ）を見出しと誤らず、後ろの範囲をずらさない")
+    void testAliasNamedFunctionAfterAs() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p; PROCEDURE q; PROCEDURE r; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            CURSOR c IS SELECT code AS function FROM t WHERE x IS NOT NULL;
+            PROCEDURE p IS
+              CURSOR d IS SELECT code AS procedure FROM t WHERE x IS NOT NULL;
+            BEGIN
+              SELECT code AS function INTO v FROM t WHERE x IS NOT NULL;
+              DELETE FROM tp;
+            END p;
+            PROCEDURE q IS BEGIN DELETE FROM tq; END q;
+            PROCEDURE r IS BEGIN DELETE FROM tr; END r;
+          END;
+          """;
+
+      final String p = text(locate("PKG.P", "", definition));
+      assertTrue(p.endsWith("DELETE FROM tp ;"), p);
+      assertFalse(p.contains("tq"), p);
+      assertEquals("BEGIN DELETE FROM tq ;", text(locate("PKG.Q", "", definition)));
+      assertEquals("BEGIN DELETE FROM tr ;", text(locate("PKG.R", "", definition)));
+    }
+
+    @Test
+    @DisplayName("locate: パッケージの宣言のカーソルの中のWITH FUNCTION（インライン）は、パッケージのサブプログラムとして数えない")
+    void testInlineFunctionInPackageDeclaration() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p; END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            CURSOR c IS WITH FUNCTION p RETURN NUMBER IS BEGIN RETURN 1; END; SELECT p FROM dual;
+            PROCEDURE p IS BEGIN DELETE FROM tp; END p;
+          END;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "", definition, 1);
+
+      assertEquals("BEGIN DELETE FROM tp ;", text(body));
+      assertFalse(body.overloadsMerged());
+    }
+
+    @Test
+    @DisplayName("locate: 条件付きコンパイルで見出しだけを書き分けても、本体にどの分岐の見出し（引数の型）も含めない")
+    void testConditionalHeaders() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p(a NUMBER); END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            $IF $$v12 $THEN
+            PROCEDURE p(a t%ROWTYPE) IS
+            $ELSIF $$v11 $THEN
+            PROCEDURE p(a t%ROWTYPE, b v%ROWTYPE) IS
+            $ELSE
+            PROCEDURE p(a t%ROWTYPE, b u%ROWTYPE) IS
+            $END
+            BEGIN DELETE FROM tp; END p;
+          END;
+          """;
+
+      assertEquals("$END BEGIN DELETE FROM tp ;", text(locate("PKG.P", "", definition)));
+    }
+
+    @Test
+    @DisplayName("locate: 引数の並びの中の条件付きコンパイルは、分岐ごとに読み、最初の分岐の引数名で対応付ける")
+    void testConditionalParameters() {
+      final String definition =
+          """
+          CREATE OR REPLACE PACKAGE pkg AS PROCEDURE p(a NUMBER, b NUMBER); PROCEDURE p(a NUMBER, c NUMBER); END;
+          CREATE OR REPLACE PACKAGE BODY pkg AS
+            PROCEDURE p(a NUMBER $IF $$x $THEN , b NUMBER $ELSE , c NUMBER $END) IS BEGIN DELETE FROM t1; END p;
+            PROCEDURE p(a NUMBER, c NUMBER) IS BEGIN DELETE FROM t2; END p;
+          END;
+          """;
+
+      final FunctionBody body = locate("PKG.P", "A NUMBER, B NUMBER", definition, 2);
+
+      assertEquals("BEGIN DELETE FROM t1 ;", text(body));
+      assertFalse(body.overloadsMerged());
+    }
+
+    @Test
     @DisplayName("locate: 条件付きコンパイルの分岐ごとにBEGIN・サブプログラムを書き分けても、全分岐を範囲に含め、後ろの範囲をずらさない")
     void testConditionalCompilation() {
       final String definition =
@@ -714,7 +928,7 @@ class FunctionBodyLocatorTest {
           p1);
       final FunctionBody p2 = locate("PKG.P2", "", definition);
       assertEquals("BEGIN DELETE FROM e ; || BEGIN DELETE FROM f ;", text(p2));
-      assertTrue(p2.overloadsMerged());
+      assertFalse(p2.overloadsMerged(), "カタログ上はオーバーロードではない");
       assertEquals("BEGIN DELETE FROM g ;", text(locate("PKG.P3", "", definition)));
     }
 
@@ -749,9 +963,23 @@ class FunctionBodyLocatorTest {
     }
 
     private FunctionBody locate(String name, String arguments, String definition) {
+      return locate(name, arguments, definition, 1);
+    }
+
+    private FunctionBody locate(
+        String name, String arguments, String definition, int overloadCount) {
       return locator.locate(
           new FunctionEntity(
-              "db", "SCOTT", name, 1, 1, "PROCEDURE", arguments, "", "PL/SQL", definition));
+              "db",
+              "SCOTT",
+              name,
+              1,
+              overloadCount,
+              "PROCEDURE",
+              arguments,
+              "",
+              "PL/SQL",
+              definition));
     }
   }
 }

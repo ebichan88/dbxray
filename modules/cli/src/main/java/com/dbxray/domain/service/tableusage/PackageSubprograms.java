@@ -11,21 +11,26 @@ import java.util.Set;
  * Oracleのパッケージ本体から、最上位で定義されたサブプログラムの範囲を求めるクラス<br>
  * {@code BEGIN}・{@code CASE}と{@code END}の対応をスタック（ヒープ上）で数える。{@code IF}・{@code LOOP}は{@code END
  * IF}・{@code END LOOP}で閉じるため数えない。{@code CASE}は文と式を区別する（式は{@code END}だけで閉じ、直後に{@code LOOP}・{@code
- * IF}が続いても{@code END LOOP}・{@code END IF}ではない）。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める。
- * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態から読み、{@code
+ * IF}が続いても{@code END LOOP}・{@code END IF}ではない）。宣言部の中の入れ子のサブプログラムは、外側のサブプログラムの範囲に含める。<br>
+ * サブプログラムの見出しは、宣言部の先頭と前の宣言の後ろだけで読む（{@code function}・{@code procedure}は予約語でなく、実行部や{@code
+ * CURSOR}の問い合わせの列の別名にも使えるため）。SQLの中のインラインの関数（{@code WITH FUNCTION}）は、位置によらず見出しとして読んで{@code
+ * END}の対応を数えるが、パッケージのサブプログラムとしては数えない。<br>
+ * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態（まとまりのスタック・括弧の深さ・読んでいる見出し）から読み、{@code
  * $END}の後は最初の分岐を読み終えた状態を続ける（分岐ごとに{@code BEGIN}を書き分けても対応がずれないようにするため）。
+ * 分岐ごとに見出しが違う場合は、本体の始まりを後ろの分岐の見出しの{@code IS}・{@code AS}の後ろにして、どの分岐の見出しも本体に含めない。<br>
  * スタックは要素を共有する連結リストで持ち、分岐の時点の状態を複製せずに覚える
  */
 final class PackageSubprograms {
-
-  /** 直後から宣言（サブプログラムの見出し）が始まる語。{@code WITH}はSQLの中のインラインのPL/SQL関数 */
-  private static final Set<String> DECLARATION_PREDECESSORS = Set.of("IS", "AS", "DECLARE", "WITH");
 
   /** 直後から文が始まる語（ここに現れる{@code CASE}は{@code CASE}文） */
   private static final Set<String> STATEMENT_PREDECESSORS =
       Set.of("BEGIN", "THEN", "ELSE", "LOOP", "EXCEPTION");
 
   private final SqlTokens tokens;
+
+  /** パッケージ本体の宣言部の先頭の位置（パッケージ本体の{@code IS}・{@code AS}の次） */
+  private final int declarationsStart;
+
   private final List<Subprogram> found = new ArrayList<>();
 
   /** {@code END}で閉じるまとまりのスタック（先頭が最も内側。空はnull） */
@@ -39,8 +44,9 @@ final class PackageSubprograms {
   /** 読んでいる条件付きコンパイルのまとまり（先頭が最も内側） */
   private final Deque<Conditional> conditionals = new ArrayDeque<>();
 
-  private PackageSubprograms(List<SqlToken> tokens) {
+  private PackageSubprograms(List<SqlToken> tokens, int declarationsStart) {
     this.tokens = new SqlTokens(tokens);
+    this.declarationsStart = declarationsStart;
   }
 
   /**
@@ -69,7 +75,7 @@ final class PackageSubprograms {
    * @return 最上位のサブプログラム（現れた順）。{@code END}で閉じていないものは含まない
    */
   static List<Subprogram> find(List<SqlToken> tokens, int from) {
-    final PackageSubprograms finder = new PackageSubprograms(tokens);
+    final PackageSubprograms finder = new PackageSubprograms(tokens, from);
     int i = from;
     while (i < tokens.size()) {
       i = finder.visit(i);
@@ -132,44 +138,46 @@ final class PackageSubprograms {
   }
 
   /**
-   * キーワード1つ分の状態の変化
+   * キーワード1つ分の状態の変化（語ごとに大文字の文字列を作らないよう、大文字小文字を区別しない比較で判定する）
    *
    * @return 次に読む字句の位置
    */
   private int visitKeyword(int i, SqlToken token) {
     final SqlToken next = tokens.at(i + 1);
-    switch (AsciiCase.toUpper(token.text())) {
-      case "FUNCTION", "PROCEDURE" -> {
-        if (isDeclarationStart(i)
-            && next != null
-            && next.isName()
-            && !next.isWord("IS")
-            && !next.isWord("AS")) {
-          header = new Header(SqlNames.identifier(next, Dbms.ORACLE), i + 1, parenDepth);
-        }
+    if (token.isWord("FUNCTION") || token.isWord("PROCEDURE")) {
+      startHeader(i, next);
+    } else if (token.isWord("DECLARE")) {
+      push(new Block(BlockKind.BLOCK, null, true));
+    } else if (token.isWord("BEGIN")) {
+      if (blocks != null && blocks.block.awaitingBegin) {
+        final Block started = blocks.block;
+        blocks = blocks.next;
+        push(new Block(started.kind, started.header, false));
+      } else {
+        push(new Block(BlockKind.BLOCK, null, false));
       }
-      case "DECLARE" -> push(new Block(BlockKind.BLOCK, null, true));
-      case "BEGIN" -> {
-        if (blocks != null && blocks.block.awaitingBegin) {
-          final Block started = blocks.block;
-          blocks = blocks.next;
-          push(new Block(started.kind, started.header, false));
-        } else {
-          push(new Block(BlockKind.BLOCK, null, false));
-        }
-      }
-      case "CASE" ->
-          push(
-              new Block(
-                  isCaseStatement(i) ? BlockKind.CASE_STATEMENT : BlockKind.CASE_EXPRESSION,
-                  null,
-                  false));
-      case "END" -> {
-        return visitEnd(i, next);
-      }
-      default -> {}
+    } else if (token.isWord("CASE")) {
+      push(
+          new Block(
+              isCaseStatement(i) ? BlockKind.CASE_STATEMENT : BlockKind.CASE_EXPRESSION,
+              null,
+              false));
+    } else if (token.isWord("END")) {
+      return visitEnd(i, next);
     }
     return i + 1;
+  }
+
+  /** {@code FUNCTION}・{@code PROCEDURE}がサブプログラムの見出しの始まりなら、見出しを読み始める */
+  private void startHeader(int i, SqlToken next) {
+    final boolean inline = tokens.isWordAt(i - 1, "WITH");
+    if ((inline || isDeclarationStart(i))
+        && next != null
+        && next.isName()
+        && !next.isWord("IS")
+        && !next.isWord("AS")) {
+      header = new Header(SqlNames.identifier(next, Dbms.ORACLE), i + 1, parenDepth, inline);
+    }
   }
 
   /**
@@ -187,7 +195,7 @@ final class PackageSubprograms {
     if (blocks != null) {
       final Block closed = blocks.block;
       blocks = blocks.next;
-      if (closed.kind == BlockKind.SUBPROGRAM && blocks == null) {
+      if (closed.kind == BlockKind.SUBPROGRAM && blocks == null && !closed.header.inline) {
         found.add(closed.header.toSubprogram(i));
       }
     }
@@ -197,37 +205,82 @@ final class PackageSubprograms {
   /** 条件付きコンパイルの選択指令（{@code $IF}・{@code $ELSIF}・{@code $ELSE}・{@code $END}・{@code $ERROR}） */
   private void visitDirective(SqlToken token) {
     switch (AsciiCase.toUpper(token.text())) {
-      case "$IF", "$ERROR" -> conditionals.push(new Conditional(blocks, parenDepth));
+      case "$IF", "$ERROR" ->
+          conditionals.push(new Conditional(new State(blocks, parenDepth, copyOf(header))));
       case "$ELSIF", "$ELSE" -> {
         final Conditional conditional = conditionals.peek();
         if (conditional != null) {
-          if (!conditional.firstBranchDone) {
-            conditional.firstBranchDone = true;
-            conditional.firstBranchBlocks = blocks;
-            conditional.firstBranchParenDepth = parenDepth;
-          }
-          blocks = conditional.startBlocks;
-          parenDepth = conditional.startParenDepth;
+          endBranch(conditional);
+          blocks = conditional.start.blocks;
+          parenDepth = conditional.start.parenDepth;
+          header = copyOf(conditional.start.header);
         }
       }
       case "$END" -> {
         final Conditional conditional = conditionals.poll();
-        if (conditional != null && conditional.firstBranchDone) {
-          blocks = conditional.firstBranchBlocks;
-          parenDepth = conditional.firstBranchParenDepth;
+        if (conditional != null) {
+          endBranch(conditional);
+          blocks = conditional.first.blocks;
+          parenDepth = conditional.first.parenDepth;
+          header = conditional.first.header;
         }
       }
       default -> {}
     }
   }
 
-  /** サブプログラムの見出しを置ける位置（宣言部の先頭・前の宣言の後ろ）か */
+  /**
+   * 読んでいた分岐を終える。最初の分岐の終わりの状態は、{@code $END}の後に続ける状態として覚える<br>
+   * 後ろの分岐が、同じ入れ子の位置で別の見出しを読み終えていれば、本体の始まりをそちらの{@code IS}・{@code AS}の後ろへ寄せる （見出しが分岐で違っても、本体は{@code
+   * $END}の後に共通で続くため）
+   */
+  private void endBranch(Conditional conditional) {
+    final State end = new State(blocks, parenDepth, header);
+    if (conditional.first == null) {
+      conditional.first = end;
+      return;
+    }
+    final Header kept = pendingHeader(conditional.first.blocks);
+    final Header other = pendingHeader(end.blocks);
+    if (kept != null && other != null && conditional.first.blocks.next == end.blocks.next) {
+      kept.bodyStart = Math.max(kept.bodyStart, other.bodyStart);
+    }
+  }
+
+  /** 見出しを読み終え、自身の{@code BEGIN}をまだ読んでいないサブプログラムの見出し。そうでなければnull */
+  private static Header pendingHeader(Node node) {
+    return node != null && node.block.kind == BlockKind.SUBPROGRAM && node.block.awaitingBegin
+        ? node.block.header
+        : null;
+  }
+
+  private static Header copyOf(Header header) {
+    return header == null ? null : header.copy();
+  }
+
+  /**
+   * サブプログラムの見出しを置ける位置（宣言部の先頭・前の宣言の後ろ）か<br>
+   * {@code BEGIN}より後の実行部には置けない。{@code IS}・{@code AS}の次は、宣言部を開くもの（{@link #opensDeclarations}）だけとし、
+   * {@code CURSOR c IS …}の{@code IS}や列の別名の{@code AS}の次は含めない
+   */
   private boolean isDeclarationStart(int i) {
+    if (blocks != null && !blocks.block.awaitingBegin) {
+      return false;
+    }
     final SqlToken previous = tokens.at(i - 1);
-    return previous == null
-        || previous.isSymbol(";")
-        || previous.kind() == SqlTokenKind.DIRECTIVE
-        || previous.isAnyWord(DECLARATION_PREDECESSORS);
+    return opensDeclarations(i)
+        || (previous != null
+            && (previous.isSymbol(";")
+                || previous.kind() == SqlTokenKind.DIRECTIVE
+                || previous.isWord("DECLARE")));
+  }
+
+  /** 位置が、いま読んでいる宣言部の先頭（パッケージ本体・サブプログラムの{@code IS}・{@code AS}の次）か */
+  private boolean opensDeclarations(int i) {
+    if (blocks == null) {
+      return i == declarationsStart;
+    }
+    return blocks.block.header != null && blocks.block.header.bodyStart == i;
   }
 
   /** 文の始まりに現れた{@code CASE}は{@code CASE}文。{@code CASE}式の中の{@code CASE}は常に式 */
@@ -253,18 +306,27 @@ final class PackageSubprograms {
   }
 
   /**
-   * 宣言の{@code IS}・{@code AS}の直後から、呼び出し仕様の言語を求めるメソッド
+   * 宣言の{@code IS}・{@code AS}の直後から、呼び出し仕様の言語を求めるメソッド<br>
+   * {@code LANGUAGE}・{@code EXTERNAL}は予約語でなく、局所変数の名前（{@code language VARCHAR2(10);}）にも使えるため、
+   * 呼び出し仕様の続き（{@code LANGUAGE JAVA NAME}・{@code LANGUAGE C NAME|LIBRARY}・{@code EXTERNAL
+   * NAME|LIBRARY}）がある場合だけ呼び出し仕様とする
    *
-   * @return {@code LANGUAGE JAVA}は{@code JAVA}、{@code EXTERNAL}は{@code C}。呼び出し仕様でなければ空文字
+   * @return {@code LANGUAGE JAVA}は{@code JAVA}、{@code LANGUAGE C}・{@code EXTERNAL}は{@code
+   *     C}。呼び出し仕様でなければ空文字
    */
   static String callSpecLanguage(SqlTokens tokens, int i) {
-    if (tokens.isWordAt(i, "EXTERNAL")) {
-      return "C";
+    if (tokens.isWordAt(i, "LANGUAGE")) {
+      if (tokens.isWordAt(i + 1, "JAVA") && tokens.isWordAt(i + 2, "NAME")) {
+        return "JAVA";
+      }
+      return tokens.isWordAt(i + 1, "C") && isCSpecificationClauseAt(tokens, i + 2) ? "C" : "";
     }
-    if (!tokens.isWordAt(i, "LANGUAGE")) {
-      return "";
-    }
-    return tokens.isNameAt(i + 1) ? SqlNames.identifier(tokens.at(i + 1), Dbms.ORACLE) : "LANGUAGE";
+    return tokens.isWordAt(i, "EXTERNAL") && isCSpecificationClauseAt(tokens, i + 1) ? "C" : "";
+  }
+
+  /** Cの呼び出し仕様の{@code LANGUAGE C}・{@code EXTERNAL}に続く句（{@code NAME}・{@code LIBRARY}）か */
+  private static boolean isCSpecificationClauseAt(SqlTokens tokens, int i) {
+    return tokens.isWordAt(i, "NAME") || tokens.isWordAt(i, "LIBRARY");
   }
 
   /** 宣言中のサブプログラムの見出し（{@code FUNCTION 名前 (引数…) … IS}の{@code IS}まで） */
@@ -287,10 +349,25 @@ final class PackageSubprograms {
     private String language = "";
     private int bodyStart;
 
-    private Header(String name, int nameIndex, int parenDepth) {
+    /** SQLの中のインラインの関数（{@code WITH FUNCTION}）か。パッケージのサブプログラムとして数えない */
+    private final boolean inline;
+
+    private Header(String name, int nameIndex, int parenDepth, boolean inline) {
       this.name = name;
       this.nameIndex = nameIndex;
       this.parenDepth = parenDepth;
+      this.inline = inline;
+    }
+
+    /** 条件付きコンパイルの分岐ごとに読み進められるよう、読み途中の状態ごと複製する */
+    private Header copy() {
+      final Header copy = new Header(name, nameIndex, parenDepth, inline);
+      copy.parameterNames.addAll(parameterNames);
+      copy.parameterListDepth = parameterListDepth;
+      copy.parameterListClosed = parameterListClosed;
+      copy.language = language;
+      copy.bodyStart = bodyStart;
+      return copy;
     }
 
     private Subprogram toSubprogram(int bodyEnd) {
@@ -318,25 +395,26 @@ final class PackageSubprograms {
   /** スタックの要素（後ろの要素を共有する連結リスト） */
   private record Node(Block block, Node next) {}
 
+  /**
+   * 読み進めている状態
+   *
+   * @param blocks まとまりのスタック
+   * @param parenDepth 括弧の深さ
+   * @param header 宣言中のサブプログラムの見出し。無ければnull
+   */
+  private record State(Node blocks, int parenDepth, Header header) {}
+
   /** 条件付きコンパイルのまとまり1つ */
   private static final class Conditional {
 
-    /** {@code $IF}の時点の状態（各分岐の読み始めの状態） */
-    private final Node startBlocks;
+    /** {@code $IF}の時点の状態（各分岐の読み始めの状態。見出しは分岐のたびに複製して読む） */
+    private final State start;
 
-    private final int startParenDepth;
+    /** 最初の分岐を読み終えた時点の状態（{@code $END}の後に続ける状態）。読み終えていなければnull */
+    private State first;
 
-    /** 最初の分岐を読み終えたか */
-    private boolean firstBranchDone;
-
-    /** 最初の分岐を読み終えた時点の状態（{@code $END}の後に続ける状態） */
-    private Node firstBranchBlocks;
-
-    private int firstBranchParenDepth;
-
-    private Conditional(Node startBlocks, int startParenDepth) {
-      this.startBlocks = startBlocks;
-      this.startParenDepth = startParenDepth;
+    private Conditional(State start) {
+      this.start = start;
     }
   }
 }

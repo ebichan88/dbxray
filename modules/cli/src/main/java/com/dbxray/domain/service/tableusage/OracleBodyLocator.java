@@ -10,8 +10,10 @@ import java.util.List;
 /**
  * Oracleの定義から本体を切り出すクラス<br>
  * 単独の関数・プロシージャは見出しの{@code IS}・{@code AS}の後ろ全体、パッケージのサブプログラムは、パッケージ本体の最上位で定義された同名のサブプログラムの範囲とする。
- * パッケージのサブプログラムは同じパッケージの定義を共有するため、直前に読んだ定義の字句とサブプログラムの範囲を使い回す
- * （同じスキーマの関数は名前の順に並び、同じパッケージのサブプログラムは続けて現れる）
+ * パッケージのサブプログラムは同じパッケージの定義を共有するため、直前に読んだパッケージの字句とサブプログラムの範囲を使い回す
+ * （同じスキーマの関数は名前の順に並び、同じパッケージのサブプログラムは続けて現れる）。
+ * 同じパッケージの定義は、カタログの行によらず同一のため、定義の全文は比べず、スキーマ・パッケージの名前と定義の長さだけを照らす
+ * （全文を比べると、サブプログラムの数だけ巨大な定義を比べることになる）
  */
 final class OracleBodyLocator implements FunctionBodyLocator {
 
@@ -26,8 +28,11 @@ final class OracleBodyLocator implements FunctionBodyLocator {
    */
   private static final String PACKAGE_BODY_SEPARATOR = "\n\n" + PACKAGE_BODY_PREFIX;
 
-  /** 直前に読んだ定義（パッケージのサブプログラムで使い回す） */
-  private String cachedDefinition;
+  /** 直前に読んだパッケージの、スキーマと名前（{@link #packageKey}）。無ければnull */
+  private String cachedPackageKey;
+
+  /** 直前に読んだパッケージの定義の長さ */
+  private int cachedDefinitionLength;
 
   private OracleDefinition cachedParsed;
 
@@ -38,16 +43,38 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     if (definition.isBlank()) {
       return FunctionBody.notAnalyzable(TableUsageStatus.NO_DEFINITION);
     }
-    if (!definition.equals(cachedDefinition)) {
-      cachedParsed = parse(definition);
-      cachedDefinition = definition;
-    }
-    return switch (cachedParsed) {
+    return switch (parsedDefinition(function)) {
       case OracleDefinition.Unanalyzable unanalyzable ->
           FunctionBody.notAnalyzable(unanalyzable.status());
       case OracleDefinition.Standalone standalone -> locateStandalone(standalone);
       case OracleDefinition.PackageBody packageBody -> locateSubprogram(function, packageBody);
     };
+  }
+
+  /** 定義を読んだ結果。パッケージのサブプログラムは、直前に同じパッケージを読んでいれば使い回す */
+  private OracleDefinition parsedDefinition(FunctionEntity function) {
+    final String packageKey = packageKey(function);
+    final int definitionLength = function.definition().length();
+    if (packageKey == null) {
+      return parse(function.definition());
+    }
+    if (!packageKey.equals(cachedPackageKey) || definitionLength != cachedDefinitionLength) {
+      cachedParsed = parse(function.definition());
+      cachedPackageKey = packageKey;
+      cachedDefinitionLength = definitionLength;
+    }
+    return cachedParsed;
+  }
+
+  /**
+   * パッケージのサブプログラム（{@code パッケージ.サブプログラム}）の、パッケージを指す値
+   *
+   * @return スキーマとパッケージ名。単独の関数・プロシージャ（名前に{@code .}が無い）はnull
+   */
+  private static String packageKey(FunctionEntity function) {
+    final String fullName = function.functionName();
+    final int dot = fullName.lastIndexOf('.');
+    return dot < 0 ? null : function.schemaName() + '\n' + fullName.substring(0, dot);
   }
 
   private static FunctionBody locateStandalone(OracleDefinition.Standalone standalone) {
@@ -64,8 +91,9 @@ final class OracleBodyLocator implements FunctionBodyLocator {
 
   /**
    * パッケージ本体から、名前の一致するサブプログラムの範囲を切り出すメソッド<br>
-   * 同名が複数（オーバーロード）なら、宣言の引数名の並びで1つに決める。決まらなければすべての範囲を持ち、その旨の印を立てる。 範囲は本体を閉じる{@code
-   * END}まで読めたものだけのため、字句を最後まで読めなかった印は立てない
+   * 同名が複数（オーバーロード）なら、宣言の引数名の並びで絞る。1つに決まらなければ、絞った本体すべての範囲を持つ<br>
+   * カタログ上もオーバーロードされている場合だけ、本体をまとめた旨の印を立てる（条件付きコンパイルで同じ名前を分岐ごとに書いただけなら立てない）<br>
+   * 範囲は本体を閉じる{@code END}まで読めたものだけのため、字句を最後まで読めなかった印は立てない
    */
   private static FunctionBody locateSubprogram(
       FunctionEntity function, OracleDefinition.PackageBody packageBody) {
@@ -76,25 +104,34 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     if (sameName.isEmpty()) {
       return FunctionBody.notAnalyzable(TableUsageStatus.SUBPROGRAM_NOT_FOUND);
     }
-    List<Subprogram> chosen = sameName;
-    if (sameName.size() > 1) {
-      final List<String> parameterNames = parameterNames(function.functionArguments());
-      final List<Subprogram> byParameters =
-          sameName.stream().filter(s -> s.parameterNames().equals(parameterNames)).toList();
-      if (byParameters.size() == 1) {
-        chosen = byParameters;
-      }
-    }
-    if (chosen.size() == 1 && !chosen.get(0).language().isEmpty()) {
-      return FunctionBody.unsupportedLanguage(chosen.get(0).language());
-    }
+    final List<Subprogram> chosen = narrowByParameterNames(sameName, function.functionArguments());
     final List<SqlToken> tokens = packageBody.lexed().tokens();
     final List<List<SqlToken>> segments =
         chosen.stream()
             .filter(s -> s.language().isEmpty())
             .map(s -> tokens.subList(s.bodyStart(), s.bodyEnd()))
             .toList();
-    return FunctionBody.oracle(segments, false, chosen.size() > 1, packageBody.invokerRights());
+    if (segments.isEmpty()) {
+      return FunctionBody.unsupportedLanguage(chosen.get(0).language());
+    }
+    return FunctionBody.oracle(
+        segments, false, chosen.size() > 1 && function.isOverloaded(), packageBody.invokerRights());
+  }
+
+  /**
+   * 同名のサブプログラムを、カタログの引数名の並びと一致するものに絞るメソッド
+   *
+   * @return 引数名の並びが一致するもの。1つも一致しなければ、同名のものすべて
+   */
+  private static List<Subprogram> narrowByParameterNames(
+      List<Subprogram> sameName, String functionArguments) {
+    if (sameName.size() == 1) {
+      return sameName;
+    }
+    final List<String> parameterNames = parameterNames(functionArguments);
+    final List<Subprogram> matched =
+        sameName.stream().filter(s -> s.parameterNames().equals(parameterNames)).toList();
+    return matched.isEmpty() ? sameName : matched;
   }
 
   /**
@@ -150,7 +187,8 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     final boolean invokerRights = hasInvokerRights(tokens, nameEnd, is < 0 ? nameEnd : is);
     if (!isPackage) {
       if (is < 0) {
-        return new OracleDefinition.Standalone(lexed, "", nameEnd, invokerRights);
+        // IS・ASの無い定義（AGGREGATE USING・PIPELINED USING等）に本体は無く、残りは見出しのため解析しない
+        return new OracleDefinition.Unanalyzable(TableUsageStatus.NO_DEFINITION);
       }
       return new OracleDefinition.Standalone(
           lexed, PackageSubprograms.callSpecLanguage(tokens, is + 1), is + 1, invokerRights);
@@ -285,6 +323,12 @@ final class OracleBodyLocator implements FunctionBodyLocator {
      * @param subprograms 最上位のサブプログラム
      */
     record PackageBody(SqlLexResult lexed, List<Subprogram> subprograms, boolean invokerRights)
-        implements OracleDefinition {}
+        implements OracleDefinition {
+
+      /** リストは変更不可な複製として保持する（読んだ結果は後続の呼び出しで使い回すため） */
+      public PackageBody {
+        subprograms = List.copyOf(subprograms);
+      }
+    }
   }
 }

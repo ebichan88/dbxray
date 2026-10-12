@@ -18,6 +18,7 @@ final class SqlTokens {
     this.tokens = tokens;
   }
 
+  /** 字句の数 */
   int size() {
     return tokens.size();
   }
@@ -27,16 +28,19 @@ final class SqlTokens {
     return index >= 0 && index < tokens.size() ? tokens.get(index) : null;
   }
 
+  /** 位置の字句が、指定の演算子・区切り記号か */
   boolean isSymbolAt(int index, String symbol) {
     final SqlToken token = at(index);
     return token != null && token.isSymbol(symbol);
   }
 
+  /** 位置の字句が、大文字小文字を区別しない引用符の無い単語として、キーワードと一致するか */
   boolean isWordAt(int index, String keyword) {
     final SqlToken token = at(index);
     return token != null && token.isWord(keyword);
   }
 
+  /** 位置の字句が、名前の部品（引用符の無い単語か、引用符付きの識別子）か */
   boolean isNameAt(int index) {
     final SqlToken token = at(index);
     return token != null && token.isName();
