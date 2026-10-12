@@ -24,13 +24,17 @@ public class ViewpointTest {
   @DisplayName("of: 識別子・表示名・説明の前後の空白を除去し、表示名を省略した場合は識別子を表示名とする")
   void testOfNormalizesValues() {
     Viewpoint named = Viewpoint.of(" order ", " 受注管理 ", " 受注の流れ \n", List.of("orders"));
-    Viewpoint unnamed = Viewpoint.of("order", "", null, List.of("orders"));
+    // 表示名・説明の未指定は、null・空白のどちらでも同じに扱う
+    Viewpoint omitted = Viewpoint.of("order", null, null, List.of("orders"));
+    Viewpoint blank = Viewpoint.of("order", " ", "", List.of("orders"));
 
     assertEquals("order", named.id());
     assertEquals("受注管理", named.name());
     assertEquals("受注の流れ", named.description());
-    assertEquals("order", unnamed.name());
-    assertEquals("", unnamed.description());
+    assertEquals("order", omitted.name());
+    assertEquals("", omitted.description());
+    assertEquals("order", blank.name());
+    assertEquals("", blank.description());
   }
 
   @Test

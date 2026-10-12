@@ -109,6 +109,35 @@ public class TableNamePatternsTest {
   }
 
   @Test
+  @DisplayName("matches: 名前に含まれる$・#・.・+等は正規表現の記号ではなく文字そのものとして照合し、特別な意味を持つのは*だけ")
+  void testRegexMetacharactersAreLiteral() {
+    // Oracleのマテリアライズドビューのログ（MLOG$_）・ごみ箱（BIN$）のように、$や#を含む名前は実在する
+    TableNamePatterns filter = TableNamePatterns.of(List.of("!MLOG$_*", "!BIN$*", "!TMP#*"));
+    assertFalse(filter.matches(TableKey.of("SCOTT", "MLOG$_EMP")));
+    assertFalse(filter.matches(TableKey.of("SCOTT", "BIN$abc==$0")));
+    assertFalse(filter.matches(TableKey.of("SCOTT", "TMP#WORK")));
+    assertTrue(filter.matches(TableKey.of("SCOTT", "MLOG_EMP")));
+
+    // スキーマ修飾の後の.はテーブル名の一部として文字どおりに照合する
+    TableNamePatterns dotted = TableNamePatterns.of(List.of("sales.v1.orders", "a+b"));
+    assertTrue(dotted.matches(TableKey.of("sales", "v1.orders")));
+    assertFalse(dotted.matches(TableKey.of("sales", "v1Xorders")));
+    assertTrue(dotted.matches(TableKey.of("public", "a+b")));
+    assertFalse(dotted.matches(TableKey.of("public", "aab")));
+  }
+
+  @Test
+  @DisplayName("matches: ワイルドカードは途中・複数箇所にも置ける")
+  void testWildcardInMiddleAndMultiple() {
+    TableNamePatterns filter = TableNamePatterns.of(List.of("emp*_bk", "*log*"));
+    assertTrue(filter.matches(TableKey.of("public", "employee_bk")));
+    assertTrue(filter.matches(TableKey.of("public", "emp_bk")));
+    assertFalse(filter.matches(TableKey.of("public", "employee_bk2")));
+    assertTrue(filter.matches(TableKey.of("public", "access_log_2024")));
+    assertTrue(filter.matches(TableKey.of("public", "log")));
+  }
+
+  @Test
   @DisplayName("matches: 空白のみのパターンは無視される")
   void testBlankPatternsAreIgnored() {
     TableNamePatterns filter = TableNamePatterns.of(List.of("  ", "employee"));

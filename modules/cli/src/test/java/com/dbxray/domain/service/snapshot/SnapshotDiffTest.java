@@ -170,6 +170,31 @@ public class SnapshotDiffTest {
   }
 
   @Test
+  @DisplayName("compare: コミット済みのファイルに空行・空白だけの行が混ざっていても、読み飛ばして差分なしとする")
+  void testIgnoresBlankLines(@TempDir Path generated, @TempDir Path committed) throws IOException {
+    write(generated, TABLES, table("t1", "integer"), table("t2", "text"));
+    // 手で編集・マージしたファイルを想定する
+    write(committed, TABLES, "", table("t1", "integer"), "  ", table("t2", "text"), "");
+
+    assertFalse(service.compare(generated, committed).hasDifference());
+  }
+
+  @Test
+  @DisplayName("compare: コミット済みのファイルの改行がCRLFでも差分なしとする（Gitが改行を変換して取り出した場合）")
+  void testIgnoresCrlfLineEndings(@TempDir Path generated, @TempDir Path committed)
+      throws IOException {
+    write(generated, TABLES, table("t1", "integer"), table("t2", "text"));
+    Path file = committed.resolve(TABLES);
+    Files.createDirectories(file.getParent());
+    Files.writeString(
+        file,
+        table("t1", "integer") + "\r\n" + table("t2", "text") + "\r\n",
+        StandardCharsets.UTF_8);
+
+    assertFalse(service.compare(generated, committed).hasDifference());
+  }
+
+  @Test
   @DisplayName("compare: 同名の関数（オーバーロード）は引数で区別する")
   void testDistinguishesOverloadedFunctions(@TempDir Path generated, @TempDir Path committed)
       throws IOException {
