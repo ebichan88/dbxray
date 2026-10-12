@@ -430,6 +430,7 @@ classDiagram
   Oracleの実行者・Oracleの定義者権限で所有者のスキーマに無い名前のシノニム）を`SchemaResolution`で持つ（`TableUsage.resolution`）。
 - 解析しなかった場合は、理由を状態（`TableUsageStatus`。対象外の言語・定義が無い・wrap・サブプログラムが見つからない）で表す。
   抽出を行わない実行（プレビューの機能を有効にしていない実行）の結果は`NOT_ANALYZED`で、定義書の節・参考情報を出さない。
+  参考情報（JSON）には、状態と動的SQLの種類を定数の名前ではなく`id()`の固定の値で出力する（MCPサーバーが読む値のため、定数の改名で形式が変わらないようにする）。
 - 抽出はプレビューの機能（`application.PreviewFeature.FUNCTION_TABLE_USAGE`。`--preview`）で、`SchemaExportPipeline`が
   スキーマ単位で取得した定義本体から行い、関数1つ分の出力内容（`domain.model.target.FunctionDefinitionContent`。関数・利用しているテーブル）
   として各`ExportSink`へ渡す。スナップショットには含めず、定義書の節と参考情報（`FunctionTableUsagesInsight`）にだけ出す。

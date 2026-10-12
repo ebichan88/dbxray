@@ -6,12 +6,16 @@ package com.dbxray.application;
  */
 public enum PreviewFeature {
   /** 関数・プロシージャの定義書の「利用しているテーブル」と、その参考情報（{@code functionTableUsages.json}） */
-  FUNCTION_TABLE_USAGE("functionTableUsage");
+  FUNCTION_TABLE_USAGE(
+      "functionTableUsage",
+      "tables used by each function and procedure, extracted from its definition");
 
   private final String id;
+  private final String description;
 
-  PreviewFeature(String id) {
+  PreviewFeature(String id, String description) {
     this.id = id;
+    this.description = description;
   }
 
   /**
@@ -21,5 +25,14 @@ public enum PreviewFeature {
    */
   public String id() {
     return id;
+  }
+
+  /**
+   * {@code --help}で機能を説明する文を取得するメソッド
+   *
+   * @return 英語の説明（名詞句。文頭は小文字、句点なし）
+   */
+  public String description() {
+    return description;
   }
 }

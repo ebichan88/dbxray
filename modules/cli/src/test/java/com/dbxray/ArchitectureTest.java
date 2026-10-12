@@ -5,6 +5,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.dbxray.domain.repository.FileRepository;
+import com.dbxray.domain.service.insight.InsightWriter;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -111,6 +113,18 @@ public class ArchitectureTest {
         .because(
             "DB由来の名前を含むパスは、OutputPathContainmentTestが出力先の外を指さないことを検査する"
                 + "OutputPathResolver（DocumentLocations等の規則）を経由して組み立てる必要があるため")
+        .check(MAIN_CLASSES);
+  }
+
+  @Test
+  @DisplayName("ファイルの削除（FileRepository#deleteFile）は、前回のプレビューの参考情報を消すInsightWriterだけが呼ぶ")
+  void testFileDeletionIsLimitedToInsightWriter() {
+    noClasses()
+        .that()
+        .doNotHaveFullyQualifiedName(InsightWriter.class.getName())
+        .should()
+        .callMethod(FileRepository.class, "deleteFile", Path.class)
+        .because("削除の対象を広げないため（ディレクトリの削除は--rm-distの出力先だけで行う。coding-guidelines.mdの「セキュリティ」）")
         .check(MAIN_CLASSES);
   }
 

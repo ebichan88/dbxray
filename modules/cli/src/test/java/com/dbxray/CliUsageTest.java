@@ -2,6 +2,7 @@ package com.dbxray;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.dbxray.application.PreviewFeature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +22,16 @@ public class CliUsageTest {
     }
     for (String name : CliArguments.overrideArgumentNames()) {
       assertTrue(help.contains(name + "=<value>"), name);
+    }
+  }
+
+  @Test
+  @DisplayName("help: プレビューの機能は、PreviewFeatureの名前と説明から示す")
+  void testHelpListsPreviewFeatures() {
+    String help = CliUsage.help();
+
+    for (PreviewFeature feature : PreviewFeature.values()) {
+      assertTrue(help.contains(feature.id() + ": " + feature.description()), feature.id());
     }
   }
 

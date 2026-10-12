@@ -1496,6 +1496,131 @@ public class ExportSchemaUsecaseTest {
     assertFalse(contentOf(functionFile).contains("## 利用しているテーブル"));
   }
 
+  /** 関数（一覧）と、その定義本体を持つ取得結果（定義本体の取得用）を足す */
+  private void addFunction(
+      String schema, String name, String type, String language, String definition) {
+    repository.functions.add(
+        new FunctionEntity("testdb", schema, name, 1, 1, type, "", "", language, ""));
+    repository.functionDefs.add(
+        new FunctionEntity("testdb", schema, name, 1, 1, type, "", "", language, definition));
+  }
+
+  private Path functionTableUsagesFile(String schema) {
+    return DEFAULT_OUT
+        .resolve("insights")
+        .resolve("testdb")
+        .resolve(schema)
+        .resolve("functionTableUsages.json");
+  }
+
+  @Test
+  @DisplayName("--preview: 複数のスキーマの関数を、スキーマごとの参考情報に出力し、他のスキーマのテーブルへの参照も解決する")
+  void testPreviewWritesInsightPerSchema() {
+    setUp();
+    repository.tables.add(table("public", "t1"));
+    repository.tables.add(table("sales", "s1"));
+    addFunction(
+        "public",
+        "f1",
+        "FUNCTION",
+        "sql",
+        "CREATE FUNCTION public.f1() RETURNS int LANGUAGE sql AS $function$"
+            + " DELETE FROM sales.s1 RETURNING 1 $function$");
+    addFunction(
+        "sales",
+        "f2",
+        "FUNCTION",
+        "sql",
+        "CREATE FUNCTION sales.f2() RETURNS int LANGUAGE sql AS $function$"
+            + " SELECT count(*) FROM public.t1 $function$");
+
+    usecase.exportSchema(request(Set.of(PreviewFeature.FUNCTION_TABLE_USAGE)));
+
+    final String publicInsight = contentOf(functionTableUsagesFile("public"));
+    assertTrue(publicInsight.contains("\"schema\":\"public\",\"functions\":[{\"name\":\"f1\""));
+    assertTrue(
+        publicInsight.contains(
+            "\"tables\":[{\"schema\":\"sales\",\"name\":\"s1\",\"operations\":[\"D\"]}]"));
+    final String salesInsight = contentOf(functionTableUsagesFile("sales"));
+    assertTrue(salesInsight.contains("\"schema\":\"sales\",\"functions\":[{\"name\":\"f2\""));
+    assertTrue(
+        salesInsight.contains(
+            "\"tables\":[{\"schema\":\"public\",\"name\":\"t1\",\"operations\":[\"R\"]}]"));
+  }
+
+  @Test
+  @DisplayName("--preview: Oracleでは、PL/SQLの定義本体と所有者のスキーマから、利用しているテーブルを抽出する")
+  void testPreviewAnalyzesOracleFunctions() {
+    setUp();
+    repository = new RecordingRepository(new DatabaseEntity("testdb", Dbms.ORACLE, 19));
+    usecase = usecaseAt.apply(GENERATED_DATE);
+    repository.tables.add(table("SCOTT", "EMP"));
+    addFunction(
+        "SCOTT",
+        "P",
+        "PROCEDURE",
+        "PL/SQL",
+        "CREATE OR REPLACE PROCEDURE p IS BEGIN DELETE FROM emp; END;");
+
+    usecase.exportSchema(request(Set.of(PreviewFeature.FUNCTION_TABLE_USAGE)));
+
+    final String insight = contentOf(functionTableUsagesFile("SCOTT"));
+    assertTrue(insight.contains("\"status\":\"analyzed\""));
+    assertTrue(
+        insight.contains(
+            "\"tables\":[{\"schema\":\"SCOTT\",\"name\":\"EMP\",\"operations\":[\"D\"]}]"));
+  }
+
+  @Test
+  @DisplayName("--preview: 有効にした機能をINFOで記録し、指定しない場合は記録しない")
+  void testPreviewLogsEnabledFeatures() {
+    setUp();
+    repository.tables.add(table("public", "t1"));
+
+    try (CapturedLogs logs = CapturedLogs.of(ExportSchemaUsecase.class)) {
+      usecase.exportSchema(request(Set.of()));
+      assertEquals(List.of(), logs.messages(Level.INFO));
+
+      usecase.exportSchema(request(Set.of(PreviewFeature.FUNCTION_TABLE_USAGE)));
+      assertEquals(
+          List.of("Preview features enabled. [features=functionTableUsage]"),
+          logs.messages(Level.INFO));
+    }
+  }
+
+  @Test
+  @DisplayName("checkDocumentDiff: プレビューの機能の出力（参考情報）は生成せず、比較の対象にもしない")
+  void testCheckSnapshotDiffIgnoresPreview() {
+    setUp();
+    repository.tables.add(table("public", "t1"));
+    addFunction(
+        "public",
+        "f1",
+        "FUNCTION",
+        "sql",
+        "CREATE FUNCTION public.f1() RETURNS int LANGUAGE sql AS $function$"
+            + " DELETE FROM public.t1 RETURNING 1 $function$");
+    usecase.exportSchema(
+        new ExportSchemaRequest(
+            TargetSelection.of(List.of(), List.of(), List.of()),
+            null,
+            "committed",
+            0,
+            80,
+            1,
+            false,
+            Set.of(PreviewFeature.FUNCTION_TABLE_USAGE)));
+    final int writtenBeforeCheck = fileRepository.writtenPaths.size();
+
+    final DiffResult result = checkSnapshotDiff();
+
+    assertFalse(result.hasDifference());
+    assertTrue(
+        fileRepository.writtenPaths.subList(writtenBeforeCheck, fileRepository.writtenPaths.size())
+            .stream()
+            .noneMatch(path -> path.toString().contains("insights")));
+  }
+
   private static ExportSchemaRequest request(Set<PreviewFeature> previewFeatures) {
     return new ExportSchemaRequest(
         TargetSelection.of(List.of(), List.of(), List.of()),

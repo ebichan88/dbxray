@@ -1,7 +1,6 @@
 package com.dbxray.application;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
-import com.dbxray.domain.model.database.DatabaseEntity;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.ForeignKeyEntity;
@@ -42,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -89,8 +89,8 @@ final class SchemaExportPipeline {
     final Sidecar sidecar = sidecarRepository.load(sidecarPath);
     final Annotations annotations = sidecar.annotations();
 
-    final DatabaseEntity database = repository.selectDatabase();
-    final BaseInfoEntity baseInfoEntity = BaseInfoEntity.of(database, LocalDate.now(clock));
+    final BaseInfoEntity baseInfoEntity =
+        BaseInfoEntity.of(repository.selectDatabase(), LocalDate.now(clock));
     final Tables tables = fetchTables(tableScope.schemaNames(), tableScope);
     if (tables.isEmpty()) {
       // 0件でも失敗にはしない（テーブルの無いスキーマもありうる）が、パターンの書き誤りや権限不足で
@@ -264,13 +264,14 @@ final class SchemaExportPipeline {
     sinks.forEach(sink -> sink.writeOverview(targets));
 
     // 関数・プロシージャの個別出力。定義本体が大きくなり得るため、スキーマ単位で本体を取得・出力・破棄する
-    final boolean analyzeTableUsage = previewFeatures.contains(PreviewFeature.FUNCTION_TABLE_USAGE);
+    final Supplier<Function<FunctionEntity, FunctionDefinitionContent>> contentOfSchema =
+        contentOfSchemaFactory(targets, previewFeatures);
     targets
         .functions()
         .schemaNames()
         .forEach(
             schemaName ->
-                exportSchemaFunctionDefinitions(schemaName, targets, sinks, analyzeTableUsage));
+                exportSchemaFunctionDefinitions(schemaName, targets, sinks, contentOfSchema.get()));
 
     // カラム・インデックス・制約は、スキーマ内でさらにchunkSize件ずつに分割して取得・出力・破棄する。
     // これにより、テーブルが1スキーマに集中していても、同時にメモリ保持する詳細情報を最大chunkSize件分に抑える
@@ -295,22 +296,33 @@ final class SchemaExportPipeline {
   }
 
   /**
+   * 関数・プロシージャ1つを出力内容にする関数を、スキーマごとに求める口を組み立てるメソッド<br>
+   * 利用しているテーブルを抽出する（プレビューの機能）場合、解析器はスキーマごとに作るが、出力対象のテーブルの索引は全スキーマで1回だけ求める
+   */
+  private static Supplier<Function<FunctionEntity, FunctionDefinitionContent>>
+      contentOfSchemaFactory(ExportTargets targets, Set<PreviewFeature> previewFeatures) {
+    if (!previewFeatures.contains(PreviewFeature.FUNCTION_TABLE_USAGE)) {
+      return () -> FunctionDefinitionContent::withoutTableUsage;
+    }
+    final Map<String, List<TableEntity>> tablesByName = targets.tables().byTableName();
+    return () -> {
+      final FunctionTableUsageAnalyzer analyzer =
+          FunctionTableUsageAnalyzer.of(targets.tables(), tablesByName, targets.baseInfo().dbms());
+      return function -> new FunctionDefinitionContent(function, analyzer.analyze(function));
+    };
+  }
+
+  /**
    * 定義本体はスキーマ単位で取得・出力・破棄することで、同時にメモリ保持する定義本体を抑える
    *
-   * @param analyzeTableUsage 定義本体から利用しているテーブルを抽出するか（プレビューの機能）
+   * @param contentOf 当該スキーマの関数・プロシージャ1つを出力内容にする関数
    */
   private void exportSchemaFunctionDefinitions(
-      String schemaName, ExportTargets targets, List<ExportSink> sinks, boolean analyzeTableUsage) {
+      String schemaName,
+      ExportTargets targets,
+      List<ExportSink> sinks,
+      Function<FunctionEntity, FunctionDefinitionContent> contentOf) {
     final List<FunctionEntity> functions = repository.selectFunctionDefList(List.of(schemaName));
-    final Function<FunctionEntity, FunctionDefinitionContent> contentOf;
-    if (analyzeTableUsage) {
-      // 解析器は同じパッケージの字句をスキーマの処理の間だけ使い回すため、スキーマごとに作る
-      final FunctionTableUsageAnalyzer analyzer =
-          FunctionTableUsageAnalyzer.of(targets.tables(), targets.baseInfo().dbms());
-      contentOf = function -> new FunctionDefinitionContent(function, analyzer.analyze(function));
-    } else {
-      contentOf = FunctionDefinitionContent::withoutTableUsage;
-    }
     final List<FunctionDefinitionContent> contents = functions.stream().map(contentOf).toList();
     sinks.forEach(sink -> sink.writeFunctionDefinitions(schemaName, contents, targets.baseInfo()));
   }

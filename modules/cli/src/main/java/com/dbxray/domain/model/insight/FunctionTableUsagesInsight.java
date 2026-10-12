@@ -10,7 +10,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * 関数・プロシージャが利用しているテーブルの参考情報1ファイル分（1スキーマ分）<br>
@@ -35,7 +34,7 @@ public record FunctionTableUsagesInsight(
   /**
    * 1スキーマ分の関数・プロシージャの出力内容から参考情報を生成するメソッド
    *
-   * @param contents 当該スキーマの関数・プロシージャの出力内容。抽出を行っていないものは含めない
+   * @param contents 当該スキーマの関数・プロシージャの出力内容（抽出を行ったもの）
    */
   public static FunctionTableUsagesInsight of(
       String databaseName, String schemaName, List<FunctionDefinitionContent> contents) {
@@ -44,10 +43,7 @@ public record FunctionTableUsagesInsight(
         FORMAT_VERSION,
         databaseName,
         schemaName,
-        contents.stream()
-            .filter(content -> content.tableUsage().isAttempted())
-            .map(content -> FunctionInsight.of(content, hasher))
-            .toList());
+        contents.stream().map(content -> FunctionInsight.of(content, hasher)).toList());
   }
 
   /**
@@ -80,16 +76,17 @@ public record FunctionTableUsagesInsight(
       dynamicSql = List.copyOf(dynamicSql);
     }
 
+    /** 関数・プロシージャの出力内容から、参考情報の1件分を生成するメソッド */
     static FunctionInsight of(FunctionDefinitionContent content, DefinitionHasher hasher) {
       final FunctionTableUsage usage = content.tableUsage();
       return new FunctionInsight(
           content.function().functionName(),
           content.function().functionArguments(),
           hasher.hashOf(content.function().definition()),
-          usage.status().name().toLowerCase(Locale.ROOT),
+          usage.status().id(),
           usage.language(),
           usage.tables().stream().map(TableInsight::of).toList(),
-          usage.dynamicSql().stream().map(DynamicSqlKind::label).toList(),
+          usage.dynamicSql().stream().map(DynamicSqlKind::id).toList(),
           usage.incomplete() ? Boolean.TRUE : null,
           usage.overloadsMerged() ? Boolean.TRUE : null);
     }
@@ -152,6 +149,7 @@ public record FunctionTableUsagesInsight(
       operations = List.copyOf(operations);
     }
 
+    /** 利用しているテーブルから、参考情報の1件分を生成するメソッド */
     static TableInsight of(TableUsage usage) {
       return new TableInsight(
           usage.schemaName(),
