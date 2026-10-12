@@ -64,6 +64,26 @@ class SqlLexerPropertyTest {
     }
   }
 
+  static Stream<Arguments> pathologicalInputs() {
+    final int size = 1_000_000;
+    return Stream.of(
+        Arguments.of("5MB程度の本体", "select a from b where c = 'd'; -- e\n".repeat(140_000)),
+        Arguments.of("引用符の並び", "'".repeat(size)),
+        Arguments.of("二重引用符の並び", "\"".repeat(size)),
+        Arguments.of("ブロックコメントの開始の並び", "/*".repeat(size / 2)),
+        Arguments.of("閉じの無いブロックコメントの中のアスタリスク", "/*" + "*".repeat(size)),
+        Arguments.of("開き括弧の並び", "(".repeat(size)),
+        Arguments.of("閉じの無いドル引用符の中の似た区切り", "$a$" + "$a".repeat(size / 2)),
+        Arguments.of(
+            "上限の長さのタグの中の似た区切り",
+            "$" + "a".repeat(SqlLexer.MAX_DOLLAR_TAG_LENGTH) + "$" + "$a".repeat(size / 2)),
+        Arguments.of("ドル記号の並び", "$".repeat(size)),
+        Arguments.of("閉じの無いq'の中の]", "q'[" + "]".repeat(size)),
+        Arguments.of("ハイフンの並び", "-".repeat(size)),
+        Arguments.of("E文字列の\\の並び", "E'" + "\\".repeat(size)),
+        Arguments.of("改行の並び", "\r\n".repeat(size / 2)));
+  }
+
   @ParameterizedTest(name = "{0}")
   @MethodSource("pathologicalInputs")
   @DisplayName("lex: 長い入力・病的な入力でも、両DBの規則とも制限時間内に終え、入力を漏れなく覆う")
