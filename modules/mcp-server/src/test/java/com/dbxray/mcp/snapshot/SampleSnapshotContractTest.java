@@ -127,7 +127,7 @@ class SampleSnapshotContractTest {
   @DisplayName("database.jsonのDBMS種別・メジャーバージョンと、スキーマごとのオブジェクトの数を読み込む")
   void summarizesSchemas() {
     assertEquals(
-        List.of(new SchemaSummary("testdb", "PostgreSQL", 16, "sample", 11, 2, 1, 8, 1, 8, 3, 5)),
+        List.of(new SchemaSummary("testdb", "PostgreSQL", 16, "sample", 11, 2, 1, 11, 2, 8, 3, 5)),
         catalog.schemas());
   }
 

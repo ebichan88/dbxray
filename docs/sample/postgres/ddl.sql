@@ -321,6 +321,69 @@ end;
 $$;
 
 /*
+ * 関数・プロシージャが利用しているテーブル（--previewの機能）のサンプル。
+ * 改行・コメント・文字列を散らした書き方でも、コメント・文字列の中のDMLは拾わず、
+ * INSERT…SELECT・DELETE…USING・UPDATE…FROMの各テーブルの操作を読み分ける
+ */
+create or replace procedure sample.close_project(p_project_id integer)
+language plpgsql as $$
+declare
+    v_count integer;
+begin
+    -- アサインを外す前に、監査ログへ残す
+    insert
+      into sample.audit_log   -- 監査ログ
+           (table_name, record_id, action, changed_by)
+    select 'project_assignment', pa.employee_id, 'DELETE', current_user
+      from sample.project_assignment pa /* 対象のプロジェクトのみ */
+     where pa.project_id = p_project_id;
+
+    /*
+     * 旧仕様ではプロジェクトごと削除していた
+     * delete from sample.project where project_id = p_project_id;
+     */
+    delete from sample.project_assignment pa
+     using sample.project p
+     where pa.project_id = p.project_id
+       and p.project_id = p_project_id;
+    get diagnostics v_count = row_count;
+
+    -- 外れた従業員の更新日時を進める
+    update sample.employee e
+       set updated_at = now()
+      from sample.audit_log l
+     where l.record_id = e.employee_id
+       and l.table_name = 'project_assignment';
+
+    raise notice 'DELETE FROM sample.project_assignment: % rows', v_count;
+end;
+$$;
+
+-- スキーマ修飾の無い名前は実行時のsearch_pathで決まるため、スキーマを決めずに候補を示す。
+-- テーブル名を引数で受け取る部分は動的SQL（EXECUTE）のため、中のテーブルは抽出できない
+create or replace function sample.count_rows(p_table_name text) returns bigint
+language plpgsql stable as $$
+declare
+    v_count bigint;
+begin
+    if p_table_name = 'employee' then
+        select count(*) into v_count from employee;
+    else
+        execute format('select count(*) from sample.%I', p_table_name) into v_count;
+    end if;
+    return v_count;
+end;
+$$;
+
+-- 関数にsearch_pathを指定すると、スキーマ修飾の無い名前のスキーマが決まる
+create or replace function sample.department_headcount(p_department_id integer) returns bigint
+language sql stable
+set search_path = sample
+as $$
+    select count(*) from employee where department_id = p_department_id;
+$$;
+
+/*
  * コメント（論理名）
  * employeeとprojectはDBコメントで論理名を付与し、departmentは無コメントのまま
  * annotations.sample.yml側で説明・備考を補う対比になるようにしている
