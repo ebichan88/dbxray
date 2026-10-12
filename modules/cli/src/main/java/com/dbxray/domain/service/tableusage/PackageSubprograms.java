@@ -3,6 +3,7 @@ package com.dbxray.domain.service.tableusage;
 import com.dbxray.domain.model.database.Dbms;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
@@ -18,7 +19,7 @@ import java.util.Set;
  * 条件付きコンパイル（{@code $IF … $ELSE … $END}）は、各分岐を{@code $IF}の時点の状態（まとまりのスタック・括弧の深さ・読んでいる見出し）から読み、{@code
  * $END}の後は最初の分岐を読み終えた状態を続ける（分岐ごとに{@code BEGIN}を書き分けても対応がずれないようにするため）。
  * 分岐ごとに見出しが違う場合は、本体の始まりを後ろの分岐の見出しの{@code IS}・{@code AS}の後ろにして、どの分岐の見出しも本体に含めない。<br>
- * スタックは要素を共有する連結リストで持ち、分岐の時点の状態を複製せずに覚える
+ * スタックと見出しの引数名は要素を共有する連結リストで持ち、分岐の時点の状態を複製せずに覚える（引数名を多数並べた見出しの中に分岐を重ねても、分岐のたびに引数名の数だけ複製しないようにするため）
  */
 final class PackageSubprograms {
 
@@ -130,7 +131,7 @@ final class PackageSubprograms {
         && !header.parameterListClosed
         && token.isName()
         && isParameterStart(i)) {
-      header.parameterNames.add(SqlNames.identifier(token, Dbms.ORACLE));
+      header.addParameter(SqlNames.identifier(token, Dbms.ORACLE));
     } else if (parenDepth == header.parenDepth && (token.isWord("IS") || token.isWord("AS"))) {
       header.bodyStart = i + 1;
       header.language = callSpecLanguage(tokens, i + 1);
@@ -345,7 +346,9 @@ final class PackageSubprograms {
     private final int nameIndex;
 
     private final int parenDepth;
-    private final List<String> parameterNames = new ArrayList<>();
+
+    /** 最後に読んだ引数名（それ以前の引数名は{@link ParameterName#previous}で辿る）。引数名が無ければnull */
+    private ParameterName lastParameter;
 
     /** 引数の並びの括弧の深さ。引数の並びが無い（まだ読んでいない）場合は-1 */
     private int parameterListDepth = -1;
@@ -366,10 +369,14 @@ final class PackageSubprograms {
       this.inline = inline;
     }
 
-    /** 条件付きコンパイルの分岐ごとに読み進められるよう、読み途中の状態ごと複製する */
+    private void addParameter(String parameterName) {
+      lastParameter = new ParameterName(parameterName, lastParameter);
+    }
+
+    /** 条件付きコンパイルの分岐ごとに読み進められるよう、読み途中の状態ごと複製する（引数名は共有する） */
     private Header copy() {
       final Header copy = new Header(name, nameIndex, parenDepth, inline);
-      copy.parameterNames.addAll(parameterNames);
+      copy.lastParameter = lastParameter;
       copy.parameterListDepth = parameterListDepth;
       copy.parameterListClosed = parameterListClosed;
       copy.language = language;
@@ -378,9 +385,17 @@ final class PackageSubprograms {
     }
 
     private Subprogram toSubprogram(int bodyEnd) {
+      final List<String> parameterNames = new ArrayList<>();
+      for (ParameterName p = lastParameter; p != null; p = p.previous) {
+        parameterNames.add(p.name);
+      }
+      Collections.reverse(parameterNames);
       return new Subprogram(name, parameterNames, language, bodyStart, bodyEnd);
     }
   }
+
+  /** 見出しの引数名1つ（前の引数名を共有する連結リストの要素） */
+  private record ParameterName(String name, ParameterName previous) {}
 
   /** まとまりの種類 */
   private enum BlockKind {

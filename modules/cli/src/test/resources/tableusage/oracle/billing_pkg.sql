@@ -97,11 +97,11 @@ CREATE OR REPLACE PACKAGE BODY billing_pkg AS
 
   PROCEDURE purge_old(p_before DATE) IS
   BEGIN
-    -- TRUNCATE TABLE invoices;  -- 昔は全件消していた
+    -- TRUNCATE TABLE legacy_invoices;  -- 昔は全件消していた
     DELETE invoice_lines
      WHERE invoice_id IN (SELECT invoice_id FROM invoices WHERE issued_at < p_before);
     DELETE FROM invoices WHERE issued_at < p_before;
-    log_message(q'[purged: DELETE FROM invoices WHERE issued_at < ']' || p_before || '''');
+    log_message(q'[purged: DELETE FROM invoice_history WHERE issued_at < ']' || p_before || '''');
   END purge_old;
 
   PROCEDURE rebuild_balances IS
@@ -163,4 +163,5 @@ CREATE OR REPLACE PACKAGE BODY billing_pkg AS
 
 BEGIN
   g_initialized := TRUE;
+  INSERT INTO init_audit (event, logged_at) VALUES ('loaded', SYSTIMESTAMP);
 END billing_pkg;

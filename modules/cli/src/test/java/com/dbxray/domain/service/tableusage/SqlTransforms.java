@@ -6,15 +6,22 @@ import com.dbxray.domain.model.database.Dbms;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 /**
  * 変形テストの変形（改行・空白・コメント・大文字小文字を変える、コメント・文字列の中にDMLを足す）<br>
- * 字句に分けた結果をつなぎ直して作るため、元の本体のコメント・空白は変形後には残らない
+ * 字句の間を作り直す変形は、字句をつなぎ直して作るため、元の本体の空白・コメントは変形後に残らない。
+ * 大文字小文字を変える変形は字句の間の空白・コメントを元のまま残し、DMLを足す変形は元の本体の前後に足す
  */
 final class SqlTransforms {
 
   /** 間に空白を入れなくても隣の字句とつながらない記号 */
   private static final Set<String> SELF_DELIMITING = Set.of("(", ")", ",", ";");
+
+  /** 期待値にテーブルが無いケースで、コメント・文字列の中に書くDMLの対象（出力対象にあるテーブルでないと、拾い違えても結果に現れない） */
+  private static final String POSTGRES_DEFAULT_TABLE = "sample.employee";
+
+  private static final String ORACLE_DEFAULT_TABLE = "SCOTT.EMP";
 
   private SqlTransforms() {}
 
@@ -29,7 +36,9 @@ final class SqlTransforms {
 
     /** 本体を変形するメソッド。namesは本体が利用するテーブルの名前（コメント・文字列の中に書くDMLの対象） */
     String apply(String sql, Dbms dbms, List<String> names) {
-      return rewriter.apply(sql, dbms, names.isEmpty() ? List.of("sample.employee") : names);
+      final String defaultTable =
+          dbms == Dbms.POSTGRESQL ? POSTGRES_DEFAULT_TABLE : ORACLE_DEFAULT_TABLE;
+      return rewriter.apply(sql, dbms, names.isEmpty() ? List.of(defaultTable) : names);
     }
 
     @Override
@@ -57,7 +66,7 @@ final class SqlTransforms {
                 SELF_DELIMITING.contains(a.text()) || SELF_DELIMITING.contains(b.text())
                     ? ""
                     : " "));
-    transforms.add(between("タブ・全角空白・NBSP", (a, b) -> "\t　 \t"));
+    transforms.add(between("タブ・全角空白・NBSP", (a, b) -> "\t\u3000\u00A0\t"));
     transforms.add(between("ブロックコメント", (a, b) -> " /* x */ "));
     transforms.add(between("ブロックコメントだけで区切る", (a, b) -> "/**/"));
     transforms.add(
@@ -68,13 +77,51 @@ final class SqlTransforms {
       transforms.add(between("ヒント", (a, b) -> " /*+ INDEX(t) */ "));
     }
     transforms.add(between("行コメント", (a, b) -> " -- x ' \" /* ; DELETE FROM t\n"));
-    transforms.add(between("行コメント（CR）", (a, b) -> "--\r"));
+    transforms.add(between("行コメント（CR）", (a, b) -> " --\r"));
     transforms.add(words("大文字", AsciiCase::toUpper));
     transforms.add(words("小文字", AsciiCase::toLower));
     transforms.add(words("大文字小文字を交互", SqlTransforms::alternate));
     transforms.add(new Transform("コメントアウトしたDML", false, false, SqlTransforms::commentedOutDml));
     transforms.add(new Transform("文字列の中のDML", false, true, SqlTransforms::dmlInStrings));
     return transforms;
+  }
+
+  /**
+   * 定義全体（見出しと本体）に当てはまる変形の一覧<br>
+   * PostgreSQLは見出しと本体を別々に変形する（{@link #applyToDefinition}）ため、すべて使える。
+   * Oracleは定義全体をそのまま変形するため、前後に文を足す変形は除く
+   */
+  static List<Transform> forDefinition(Dbms dbms) {
+    return forDbms(dbms).stream()
+        .filter(transform -> dbms == Dbms.POSTGRESQL || !transform.addsStatements())
+        .toList();
+  }
+
+  /**
+   * 定義全体に変形を当てる<br>
+   * PostgreSQLの本体はドル引用符で囲まれた1つの字句のため、定義全体を変形しても本体の中は変わらない。
+   * そのため、見出し（ドル引用符の前）とドル引用符の中身に別々に当てる。前後に文を足す変形は、本体にだけ当てる
+   */
+  static String applyToDefinition(
+      Transform transform, String definition, Dbms dbms, List<String> names) {
+    if (dbms != Dbms.POSTGRESQL) {
+      return transform.apply(definition, dbms, names);
+    }
+    final SqlToken body =
+        SqlLexer.lex(definition, dbms).tokens().stream()
+            .filter(token -> token.kind() == SqlTokenKind.DOLLAR_STRING)
+            .findFirst()
+            .orElseThrow(
+                () -> new IllegalArgumentException("definition has no dollar-quoted body"));
+    final String header = definition.substring(0, body.start());
+    final String transformedHeader =
+        transform.addsStatements() ? header : transform.apply(header, dbms, names);
+    // 見出しの末尾が行コメントになる変形でも、ドル引用符の始まりを巻き込まないよう改行を入れる
+    return transformedHeader
+        + "\n"
+        + definition.substring(body.start(), body.contentStart())
+        + transform.apply(definition.substring(body.contentStart(), body.contentEnd()), dbms, names)
+        + definition.substring(body.contentEnd());
   }
 
   /** 字句の間を作り直す変形 */
@@ -97,7 +144,7 @@ final class SqlTransforms {
   }
 
   /** 引用符の無い単語の大文字小文字を変える変形 */
-  private static Transform words(String name, java.util.function.UnaryOperator<String> mapper) {
+  private static Transform words(String name, UnaryOperator<String> mapper) {
     return new Transform(
         name,
         true,

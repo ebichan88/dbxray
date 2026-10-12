@@ -18,10 +18,10 @@ BEGIN
     /*
      * 2019年の仕様変更前の処理（残しておく）
      * DELETE FROM sales.monthly_summary;
-     * INSERT INTO sales.monthly_summary SELECT * FROM sales.old_summary;
      /* 入れ子のコメント: UPDATE sales.customers SET x = 1; */
+     * INSERT INTO sales.monthly_summary SELECT * FROM sales.old_summary;
      */
-    RAISE NOTICE '締め処理を開始します: %（DELETE FROM sales.orders はしない）', v_from;
+    RAISE NOTICE '締め処理を開始します: %（DELETE FROM sales.orders_tmp はしない）', v_from;
 
     -- 同じ月の集計を作り直す
     DELETE
@@ -63,7 +63,7 @@ BEGIN
     VALUES (v_from, v_count, E'完了 \'' || v_from || E'\' -- 件数');
 
     IF v_count = 0 THEN
-        RAISE WARNING $msg$対象の受注がありません。UPDATE sales.orders は行いません$msg$;
+        RAISE WARNING $msg$対象の受注がありません。UPDATE sales.orders_hold は行いません$msg$;
     END IF;
 
     EXECUTE format('ANALYZE %I.%I', 'sales', 'monthly_summary');

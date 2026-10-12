@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.DynamicContainer.dynamicContainer;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-import com.dbxray.domain.model.database.Dbms;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.DynamicContainer;
@@ -46,33 +45,30 @@ class TableUsageMetamorphicTest {
 
   @TestFactory
   @DisplayName(
-      "FunctionTableUsageAnalyzer: FunctionTableUsageAnalyzerTestの全ケースを変形しても、結果が変わらない"
-          + "（Oracleは定義全体を変形するため、前後に文を足す変形は除く）")
+      "FunctionTableUsageAnalyzer: FunctionTableUsageAnalyzerTestの全ケースの定義全体を変形しても、結果が変わらない"
+          + "（PostgreSQLは見出しも変形する。Oracleは前後に文を足す変形は除く）")
   Stream<DynamicContainer> testAnalyzerCases() {
     return FunctionTableUsageAnalyzerTest.allCases()
         .map(
             analyzerCase ->
                 dynamicContainer(
                     analyzerCase.toString(),
-                    SqlTransforms.forDbms(analyzerCase.dbms()).stream()
-                        .filter(
-                            transform ->
-                                analyzerCase.dbms() == Dbms.POSTGRESQL
-                                    || !transform.addsStatements())
+                    SqlTransforms.forDefinition(analyzerCase.dbms()).stream()
                         .map(
                             transform ->
                                 dynamicTest(
                                     transform.name(),
                                     () -> {
                                       final String transformed =
-                                          transform.apply(
-                                              analyzerCase.body(),
+                                          SqlTransforms.applyToDefinition(
+                                              transform,
+                                              analyzerCase.definition(),
                                               analyzerCase.dbms(),
                                               analyzerCase.expectedNames());
                                       assertEquals(
                                           analyzerCase.expected(),
                                           FunctionTableUsageAnalyzerTest.describe(
-                                              analyzerCase.analyze(transformed)),
+                                              analyzerCase.analyzeDefinition(transformed)),
                                           transformed);
                                     }))));
   }
