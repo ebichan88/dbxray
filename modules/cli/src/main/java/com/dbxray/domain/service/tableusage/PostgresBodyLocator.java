@@ -78,8 +78,9 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
    * {@code SET search_path TO 'a', 'b'}のスキーマの並びを読むメソッド<br>
    * {@code pg_get_functiondef}は各スキーマを、大文字小文字を保った文字列にして並べる。手で書いた形（{@code SET search_path = a,
    * "B"}）も同じ規則で読む。{@code FROM CURRENT}は作成時の値に展開されて保存されるため、{@code pg_get_functiondef}の定義には現れない。
-   * 手で書いた{@code FROM CURRENT}は値を読めないため、指定が無いものとする。空の文字列（{@code SET search_path TO
-   * ''}）は、出力対象のスキーマが無いものとして空のスキーマ名で持つ
+   * 手で書いた{@code FROM CURRENT}は値を読めないため、指定が無いものとする。{@code $user}は実行するユーザーの名前のスキーマに決まるため読めず、
+   * 並びから除く。指定があるのに出力対象のスキーマが無い場合（空の文字列の{@code SET search_path TO ''}、{@code $user}を含まず{@code
+   * pg_catalog}・{@code pg_temp}だけ）は、指定が無いものと区別するため、空のスキーマ名で持つ
    *
    * @param i {@code search_path}の次の位置（{@code TO}・{@code =}）
    * @return スキーマの並び。{@code TO}・{@code =}で値を指定していない・{@code DEFAULT}の場合は空
@@ -89,6 +90,8 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
     if (!tokens.isWordAt(i, "TO") && !tokens.isSymbolAt(i, "=")) {
       return schemas;
     }
+    boolean hasUser = false;
+    boolean hasSystemSchema = false;
     int j = i + 1;
     while (tokens.at(j) != null) {
       final SqlToken value = tokens.at(j);
@@ -100,9 +103,11 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       } else {
         break;
       }
-      if (!schema.equals("$user")
-          && !schema.equals("pg_catalog")
-          && !schema.startsWith("pg_temp")) {
+      if (schema.equals("$user")) {
+        hasUser = true;
+      } else if (schema.equals("pg_catalog") || schema.startsWith("pg_temp")) {
+        hasSystemSchema = true;
+      } else {
         schemas.add(schema);
       }
       final int comma = j + 1;
@@ -111,6 +116,9 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       } else {
         break;
       }
+    }
+    if (schemas.isEmpty() && hasSystemSchema && !hasUser) {
+      schemas.add("");
     }
     return schemas;
   }

@@ -1,11 +1,13 @@
 package com.dbxray.domain.model.table;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -83,10 +85,23 @@ public final class Tables {
    * @return スキーマ名をキー、当該スキーマのテーブルのリストを値とするマップ
    */
   public Map<String, List<TableEntity>> bySchema() {
-    final Map<String, List<TableEntity>> bySchema = new LinkedHashMap<>();
-    list.forEach(
-        table ->
-            bySchema.computeIfAbsent(table.schemaName(), schema -> new ArrayList<>()).add(table));
-    return bySchema;
+    return group(list, TableEntity::schemaName);
+  }
+
+  /**
+   * テーブルを物理テーブル名でまとめるメソッド<br>
+   * 同じ名前のテーブル（スキーマ違い）は取得順に並べる。同じテーブルキーが重複する場合は{@link #find}と同じく先に現れたものだけを用いる。 返却するマップは{@link
+   * #bySchema()}と同じく呼び出しのたびに構築する
+   *
+   * @return 物理テーブル名をキー、当該名前のテーブルのリストを値とするマップ
+   */
+  public Map<String, List<TableEntity>> byTableName() {
+    return group(byKey.values(), TableEntity::physicalTableName);
+  }
+
+  private static Map<String, List<TableEntity>> group(
+      Collection<TableEntity> tables, Function<TableEntity, String> keyOf) {
+    return tables.stream()
+        .collect(Collectors.groupingBy(keyOf, LinkedHashMap::new, Collectors.toList()));
   }
 }

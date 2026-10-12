@@ -90,7 +90,8 @@ sealed interface FunctionBody {
    * @param tokens 本体の字句（空白・コメントを除いたもの）。{@link Analyzed#segments}と同じく、複製せずに持つ
    * @param incomplete 定義の終わりまで字句を読み取れなかったか
    * @param searchPath 関数の属性の{@code SET search_path}に並ぶスキーマ（本体の中のSET文・{@code set_config}は含まない。{@code
-   *     $user}・{@code pg_catalog}・{@code pg_temp}を除く。指定が無ければ空）
+   *     $user}・{@code pg_catalog}・{@code pg_temp}を除く）。指定が無い場合と、{@code
+   *     $user}だけで実行時に決まる場合は空。指定があるのに出力対象のスキーマが無い場合は、空のスキーマ名1つ
    */
   record Postgres(List<SqlToken> tokens, boolean incomplete, List<String> searchPath)
       implements Analyzed {
