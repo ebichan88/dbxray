@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.application.CheckDocumentDiffRequest;
 import com.dbxray.application.ExportSchemaRequest;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.presentation.ExportSchemaController;
 import com.dbxray.presentation.dto.DiffCheckResultDto;
 import com.dbxray.testsupport.ExportBaseline;
 import com.dbxray.testsupport.SampleDatabase;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,7 +52,7 @@ class SampleDatabaseExportIT {
   @DisplayName("--preview: 関数の定義書・参考情報が差分のベースラインと一致し、それ以外（スナップショットを含む）は既定の出力と同じ")
   void testPreviewExportMatchesBaseline(@TempDir Path outputDir) {
     final ExportSchemaRequest request =
-        properties(outputDir, "").toExportSchemaRequest(false, true);
+        properties(outputDir, "").toExportSchemaRequest(false, EnumSet.allOf(PreviewFeature.class));
 
     controller().execute(request);
 
