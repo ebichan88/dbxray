@@ -22,7 +22,6 @@ public class PagedSectionTemplatesTest {
     String section =
         PagedSectionTemplates.pagedSectionLinks(
             "外部キー一覧",
-            "外部キー一覧",
             List.of("./erDiagram_TEST_DB_public_1.md", "./erDiagram_TEST_DB_public_2.md"));
     assertTrue(section.contains("## 外部キー一覧"));
     assertTrue(section.contains("* [外部キー一覧_1](./erDiagram_TEST_DB_public_1.md)"));

@@ -1,7 +1,10 @@
 package com.dbxray.domain.service.writer.template;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.document.ListDocumentType;
+import com.dbxray.domain.service.path.DocumentLocations;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -93,13 +96,61 @@ public final class MarkdownTemplateSupport {
   }
 
   /**
+   * ファイルの先頭の見出し（{@code # 見出し}）<br>
+   * 見出しはDB由来の文字列（テーブル名・DB名等）を含みうるため、{@link #escapeInline}を通す
+   */
+  public static String fileHeader(String title) {
+    return "# " + escapeInline(title) + LINE_SEPARATOR_DOUBLE;
+  }
+
+  /**
    * タイトル付きファイルヘッダー（「# タイトル（DB名：xxx）」の形式）<br>
    * ER図一覧・オブジェクト一覧など、タイトルとDB名のみで組み立てられるヘッダーで共通利用する
    */
   public static String titledFileHeader(String title, BaseInfoEntity baseInfo) {
-    return "# "
-        + escapeInline(String.format("%s（DB名：%s）", title, baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return fileHeader(String.format("%s（DB名：%s）", title, baseInfo.dbName()));
+  }
+
+  /**
+   * リンクの箇条書きの1項目（末尾の改行を含む）
+   *
+   * @param label リンクの表示名（DB由来の文字列は呼び出し側でエスケープしたもの）
+   */
+  public static String linkListItem(String label, String href) {
+    return "* [" + label + "](" + href + ")  " + LINE_SEPARATOR;
+  }
+
+  /**
+   * 一覧ドキュメントへのリンクを並べたセクション（データベース単位ディレクトリ直下のドキュメントに置く）
+   *
+   * @param types リンクを掲載する一覧の種別（掲載順）
+   */
+  public static String listLinks(
+      String heading, Collection<ListDocumentType> types, BaseInfoEntity baseInfo) {
+    final StringBuilder sb = new StringBuilder("## ").append(heading).append(LINE_SEPARATOR_DOUBLE);
+    types.forEach(
+        type -> sb.append(linkListItem(type.getTitle(), listLinkFromDatabaseRoot(type, baseInfo))));
+    return sb.append(LINE_SEPARATOR).toString();
+  }
+
+  /**
+   * データベース単位ディレクトリ直下のドキュメントから、一覧ドキュメントへの相対リンク
+   *
+   * @return 例: {@code ./tableList_testdb.md}
+   */
+  public static String listLinkFromDatabaseRoot(ListDocumentType type, BaseInfoEntity baseInfo) {
+    return DocumentLocations.linkFromDatabaseRoot(
+        DocumentLocations.listFile(type, baseInfo.dbName()));
+  }
+
+  /**
+   * 個別定義書（{@code {スキーマ名}/{区分}/}配下）から、一覧ドキュメントへの相対リンク
+   *
+   * @return 例: {@code ../../tableList_testdb.md}
+   */
+  public static String listLinkFromDefinition(ListDocumentType type, BaseInfoEntity baseInfo) {
+    return DocumentLocations.linkFromDefinition(
+        DocumentLocations.listFile(type, baseInfo.dbName()));
   }
 
   /**
@@ -183,6 +234,15 @@ public final class MarkdownTemplateSupport {
     final String delimiter = "`".repeat(longestBacktickRun(value) + 1);
     final String padding = value.startsWith("`") || value.endsWith("`") ? " " : "";
     return delimiter + padding + value + padding + delimiter;
+  }
+
+  /**
+   * DB由来のSQL（関数・トリガーの定義等）のコードブロック（末尾の空行を含む）<br>
+   * 囲みは{@link #codeFence}で中身に合わせて伸ばす
+   */
+  public static String sqlCodeBlock(String sql) {
+    final String fence = codeFence(sql);
+    return fence + "sql" + LINE_SEPARATOR + sql + LINE_SEPARATOR + fence + LINE_SEPARATOR_DOUBLE;
   }
 
   private static int longestBacktickRun(String value) {

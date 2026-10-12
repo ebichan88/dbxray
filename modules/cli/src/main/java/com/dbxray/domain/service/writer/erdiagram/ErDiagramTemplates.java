@@ -40,10 +40,8 @@ public class ErDiagramTemplates {
 
   /** スキーマ別ER図ページのファイルヘッダー */
   public static String schemaFileHeader(String schemaName, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format("ER図（DB名：%s / スキーマ名：%s）", baseInfo.dbName(), schemaName))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(
+        String.format("ER図（DB名：%s / スキーマ名：%s）", baseInfo.dbName(), schemaName));
   }
 
   /**
@@ -52,11 +50,8 @@ public class ErDiagramTemplates {
    * @param groupNo グループ番号（1始まり）
    */
   public static String groupFileHeader(String schemaName, int groupNo, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format(
-                "ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNo))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(
+        String.format("ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNo));
   }
 
   /** 基本情報セクション */
@@ -74,21 +69,22 @@ public class ErDiagramTemplates {
             .append(LINE_SEPARATOR)
             .append("|:---|:---|:---|:---|")
             .append(LINE_SEPARATOR);
-    final int[] no = {0};
-    tablesBySchema.forEach(
-        (schemaName, tables) ->
-            sb.append(
-                    MarkdownTemplateSupport.escapeTableRow(
-                        String.format(
-                            "| %d | %s | %d | %s |",
-                            ++no[0],
-                            schemaName,
-                            tables.size(),
-                            MarkdownTemplateSupport.linkCell(
-                                DocumentLocations.linkFromDatabaseRoot(
-                                    DocumentLocations.erDiagramFile(
-                                        baseInfo.dbName(), schemaName))))))
-                .append(LINE_SEPARATOR));
+    int no = 0;
+    for (final Map.Entry<String, List<TableEntity>> schema : tablesBySchema.entrySet()) {
+      no++;
+      sb.append(
+              MarkdownTemplateSupport.escapeTableRow(
+                  String.format(
+                      "| %d | %s | %d | %s |",
+                      no,
+                      schema.getKey(),
+                      schema.getValue().size(),
+                      MarkdownTemplateSupport.linkCell(
+                          DocumentLocations.linkFromDatabaseRoot(
+                              DocumentLocations.erDiagramFile(
+                                  baseInfo.dbName(), schema.getKey()))))))
+          .append(LINE_SEPARATOR);
+    }
     return sb.append(LINE_SEPARATOR).toString();
   }
 
@@ -117,29 +113,14 @@ public class ErDiagramTemplates {
           .append(LINE_SEPARATOR_DOUBLE)
           .toString();
     }
-    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(group.nodes());
-    final Map<TableKey, String> labels = MermaidSupport.assignLabels(group.nodes(), boxes);
-    sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
-    group
-        .nodes()
-        .forEach(key -> sb.append(MermaidSupport.aliasLine(ids.get(key), labels.get(key))));
-    // 参照先（親） → 参照元（子） の向きは、テーブル単位のER図の表記と揃える
-    group
-        .foreignKeys()
-        .forEach(
-            fk ->
-                sb.append(
-                    MermaidSupport.relationLine(
-                        ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
     final Map<TableKey, List<DiagramColumn>> columns = boxes.relationColumnsOf(group.foreignKeys());
-    group
-        .nodes()
-        .forEach(
-            key ->
-                sb.append(
-                    MermaidSupport.attributeBlock(
-                        ids.get(key), columns.getOrDefault(key, List.of()))));
-    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+    return sb.append(
+            MermaidSupport.erDiagramCodeBlock(
+                group.nodes(),
+                group.foreignKeys(),
+                boxes,
+                key -> columns.getOrDefault(key, List.of())))
+        .toString();
   }
 
   /** ER図をグループに分割した場合の、スキーマページに掲載する説明セクション */
@@ -214,7 +195,7 @@ public class ErDiagramTemplates {
             "[スキーマのER図へ](%s) / ",
             DocumentLocations.linkFromDatabaseRoot(
                 DocumentLocations.erDiagramFile(baseInfo.dbName(), schemaName)))
-        + listLinks(baseInfo)
+        + backLinks(baseInfo)
         + LINE_SEPARATOR;
   }
 
@@ -290,31 +271,23 @@ public class ErDiagramTemplates {
 
   /** スキーマ別ER図ページのフッター */
   public static String schemaFooter(BaseInfoEntity baseInfo) {
-    return HORIZON + LINE_SEPARATOR_DOUBLE + listLinks(baseInfo) + LINE_SEPARATOR;
+    return HORIZON + LINE_SEPARATOR_DOUBLE + backLinks(baseInfo) + LINE_SEPARATOR;
   }
 
   /** ER図索引ページのフッター */
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        listLink(ListDocumentType.TABLE, baseInfo), ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.getBackLinkLabel());
   }
 
   /** ER図一覧・テーブル一覧へ戻るリンクを並べた文字列を生成するメソッド */
-  private static String listLinks(BaseInfoEntity baseInfo) {
+  private static String backLinks(BaseInfoEntity baseInfo) {
     return String.format(
         "[%s](%s) / [%s](%s)",
         ListDocumentType.ER_DIAGRAM.getBackLinkLabel(),
-        listLink(ListDocumentType.ER_DIAGRAM, baseInfo),
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.ER_DIAGRAM, baseInfo),
         ListDocumentType.TABLE.getBackLinkLabel(),
-        listLink(ListDocumentType.TABLE, baseInfo));
-  }
-
-  /**
-   * 一覧への相対リンクを生成するメソッド<br>
-   * ER図はデータベース単位ディレクトリ直下に配置される
-   */
-  private static String listLink(ListDocumentType type, BaseInfoEntity baseInfo) {
-    return DocumentLocations.linkFromDatabaseRoot(
-        DocumentLocations.listFile(type, baseInfo.dbName()));
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo));
   }
 }

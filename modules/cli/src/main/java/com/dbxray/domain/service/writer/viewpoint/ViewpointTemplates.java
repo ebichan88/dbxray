@@ -28,10 +28,8 @@ public class ViewpointTemplates {
 
   /** 観点ページのファイルヘッダー */
   public static String fileHeader(Viewpoint viewpoint, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format("観点：%s（DB名：%s）", viewpoint.name(), baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(
+        String.format("観点：%s（DB名：%s）", viewpoint.name(), baseInfo.dbName()));
   }
 
   /** 基本情報セクション */
@@ -115,9 +113,9 @@ public class ViewpointTemplates {
         + String.format(
             "[%s](%s) / [%s](%s)",
             ListDocumentType.VIEWPOINT.getBackLinkLabel(),
-            listLink(ListDocumentType.VIEWPOINT, baseInfo),
+            MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.VIEWPOINT, baseInfo),
             ListDocumentType.TABLE.getBackLinkLabel(),
-            listLink(ListDocumentType.TABLE, baseInfo))
+            MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo))
         + LINE_SEPARATOR;
   }
 
@@ -161,7 +159,8 @@ public class ViewpointTemplates {
   /** 観点一覧のフッター */
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        listLink(ListDocumentType.TABLE, baseInfo), ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.getBackLinkLabel());
   }
 
   /**
@@ -178,14 +177,5 @@ public class ViewpointTemplates {
       sb.append(ErDiagramTemplates.foreignKeyTableLine(i + 1, relations.get(i)));
     }
     return sb.append(LINE_SEPARATOR).toString();
-  }
-
-  /**
-   * 一覧への相対リンクを生成するメソッド<br>
-   * 観点ページ・観点一覧はデータベース単位ディレクトリ直下に配置される
-   */
-  private static String listLink(ListDocumentType type, BaseInfoEntity baseInfo) {
-    return DocumentLocations.linkFromDatabaseRoot(
-        DocumentLocations.listFile(type, baseInfo.dbName()));
   }
 }

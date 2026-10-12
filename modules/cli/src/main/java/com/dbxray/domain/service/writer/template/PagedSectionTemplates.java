@@ -19,16 +19,15 @@ public class PagedSectionTemplates {
 
   /**
    * 分割した詳細ページへのリンク一覧セクション<br>
-   * 行数が上限を超える場合、本体ページには表を載せず分割したページへのリンクのみを掲載する
+   * 行数が上限を超える場合、本体ページには表を載せず分割したページへのリンクのみを掲載する。
+   * リンクの表示名は、見出しにページ番号を付けたもの（例: {@code テーブル情報_2}）
    *
-   * @param label 各ページのリンク表示名
    * @param pageHrefs 各ページへの相対パスのリスト（1ページ目から順に並ぶこと）
    */
-  public static String pagedSectionLinks(String heading, String label, List<String> pageHrefs) {
-    StringBuilder sb = new StringBuilder(heading(heading));
+  public static String pagedSectionLinks(String heading, List<String> pageHrefs) {
+    final StringBuilder sb = new StringBuilder(heading(heading));
     for (int i = 0; i < pageHrefs.size(); i++) {
-      sb.append(String.format("* [%s_%d](%s)  ", label, i + 1, pageHrefs.get(i)))
-          .append(LINE_SEPARATOR);
+      sb.append(MarkdownTemplateSupport.linkListItem(heading + "_" + (i + 1), pageHrefs.get(i)));
     }
     return sb.append(LINE_SEPARATOR).toString();
   }

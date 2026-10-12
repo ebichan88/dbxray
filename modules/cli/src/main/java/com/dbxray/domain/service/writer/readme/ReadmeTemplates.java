@@ -8,7 +8,6 @@ import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.metrics.SchemaMetrics;
 import com.dbxray.domain.model.target.OutputObjectType;
-import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,9 +22,7 @@ public class ReadmeTemplates {
 
   /** READMEのファイルヘッダー */
   public static String fileHeader(BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(String.format("%s ドキュメント一覧", baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(String.format("%s ドキュメント一覧", baseInfo.dbName()));
   }
 
   /** 基本情報セクション */
@@ -41,17 +38,7 @@ public class ReadmeTemplates {
    * @param documents 出力する一覧ドキュメントの種別（掲載順）
    */
   public static String documentLinks(BaseInfoEntity baseInfo, Set<ListDocumentType> documents) {
-    final StringBuilder sb = new StringBuilder("## ドキュメント一覧").append(LINE_SEPARATOR_DOUBLE);
-    documents.forEach(
-        type ->
-            sb.append(
-                    String.format(
-                        "* [%s](%s)  ",
-                        type.getTitle(),
-                        DocumentLocations.linkFromDatabaseRoot(
-                            DocumentLocations.listFile(type, baseInfo.dbName()))))
-                .append(LINE_SEPARATOR));
-    return sb.append(LINE_SEPARATOR).toString();
+    return MarkdownTemplateSupport.listLinks("ドキュメント一覧", documents, baseInfo);
   }
 
   /**

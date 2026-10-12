@@ -15,10 +15,10 @@ import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.writer.PagedSectionWriter;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PageLayout;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PagedSection;
+import com.dbxray.domain.service.writer.template.RowRenderer;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.BiFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -85,10 +85,10 @@ public class ObjectListWriter {
       ListDocumentType type,
       String tableHeader,
       List<T> objects,
-      BiFunction<Integer, T, String> lineMapper,
+      RowRenderer<T> rowRenderer,
       OutputRoot outputRoot) {
     final PagedSection<T> section =
-        new PagedSection<>(type.getTitle(), tableHeader, objects, lineMapper);
+        new PagedSection<>(type.getTitle(), tableHeader, objects, rowRenderer);
     final PageLayout layout =
         new PageLayout(
             ObjectListTemplates.fileHeader(type.getTitle(), outputRoot.baseInfo()),

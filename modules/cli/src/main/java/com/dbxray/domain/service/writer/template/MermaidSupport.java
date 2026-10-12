@@ -1,6 +1,7 @@
 package com.dbxray.domain.service.writer.template;
 
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.DiagramColumn;
@@ -16,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -25,6 +27,33 @@ import java.util.stream.Collectors;
 public final class MermaidSupport {
 
   private MermaidSupport() {}
+
+  /**
+   * ER図のコードブロック（末尾の空行を含む）を組み立てるメソッド<br>
+   * 各ノードのエンティティ別名を宣言し、関係線を参照先（親）→ 参照元（子）の向きで描いた後、ノードごとにテーブルの箱を描く
+   *
+   * @param nodes 図に描画するノード（重複無し。この順に別名を宣言し、箱を描く）
+   * @param relations 図に描画する関連（この順に関係線を描く）
+   * @param columnsOf ノードの箱に表示するカラムを求める関数（表示するカラムが無いノードは空のリストを返す）
+   */
+  public static String erDiagramCodeBlock(
+      Collection<TableKey> nodes,
+      Collection<ForeignKeyEntity> relations,
+      DiagramBoxes boxes,
+      Function<TableKey, List<DiagramColumn>> columnsOf) {
+    final Map<TableKey, String> ids = assignNodeIds(nodes);
+    final Map<TableKey, String> labels = assignLabels(nodes, boxes);
+    final StringBuilder sb =
+        new StringBuilder("```mermaid")
+            .append(LINE_SEPARATOR)
+            .append("erDiagram")
+            .append(LINE_SEPARATOR);
+    nodes.forEach(key -> sb.append(aliasLine(ids.get(key), labels.get(key))));
+    relations.forEach(
+        fk -> sb.append(relationLine(ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
+    nodes.forEach(key -> sb.append(attributeBlock(ids.get(key), columnsOf.apply(key))));
+    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+  }
 
   /**
    * 図に描画するノードごとに、一意なMermaidのエンティティ識別子を採番するメソッド<br>

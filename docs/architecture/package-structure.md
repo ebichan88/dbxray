@@ -147,7 +147,7 @@ MCPサーバー（`modules/mcp-server/`。`com.dbxray.mcp`配下）のパッケ�
 | | `FunctionTableUsageTemplates` | 関数・プロシージャの個別定義の「利用しているテーブル」セクションのテンプレート（抽出の限界を示す文・表・スキーマが決まらない名前の候補） |
 | `domain.service.writer.readme` | `ReadmeWriter`, `ReadmeTemplates` | データベース単位ディレクトリ（`{DB名}/`）のREADMEの書き込みとテンプレート。出力される一覧ドキュメントへのリンクと、出力対象の集計（`DatabaseMetrics`）をまとめる |
 | `domain.service.writer` | `PagedSectionWriter` | 行数の多い表をページ分割して出力する共通処理。分割ページは本体ページと同じディレクトリに置き、ページ間のリンクはファイル名から導く |
-| `domain.service.writer.template` | `MarkdownTemplateSupport`, `MermaidSupport`, `PagedSectionTemplates` | 複数の種別が共有するテンプレート部品（Markdown共通部品、Mermaid記法変換、ページ分割の見出し・リンク） |
+| `domain.service.writer.template` | `MarkdownTemplateSupport`, `MermaidSupport`, `PagedSectionTemplates`, `RowRenderer` | 複数の種別が共有するテンプレート部品（Markdown共通部品、Mermaid記法変換、ページ分割の見出し・リンク、表の1行を組み立てる関数の型） |
 
 ## infrastructure層
 

@@ -1,7 +1,6 @@
 package com.dbxray.domain.service.writer.tabledefinition;
 
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.row;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
@@ -34,20 +33,7 @@ public class TableDefinitionListTemplates {
    * @return 関連ドキュメントセクション文字列。typesが空の場合は空文字列
    */
   public static String relatedDocuments(BaseInfoEntity baseInfo, List<ListDocumentType> types) {
-    if (types == null || types.isEmpty()) {
-      return "";
-    }
-    StringBuilder sb = new StringBuilder("## 関連ドキュメント").append(LINE_SEPARATOR_DOUBLE);
-    types.forEach(
-        type ->
-            sb.append(
-                    String.format(
-                        "* [%s](%s)  ",
-                        type.getTitle(),
-                        DocumentLocations.linkFromDatabaseRoot(
-                            DocumentLocations.listFile(type, baseInfo.dbName()))))
-                .append(LINE_SEPARATOR));
-    return sb.append(LINE_SEPARATOR).toString();
+    return types.isEmpty() ? "" : MarkdownTemplateSupport.listLinks("関連ドキュメント", types, baseInfo);
   }
 
   /**

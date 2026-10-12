@@ -153,8 +153,7 @@ public class ObjectListTemplates {
   /** 個別定義書から一覧へ戻る導線（{@link ObjectDefinitionTemplates}）と対になるよう、一覧からテーブル一覧へ戻る導線を設ける */
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        DocumentLocations.linkFromDatabaseRoot(
-            DocumentLocations.listFile(ListDocumentType.TABLE, baseInfo.dbName())),
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
         ListDocumentType.TABLE.getBackLinkLabel());
   }
 }

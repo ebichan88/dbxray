@@ -24,20 +24,18 @@ import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import com.dbxray.domain.service.writer.template.MermaidSupport;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
+import com.dbxray.domain.service.writer.template.RowRenderer;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 /** テーブル定義書き込みに利用するMarkdownのテンプレートを扱うクラス */
 public class TableDefinitionTemplates {
 
   /** テーブル定義ヘッダー */
   public static String fileHeader(TableEntity table) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(table.getHeaderTableName())
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(table.getHeaderTableName());
   }
 
   /** 基本情報セクション */
@@ -408,17 +406,10 @@ public class TableDefinitionTemplates {
 
   /** トリガーの本体（見出しとコードブロック） */
   private static String triggerBody(TriggerEntity trigger) {
-    final String fence = MarkdownTemplateSupport.codeFence(trigger.body());
     return "### "
         + MarkdownTemplateSupport.escapeInline(trigger.triggerName())
         + LINE_SEPARATOR_DOUBLE
-        + fence
-        + "sql"
-        + LINE_SEPARATOR
-        + trigger.body()
-        + LINE_SEPARATOR
-        + fence
-        + LINE_SEPARATOR_DOUBLE;
+        + MarkdownTemplateSupport.sqlCodeBlock(trigger.body());
   }
 
   /**
@@ -454,28 +445,19 @@ public class TableDefinitionTemplates {
           nodeKeys.add(fk.referenceTableKey());
           nodeKeys.add(fk.tableKey());
         });
-    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(nodeKeys);
-    final Map<TableKey, String> labels = MermaidSupport.assignLabels(nodeKeys, boxes);
-    sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
-    nodeKeys.forEach(key -> sb.append(MermaidSupport.aliasLine(ids.get(key), labels.get(key))));
-    drawnRelations.forEach(
-        fk ->
-            sb.append(
-                MermaidSupport.relationLine(
-                    ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
-    sb.append(
-        MermaidSupport.attributeBlock(
-            ids.get(selfKey), DiagramColumn.of(selfKey, columns, drawnRelations)));
+    final List<DiagramColumn> selfColumns = DiagramColumn.of(selfKey, columns, drawnRelations);
     final Map<TableKey, List<DiagramColumn>> relationColumns =
         boxes.relationColumnsOf(drawnRelations);
-    nodeKeys.stream()
-        .filter(key -> !key.equals(selfKey))
-        .forEach(
-            key ->
-                sb.append(
-                    MermaidSupport.attributeBlock(
-                        ids.get(key), relationColumns.getOrDefault(key, List.of()))));
-    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+    return sb.append(
+            MermaidSupport.erDiagramCodeBlock(
+                nodeKeys,
+                drawnRelations,
+                boxes,
+                key ->
+                    key.equals(selfKey)
+                        ? selfColumns
+                        : relationColumns.getOrDefault(key, List.of())))
+        .toString();
   }
 
   /**
@@ -494,20 +476,17 @@ public class TableDefinitionTemplates {
     viewpoints.forEach(
         viewpoint ->
             sb.append(
-                    String.format(
-                        "* [%s](%s)  ",
-                        MarkdownTemplateSupport.escapeInline(viewpoint.name()),
-                        DocumentLocations.linkFromDefinition(
-                            DocumentLocations.viewpointFile(baseInfo.dbName(), viewpoint))))
-                .append(LINE_SEPARATOR));
+                MarkdownTemplateSupport.linkListItem(
+                    MarkdownTemplateSupport.escapeInline(viewpoint.name()),
+                    DocumentLocations.linkFromDefinition(
+                        DocumentLocations.viewpointFile(baseInfo.dbName(), viewpoint)))));
     return sb.append(LINE_SEPARATOR).toString();
   }
 
   /** テーブル一覧へ戻るリンクのフッター */
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        DocumentLocations.linkFromDefinition(
-            DocumentLocations.listFile(ListDocumentType.TABLE, baseInfo.dbName())),
+        MarkdownTemplateSupport.listLinkFromDefinition(ListDocumentType.TABLE, baseInfo),
         ListDocumentType.TABLE.getBackLinkLabel());
   }
 
@@ -515,14 +494,13 @@ public class TableDefinitionTemplates {
    * 行番号はリスト内での位置（1始まり）から採番する。
    * 当該テーブルへの絞り込みは{@link com.dbxray.domain.model.target.TableDefinitionContent#assemble}で済んでいる前提とする
    */
-  private static <T> String tableSection(
-      List<T> list, String header, BiFunction<Integer, T, String> lineMapper) {
+  private static <T> String tableSection(List<T> list, String header, RowRenderer<T> rowRenderer) {
     final StringBuilder sb = new StringBuilder(header);
     for (int i = 0; i < list.size(); i++) {
       if (i > 0) {
         sb.append(LINE_SEPARATOR);
       }
-      sb.append(lineMapper.apply(i + 1, list.get(i)));
+      sb.append(rowRenderer.render(i + 1, list.get(i)));
     }
     return sb.append(LINE_SEPARATOR_DOUBLE).toString();
   }
