@@ -17,6 +17,10 @@ final class SqlLexer {
   /** ドル引用符のタグの長さの上限。超えるものはドル引用符とみなさない（閉じの区切りを探す手間が「本体の長さ×タグの長さ」になるため） */
   static final int MAX_DOLLAR_TAG_LENGTH = 64;
 
+  private static final String LINE_COMMENT_START = "--";
+  private static final String BLOCK_COMMENT_START = "/*";
+  private static final String BLOCK_COMMENT_END = "*/";
+
   private final String source;
   private final int to;
   private final Dbms dbms;
@@ -85,11 +89,11 @@ final class SqlLexer {
       }
       return SqlTokenKind.WHITESPACE;
     }
-    if (c == '-' && peek(1) == '-') {
+    if (lookingAt(LINE_COMMENT_START)) {
       scanLineComment();
       return SqlTokenKind.COMMENT;
     }
-    if (c == '/' && peek(1) == '*') {
+    if (lookingAt(BLOCK_COMMENT_START)) {
       scanBlockComment();
       return SqlTokenKind.COMMENT;
     }
@@ -134,7 +138,7 @@ final class SqlLexer {
     }
     if ((c == 'U' || c == 'u') && peek(1) == '&' && (peek(2) == '\'' || peek(2) == '"')) {
       final char quote = peek(2);
-      pos += 2;
+      skip("U&");
       scanQuoted(quote, false);
       return Optional.of(quote == '"' ? SqlTokenKind.QUOTED_IDENTIFIER : SqlTokenKind.STRING);
     }
@@ -155,16 +159,19 @@ final class SqlLexer {
    * @return 読んだ字句の種類。当てはまらない場合は空（位置は進めない）
    */
   private Optional<SqlTokenKind> scanOracleSpecific(char c) {
-    if ((c == 'Q' || c == 'q') && peek(1) == '\'' && hasAlternativeQuoteDelimiter(pos + 2)) {
-      scanAlternativeQuote(pos + 2);
-      return Optional.of(SqlTokenKind.STRING);
+    if ((c == 'Q' || c == 'q') && peek(1) == '\'') {
+      final int delimiterPos = pos + "q'".length();
+      if (hasAlternativeQuoteDelimiter(delimiterPos)) {
+        scanAlternativeQuote(delimiterPos);
+        return Optional.of(SqlTokenKind.STRING);
+      }
     }
-    if ((c == 'N' || c == 'n')
-        && (peek(1) == 'Q' || peek(1) == 'q')
-        && peek(2) == '\''
-        && hasAlternativeQuoteDelimiter(pos + 3)) {
-      scanAlternativeQuote(pos + 3);
-      return Optional.of(SqlTokenKind.STRING);
+    if ((c == 'N' || c == 'n') && (peek(1) == 'Q' || peek(1) == 'q') && peek(2) == '\'') {
+      final int delimiterPos = pos + "nq'".length();
+      if (hasAlternativeQuoteDelimiter(delimiterPos)) {
+        scanAlternativeQuote(delimiterPos);
+        return Optional.of(SqlTokenKind.STRING);
+      }
     }
     if ((c == 'N' || c == 'n') && peek(1) == '\'') {
       pos++;
@@ -172,7 +179,7 @@ final class SqlLexer {
       return Optional.of(SqlTokenKind.STRING);
     }
     if (c == '$') {
-      final int nameStart = peek(1) == '$' ? pos + 2 : pos + 1;
+      final int nameStart = pos + (peek(1) == '$' ? "$$" : "$").length();
       if (nameStart < to && isIdentifierStart(source.charAt(nameStart))) {
         pos = nameStart;
         skipIdentifierParts();
@@ -196,7 +203,7 @@ final class SqlLexer {
   }
 
   private void scanLineComment() {
-    pos += 2;
+    skip(LINE_COMMENT_START);
     while (pos < to && source.charAt(pos) != '\n' && source.charAt(pos) != '\r') {
       pos++;
     }
@@ -204,17 +211,17 @@ final class SqlLexer {
 
   /** PostgreSQLは入れ子の深さを数え、Oracleは最初の{@code *}{@code /}で閉じる */
   private void scanBlockComment() {
-    pos += 2;
+    skip(BLOCK_COMMENT_START);
     int depth = 1;
     while (pos < to) {
-      if (source.charAt(pos) == '*' && peek(1) == '/') {
-        pos += 2;
+      if (lookingAt(BLOCK_COMMENT_END)) {
+        skip(BLOCK_COMMENT_END);
         depth--;
         if (depth == 0) {
           return;
         }
-      } else if (nestsBlockComments() && source.charAt(pos) == '/' && peek(1) == '*') {
-        pos += 2;
+      } else if (nestsBlockComments() && lookingAt(BLOCK_COMMENT_START)) {
+        skip(BLOCK_COMMENT_START);
         depth++;
       } else {
         pos++;
@@ -387,6 +394,16 @@ final class SqlLexer {
       case '!' -> second == '=';
       default -> false;
     };
+  }
+
+  /** 現在の位置から、範囲の終わりまでの間に{@code text}があるか */
+  private boolean lookingAt(String text) {
+    return pos + text.length() <= to && source.startsWith(text, pos);
+  }
+
+  /** 位置を{@code text}の長さだけ進める（{@code text}が何を読み飛ばすかを示す。中身は確かめないので、先に{@link #lookingAt}等で確かめておく） */
+  private void skip(String text) {
+    pos += text.length();
   }
 
   /** 範囲の外は{@code \0}として扱う（比べる相手はいずれも{@code \0}以外の文字） */
