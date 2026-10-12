@@ -14,9 +14,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
-/** TableReferenceScanner のテーブルの位置・操作・動的SQLの判定のテスト（ケースの一覧はTableUsageMetamorphicTestでも使う） */
+/** TableReferenceScanner のテーブルの位置・操作・動的SQLの判定のテスト */
 class TableReferenceScannerTest {
 
   static List<ScanCase> insertCases() {
@@ -88,6 +87,10 @@ class TableReferenceScannerTest {
             "A:U, B:R, C:R"));
     cases.add(ora("UPDATE t SET x = 1 RETURNING id INTO v_id", "T:U"));
     cases.add(ora("UPDATE t SET ROW = v_rec WHERE id = v_rec.id", "T:U"));
+    cases.add(
+        pg(
+            "UPDATE perms SET update = delete FROM roles r WHERE r.id = perms.id",
+            "perms:U, roles:R"));
     return cases;
   }
 
@@ -142,6 +145,8 @@ class TableReferenceScannerTest {
             "b:R, a:C"));
     cases.add(pg("MERGE INTO a USING b ON a.id = b.id WHEN MATCHED THEN DELETE", "b:R, a:D"));
     cases.add(pg("MERGE INTO a USING b ON a.id = b.id WHEN MATCHED THEN DO NOTHING", "b:R"));
+    cases.add(
+        pg("MERGE INTO a USING b ON a.id = b.id WHEN MATCHED THEN DELETE RETURNING *", "b:R, a:D"));
     cases.add(
         pg(
             "MERGE INTO a USING b ON a.id = b.id WHEN MATCHED THEN UPDATE SET x = 1; INSERT INTO c"
@@ -207,12 +212,32 @@ class TableReferenceScannerTest {
     cases.addAll(
         both("SELECT a FROM t UNION SELECT a FROM u UNION ALL SELECT a FROM v", "t:R, u:R, v:R"));
     cases.addAll(both("SELECT * FROM a WHERE x = 1 ORDER BY a.x, b", "a:R"));
+    cases.addAll(
+        both(
+            "SELECT * FROM a JOIN b ON CASE WHEN a.x = 1 THEN b.y ELSE b.z END = 1, c",
+            "a:R, b:R, c:R"));
+    cases.addAll(
+        both(
+            "SELECT * FROM a JOIN b ON CASE WHEN a.x = 1 THEN CASE WHEN b.y = 2 THEN 1 ELSE 2 END"
+                + " ELSE 3 END = 1, c",
+            "a:R, b:R, c:R"));
+    cases.addAll(both("SELECT * FROM a, start, b", "a:R, start:R, b:R"));
+    cases.addAll(both("SELECT * FROM a JOIN b ON a.x = start, c", "a:R, b:R, c:R"));
+    cases.addAll(
+        both("SELECT * FROM a JOIN b ON limit < b.y AND b.z > offset, c", "a:R, b:R, c:R"));
+    cases.add(pg("SELECT * FROM a AS limit, b", "a:R, b:R"));
     cases.addAll(both("SELECT x, y FROM a GROUP BY x, y HAVING count(*) > 1", "a:R"));
     cases.addAll(both("SELECT * FROM a ORDER BY x FETCH FIRST 10 ROWS ONLY", "a:R"));
     cases.addAll(both("SELECT count(*) INTO v FROM t", "t:R"));
     cases.addAll(both("SELECT a, b INTO v1, v2 FROM t WHERE id = 1", "t:R"));
     cases.addAll(both("SELECT t.update, t.delete, t.insert, t.from FROM t", "t:R"));
     cases.addAll(both("SELECT update_date, insert_user, deleted FROM t", "t:R"));
+    cases.addAll(both("SELECT t.delete FROM t", "t:R"));
+    cases.addAll(
+        both(
+            "SELECT p.id, p.update, p.delete FROM perms p JOIN roles r ON p.id = r.id",
+            "perms:R, roles:R"));
+    cases.addAll(both("INSERT INTO log SELECT p.id, p.delete FROM perms p", "log:C, perms:R"));
     cases.addAll(both("SELECT * FROM f(1)", "-"));
     cases.addAll(both("SELECT * FROM sample.f(1) x JOIN t ON 1 = 1", "t:R"));
     cases.addAll(both("SELECT EXTRACT(YEAR FROM hired_date) FROM employee", "employee:R"));
@@ -243,6 +268,14 @@ class TableReferenceScannerTest {
     cases.add(pg("SELECT a::text FROM t WHERE b = $1", "t:R"));
     cases.add(pg("SELECT * FROM t WINDOW w AS (PARTITION BY a), u", "t:R"));
     cases.add(pg("SELECT * FROM ONLY t", "t:R"));
+    cases.add(pg("SELECT update FROM perms", "perms:R"));
+    cases.add(pg("SELECT delete FROM perms", "perms:R"));
+    cases.add(pg("SELECT insert, truncate FROM perms", "perms:R"));
+    cases.add(pg("SELECT a, delete FROM perms WHERE update AND delete", "perms:R"));
+    cases.add(pg("SELECT * FROM perms ORDER BY update DESC", "perms:R"));
+    cases.add(pg("SELECT x AS update, y AS delete FROM perms", "perms:R"));
+    cases.add(pg("SELECT * FROM a JOIN b ON a.tags && ARRAY['x', y], c", "a:R, b:R, c:R"));
+    cases.add(pg("SELECT * FROM a JOIN b ON a.arr = ARRAY[a.x, a.y], c", "a:R, b:R, c:R"));
     cases.add(ora("SELECT * FROM TABLE(f(1))", "-"));
     cases.add(ora("SELECT * FROM a, TABLE(a.nested) n", "A:R"));
     cases.add(ora("SELECT * FROM a CROSS APPLY (SELECT * FROM b WHERE b.id = a.id)", "A:R, B:R"));
@@ -258,6 +291,11 @@ class TableReferenceScannerTest {
     cases.add(ora("SELECT * FROM a#b", "A#B:R"));
     cases.add(ora("SELECT * FROM \"sample\".t", "sample.T:R"));
     cases.add(ora("SELECT * FROM a, b WHERE a.id = b.id(+)", "A:R, B:R"));
+    cases.add(
+        ora("SELECT NTH_VALUE(x, 2) FROM FIRST OVER (ORDER BY y) AS nv, other_col FROM t", "T:R"));
+    cases.add(ora("SELECT NTH_VALUE(x, 2) FROM LAST IGNORE NULLS OVER (ORDER BY y) FROM t", "T:R"));
+    cases.add(ora("SELECT * FROM first, last", "FIRST:R, LAST:R"));
+    cases.add(ora("SELECT * FROM sales PARTITION FOR (1), b", "SALES:R, B:R"));
     return cases;
   }
 
@@ -308,6 +346,32 @@ class TableReferenceScannerTest {
         pg("WITH d AS (DELETE FROM a RETURNING *) INSERT INTO b SELECT * FROM d", "a:D, b:C"));
     cases.add(pg("WITH u AS (UPDATE a SET x = 1 RETURNING id) SELECT * FROM u", "a:U"));
     cases.add(pg("WITH \"D\" AS (SELECT * FROM a) SELECT * FROM d", "a:R, d:R"));
+    cases.addAll(both("WITH t AS (SELECT * FROM t WHERE flag) SELECT * FROM t", "t:R"));
+    cases.addAll(
+        both(
+            "WITH employee AS (SELECT * FROM employee WHERE active) SELECT * FROM employee",
+            "employee:R"));
+    cases.add(pg("WITH r (n) AS (SELECT n FROM r) SELECT * FROM r", "r:R"));
+    cases.add(
+        ora(
+            "WITH r (n) AS (SELECT 1 FROM dual UNION ALL SELECT n + 1 FROM r WHERE n < 10) SELECT *"
+                + " FROM r",
+            "DUAL:R"));
+    cases.add(pg("WITH RECURSIVE a AS (SELECT 1), b AS (SELECT n FROM b) SELECT * FROM b", "-"));
+    cases.add(pg("WITH x AS (SELECT 1 FROM a) DELETE FROM x", "a:R, x:D"));
+    cases.add(pg("WITH x AS (SELECT id FROM a) UPDATE x SET y = 1", "a:R, x:U"));
+    cases.addAll(both("WITH t AS (SELECT 1 FROM a) INSERT INTO t SELECT * FROM t", "a:R, t:C"));
+    cases.add(
+        pg(
+            "WITH s AS (SELECT 1 FROM a) MERGE INTO s USING t ON s.id = t.id WHEN MATCHED THEN"
+                + " UPDATE SET x = 1",
+            "a:R, t:R, s:U"));
+    cases.add(
+        pg(
+            "IF EXISTS (WITH d AS (SELECT 1 FROM a) SELECT 1 FROM d) THEN PERFORM 1 FROM d; END IF",
+            "a:R, d:R"));
+    cases.addAll(
+        both("SELECT * FROM (WITH d AS (SELECT 1 FROM a) SELECT * FROM d) x, d", "a:R, d:R"));
     return cases;
   }
 
@@ -394,6 +458,9 @@ class TableReferenceScannerTest {
             "ALTER TABLE t ADD FOREIGN KEY (x) REFERENCES u ON UPDATE SET NULL ON DELETE SET NULL",
             "-"));
     cases.add(ora("CREATE TRIGGER trg INSTEAD OF INSERT ON v FOR EACH ROW BEGIN NULL; END", "-"));
+    cases.add(pg("REVOKE GRANT OPTION FOR EXECUTE ON FUNCTION f() FROM u", "-"));
+    cases.add(pg("ALTER DEFAULT PRIVILEGES FOR ROLE x REVOKE ALL ON TABLES FROM y", "-"));
+    cases.add(pg("SELECT revoke FROM t", "t:R"));
     return cases;
   }
 
@@ -440,7 +507,10 @@ class TableReferenceScannerTest {
     cases.add(pg("PERFORM format('DELETE FROM %I', v)", "-"));
     cases.add(pg("SELECT * FROM dblink('conn', 'SELECT * FROM t') AS x(a int)", "[dyn dblink]"));
     cases.add(pg("PERFORM public.dblink_exec('conn', 'DELETE FROM t')", "[dyn dblink]"));
+    cases.add(pg("PERFORM dblink_send_query('conn', 'DELETE FROM t')", "[dyn dblink]"));
+    cases.add(pg("PERFORM dblink_open('conn', 'cur', 'SELECT * FROM t')", "[dyn dblink]"));
     cases.add(pg("PERFORM dblink_connect('conn')", "-"));
+    cases.add(pg("SELECT execute FROM t", "t:R"));
     cases.add(pg("-- EXECUTE 'x'\nSELECT 1", "-"));
     cases.add(pg("RAISE NOTICE 'EXECUTE x'", "-"));
     cases.add(pg("CREATE TRIGGER trg AFTER INSERT ON t FOR EACH ROW EXECUTE FUNCTION f()", "-"));
@@ -480,7 +550,7 @@ class TableReferenceScannerTest {
     return cases;
   }
 
-  /** 全ケース（変形テストで使う） */
+  /** 全ケース */
   static Stream<ScanCase> allCases() {
     return Stream.of(
             insertCases(),
@@ -567,40 +637,12 @@ class TableReferenceScannerTest {
     assertScan(scanCase);
   }
 
+  static Stream<String> listTerminators() {
+    return TableReferenceScanner.LIST_TERMINATORS.stream().sorted();
+  }
+
   @ParameterizedTest(name = "{0}")
-  @ValueSource(
-      strings = {
-        "WHERE",
-        "GROUP",
-        "HAVING",
-        "WINDOW",
-        "ORDER",
-        "LIMIT",
-        "OFFSET",
-        "FETCH",
-        "FOR",
-        "UNION",
-        "INTERSECT",
-        "EXCEPT",
-        "MINUS",
-        "INTO",
-        "RETURNING",
-        "SET",
-        "DO",
-        "WHEN",
-        "THEN",
-        "ELSE",
-        "END",
-        "LOOP",
-        "CONNECT",
-        "START",
-        "RESTART",
-        "CONTINUE",
-        "CASCADE",
-        "RESTRICT",
-        "SELECT",
-        "VALUES"
-      })
+  @MethodSource("listTerminators")
   @DisplayName("FROMの並び: 同じ括弧の深さで句・区切りの語が現れたら、その後ろのカンマ区切りをテーブルとして読まない")
   void testListTerminators(String word) {
     final String sql = "SELECT * FROM a, b " + word + " x, c";
@@ -617,7 +659,7 @@ class TableReferenceScannerTest {
   }
 
   @Test
-  @DisplayName("scan: 拾った名前は畳み込み、修飾の有無・操作を出現順に返す（同じ名前も重ねて返す）")
+  @DisplayName("scan: 拾った名前は畳み込み、修飾の有無・操作を初めて現れた順に返す（操作が違えば同じ名前も別に返す）")
   void testReferencesInOrder() {
     final ScanResult result =
         ScanCase.scan(
@@ -630,6 +672,30 @@ class TableReferenceScannerTest {
             new TableReference("", "employee", CrudOperation.READ),
             new TableReference("", "employee", CrudOperation.DELETE)),
         result.references());
+  }
+
+  @Test
+  @DisplayName("scan: 同じスキーマ・テーブル・操作の組は何度書いても1つにまとめる")
+  void testDuplicateReferencesCollapse() {
+    final ScanResult result =
+        ScanCase.scan(
+            "SELECT * FROM a, a, A JOIN a ON 1 = 1; INSERT INTO a SELECT * FROM a",
+            Dbms.POSTGRESQL);
+
+    assertEquals(
+        List.of(
+            new TableReference("", "a", CrudOperation.READ),
+            new TableReference("", "a", CrudOperation.CREATE)),
+        result.references());
+  }
+
+  @Test
+  @DisplayName("both: Oracle側の期待値は、動的SQLの種類の名前を大文字にしない")
+  void testBothKeepsDynamicSqlLabel() {
+    final List<ScanCase> cases = both("EXECUTE 'x'", "t:C [dyn EXECUTE]");
+
+    assertEquals("t:C [dyn EXECUTE]", cases.get(0).expected());
+    assertEquals("T:C [dyn EXECUTE]", cases.get(1).expected());
   }
 
   private static void assertScan(ScanCase scanCase) {

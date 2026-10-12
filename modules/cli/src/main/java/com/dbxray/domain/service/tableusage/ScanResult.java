@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * 定義本体からテーブルを指す位置の名前を拾った結果
  *
- * @param references テーブルを指す位置にあった名前（出現順。CTEの名前は除く）
+ * @param references テーブルを指す位置にあった名前（初めて現れた順。同じスキーマ・テーブル・操作の組は1つにまとめる。読み取りの位置のCTEの名前は除く）
  * @param dynamicSql 動的SQLの種類（最初に現れた順）
  */
 record ScanResult(List<TableReference> references, List<DynamicSqlKind> dynamicSql) {

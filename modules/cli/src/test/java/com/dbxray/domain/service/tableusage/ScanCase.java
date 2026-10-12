@@ -18,11 +18,20 @@ import java.util.stream.Collectors;
  */
 record ScanCase(Dbms dbms, String sql, String expected) {
 
-  /** PostgreSQL・Oracleの両方で同じ結果になるケース（期待値の名前は小文字で書き、Oracleでは大文字にする） */
+  /**
+   * PostgreSQL・Oracleの両方で同じ結果になるケース（期待値の名前は小文字で書き、Oracleでは大文字にする）<br>
+   * 動的SQLの{@code [dyn …]}は、DBMSごとに種類の名前が違うため大文字にせず、そのまま使う
+   */
   static List<ScanCase> both(String sql, String expected) {
+    final int dynamicStart = expected.indexOf('[');
+    final String oracleExpected =
+        dynamicStart < 0
+            ? AsciiCase.toUpper(expected)
+            : AsciiCase.toUpper(expected.substring(0, dynamicStart))
+                + expected.substring(dynamicStart);
     return List.of(
         new ScanCase(Dbms.POSTGRESQL, sql, expected),
-        new ScanCase(Dbms.ORACLE, sql, AsciiCase.toUpper(expected)));
+        new ScanCase(Dbms.ORACLE, sql, oracleExpected));
   }
 
   static ScanCase pg(String sql, String expected) {
@@ -33,7 +42,7 @@ record ScanCase(Dbms dbms, String sql, String expected) {
     return new ScanCase(Dbms.ORACLE, sql, expected);
   }
 
-  /** 期待値に現れるテーブルの名前（変形テストで、コメント・文字列の中に書くDMLの対象に使う） */
+  /** 期待値に現れるテーブルの名前（スキーマ修飾を含む） */
   List<String> expectedNames() {
     return ExpectedNotation.tableNames(expected);
   }

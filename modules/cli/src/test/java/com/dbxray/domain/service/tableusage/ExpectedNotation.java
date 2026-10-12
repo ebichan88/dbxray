@@ -12,7 +12,7 @@ final class ExpectedNotation {
   private ExpectedNotation() {}
 
   /**
-   * 期待値に現れるテーブルの名前を取り出すメソッド（変形テストで、コメント・文字列の中に書くDMLの対象に使う）
+   * 期待値に現れるテーブルの名前を取り出すメソッド
    *
    * @return 名前（スキーマ修飾を含む。決まり方の{@code (…).}は除く）。何も無ければ空
    */
