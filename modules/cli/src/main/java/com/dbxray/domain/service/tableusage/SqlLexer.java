@@ -10,7 +10,10 @@ import java.util.Optional;
  * 先頭から1文字ずつ読み、今いる場所が文字列・コメント・識別子のどれかを状態として持つ。コメントと文字列は互いの中で効かない （文字列の中の{@code
  * --}はコメントにせず、コメントの中の{@code '}で文字列を始めない）ため、同時に左から読まないと区別できない。
  * 規則はDBごとに異なる（PostgreSQLはブロックコメントを入れ子にでき、ドル引用符を持つ。Oracleは入れ子にできず、{@code q'[...]'}を持つ）。
- * 閉じていない文字列・コメント等は範囲の終わりまでをその要素とし、例外にはしない（コンパイルに失敗した本体もDBに残りうるため）
+ * 閉じていない文字列・コメント等は範囲の終わりまでをその要素とし、例外にはしない（コンパイルに失敗した本体もDBに残りうるため）<br>
+ * 読んでいる位置は可変の{@code pos}1つで持つ。{@code scan...}は{@code pos}から要素を1つ読み、
+ * 読み終えた直後まで{@code pos}を進める。{@code skip...}は読み飛ばすだけで、
+ * {@code peek}・{@code lookingAt}・{@code is...}・{@code has...}は{@code pos}を動かさない
  */
 final class SqlLexer {
 
@@ -22,23 +25,32 @@ final class SqlLexer {
   private static final String BLOCK_COMMENT_END = "*/";
 
   private final String source;
-  private final int to;
+
+  /** 読む範囲の終了位置（含まない）。ドル引用符の中身を分け直すときは、{@code source}の途中になる */
+  private final int end;
+
   private final Dbms dbms;
   private final List<SqlToken> tokens = new ArrayList<>();
+
+  /** 次に読む文字の位置 */
   private int pos;
+
+  /** 次に読む字句（{@code pos}の位置）の行番号。字句を1つ読み終えるごとに{@link #run}が進める */
   private int line;
+
+  /** 閉じていない文字列・コメント等があり、範囲の終わりまでをその要素としたか */
   private boolean incomplete;
 
-  /** 直前に読んだドル引用符の中身の範囲（ドル引用符以外を読んだ後は-1） */
-  private int contentStart = -1;
+  /** 直前に読んだドル引用符の中身の範囲（{@link #scanPostgresDollar}が設定し、ドル引用符を読んだ直後だけ意味を持つ） */
+  private int dollarContentStart;
 
-  private int contentEnd = -1;
+  private int dollarContentEnd;
 
-  private SqlLexer(String source, int from, int to, int firstLine, Dbms dbms) {
+  private SqlLexer(String source, int start, int end, int firstLine, Dbms dbms) {
     this.source = source;
-    this.to = to;
+    this.end = end;
     this.dbms = dbms;
-    this.pos = from;
+    this.pos = start;
     this.line = firstLine;
   }
 
@@ -50,43 +62,40 @@ final class SqlLexer {
   /**
    * 文字列の一部の範囲を字句に分けるメソッド（ドル引用符の中身を、元の文字列での位置のまま分け直すため）
    *
-   * @param from 範囲の開始位置（含む）
-   * @param to 範囲の終了位置（含まない）
+   * @param start 範囲の開始位置（含む）
+   * @param end 範囲の終了位置（含まない）
    * @param firstLine 範囲の開始位置の行番号
    */
-  static SqlLexResult lex(String source, int from, int to, int firstLine, Dbms dbms) {
-    return new SqlLexer(source, from, to, firstLine, dbms).run();
+  static SqlLexResult lex(String source, int start, int end, int firstLine, Dbms dbms) {
+    return new SqlLexer(source, start, end, firstLine, dbms).run();
   }
 
   private SqlLexResult run() {
-    while (pos < to) {
+    while (pos < end) {
       final int start = pos;
       final int startLine = line;
-      contentStart = -1;
       final SqlTokenKind kind = scanOne();
       if (!kind.isTrivia()) {
-        tokens.add(
-            new SqlToken(
-                kind,
-                source,
-                start,
-                pos,
-                startLine,
-                contentStart < 0 ? start : contentStart,
-                contentStart < 0 ? pos : contentEnd));
+        tokens.add(newToken(kind, start, startLine));
       }
-      line += lineBreaks(source, start, pos, to);
+      line += lineBreaks(source, start, pos, end);
     }
     return new SqlLexResult(tokens, incomplete);
+  }
+
+  /** {@code start}から{@code pos}の手前までを字句にする（ドル引用符は、直前に{@code scanPostgresDollar}が設定した中身の範囲を持つ） */
+  private SqlToken newToken(SqlTokenKind kind, int start, int startLine) {
+    final boolean dollarString = kind == SqlTokenKind.DOLLAR_STRING;
+    final int contentStart = dollarString ? dollarContentStart : start;
+    final int contentEnd = dollarString ? dollarContentEnd : pos;
+    return new SqlToken(kind, source, start, pos, startLine, contentStart, contentEnd);
   }
 
   /** 現在の位置から字句を1つ読み、位置を字句の終わりまで進める（必ず1文字以上進める） */
   private SqlTokenKind scanOne() {
     final char c = source.charAt(pos);
     if (isWhitespace(c)) {
-      while (pos < to && isWhitespace(source.charAt(pos))) {
-        pos++;
-      }
+      skipWhitespace();
       return SqlTokenKind.WHITESPACE;
     }
     if (lookingAt(LINE_COMMENT_START)) {
@@ -142,6 +151,7 @@ final class SqlLexer {
       scanQuoted(quote, false);
       return Optional.of(quote == '"' ? SqlTokenKind.QUOTED_IDENTIFIER : SqlTokenKind.STRING);
     }
+    // B'...'（ビット列）・X'...'（16進）・N'...'（各国語）
     if ("BbXxNn".indexOf(c) >= 0 && peek(1) == '\'') {
       pos++;
       scanQuoted('\'', false);
@@ -159,6 +169,7 @@ final class SqlLexer {
    * @return 読んだ字句の種類。当てはまらない場合は空（位置は進めない）
    */
   private Optional<SqlTokenKind> scanOracleSpecific(char c) {
+    // q'[...]'
     if ((c == 'Q' || c == 'q') && peek(1) == '\'') {
       final int delimiterPos = pos + "q'".length();
       if (hasAlternativeQuoteDelimiter(delimiterPos)) {
@@ -166,6 +177,7 @@ final class SqlLexer {
         return Optional.of(SqlTokenKind.STRING);
       }
     }
+    // nq'[...]'
     if ((c == 'N' || c == 'n') && (peek(1) == 'Q' || peek(1) == 'q') && peek(2) == '\'') {
       final int delimiterPos = pos + "nq'".length();
       if (hasAlternativeQuoteDelimiter(delimiterPos)) {
@@ -173,20 +185,23 @@ final class SqlLexer {
         return Optional.of(SqlTokenKind.STRING);
       }
     }
+    // n'...'
     if ((c == 'N' || c == 'n') && peek(1) == '\'') {
       pos++;
       scanQuoted('\'', false);
       return Optional.of(SqlTokenKind.STRING);
     }
+    // $IF・$$PLSQL_UNIT
     if (c == '$') {
       final int nameStart = pos + (peek(1) == '$' ? "$$" : "$").length();
-      if (nameStart < to && isIdentifierStart(source.charAt(nameStart))) {
+      if (nameStart < end && isIdentifierStart(source.charAt(nameStart))) {
         pos = nameStart;
         skipIdentifierParts();
         return Optional.of(SqlTokenKind.DIRECTIVE);
       }
       return Optional.empty();
     }
+    // :name・:1
     if (c == ':' && (isIdentifierStart(peek(1)) || isDigit(peek(1)))) {
       pos++;
       skipIdentifierParts();
@@ -195,16 +210,29 @@ final class SqlLexer {
     return Optional.empty();
   }
 
-  /** 識別子の続きの文字を読み飛ばす */
-  private void skipIdentifierParts() {
-    while (pos < to && isIdentifierPart(source.charAt(pos))) {
+  private void skipWhitespace() {
+    while (pos < end && isWhitespace(source.charAt(pos))) {
       pos++;
     }
   }
 
+  /** 識別子の続きの文字を読み飛ばす */
+  private void skipIdentifierParts() {
+    while (pos < end && isIdentifierPart(source.charAt(pos))) {
+      pos++;
+    }
+  }
+
+  private void skipDigits() {
+    while (pos < end && isDigit(source.charAt(pos))) {
+      pos++;
+    }
+  }
+
+  /** 行コメントを、行末（改行の直前）まで読む */
   private void scanLineComment() {
     skip(LINE_COMMENT_START);
-    while (pos < to && source.charAt(pos) != '\n' && source.charAt(pos) != '\r') {
+    while (pos < end && source.charAt(pos) != '\n' && source.charAt(pos) != '\r') {
       pos++;
     }
   }
@@ -213,7 +241,7 @@ final class SqlLexer {
   private void scanBlockComment() {
     skip(BLOCK_COMMENT_START);
     int depth = 1;
-    while (pos < to) {
+    while (pos < end) {
       if (lookingAt(BLOCK_COMMENT_END)) {
         skip(BLOCK_COMMENT_END);
         depth--;
@@ -254,11 +282,13 @@ final class SqlLexer {
    */
   private void scanQuoted(char quote, boolean backslashEscapes) {
     pos++;
-    while (pos < to) {
+    while (pos < end) {
       final char c = source.charAt(pos);
       if (backslashEscapes && c == '\\') {
-        pos = Math.min(pos + 2, to);
+        // 「\」とその直後の1文字は中身（末尾の「\」で範囲を越えない）
+        pos = Math.min(pos + 2, end);
       } else if (c == quote && peek(1) == quote) {
+        // 重ねた引用符は、閉じではなく中身の引用符1つ
         pos += 2;
       } else if (c == quote) {
         pos++;
@@ -272,7 +302,7 @@ final class SqlLexer {
 
   /** Oracleの代替引用符（{@code q'[...]'}）の区切り文字があるか（空白・範囲の外は区切りにできない） */
   private boolean hasAlternativeQuoteDelimiter(int delimiterPos) {
-    return delimiterPos < to && !isWhitespace(source.charAt(delimiterPos));
+    return delimiterPos < end && !isWhitespace(source.charAt(delimiterPos));
   }
 
   /**
@@ -283,8 +313,9 @@ final class SqlLexer {
   private void scanAlternativeQuote(int delimiterPos) {
     final char close = closingDelimiter(source.charAt(delimiterPos));
     pos = delimiterPos + 1;
-    while (pos < to) {
+    while (pos < end) {
       if (source.charAt(pos) == close && peek(1) == '\'') {
+        // 閉じは、閉じの区切り文字と、それに続く'
         pos += 2;
         return;
       }
@@ -307,72 +338,79 @@ final class SqlLexer {
   private SqlTokenKind scanPostgresDollar() {
     if (isDigit(peek(1))) {
       pos++;
-      while (pos < to && isDigit(source.charAt(pos))) {
-        pos++;
-      }
+      skipDigits();
       return SqlTokenKind.PARAMETER;
     }
-    final int tagEnd = dollarTagEnd();
-    if (tagEnd < 0) {
+    final int delimiterStart = pos;
+    final int delimiterEnd = dollarDelimiterEnd(delimiterStart);
+    if (delimiterEnd < 0) {
       pos++;
       return SqlTokenKind.SYMBOL;
     }
-    final int tagLength = tagEnd - pos;
-    final int tagStart = pos;
-    for (int i = tagEnd; i < to; i++) {
-      if (source.charAt(i) == '$'
-          && i + tagLength <= to
-          && source.regionMatches(i, source, tagStart, tagLength)) {
-        pos = i + tagLength;
-        contentStart = tagEnd;
-        contentEnd = i;
-        return SqlTokenKind.DOLLAR_STRING;
-      }
+    final int closeStart = indexOfClosingDollarDelimiter(delimiterStart, delimiterEnd);
+    dollarContentStart = delimiterEnd;
+    if (closeStart < 0) {
+      pos = end;
+      dollarContentEnd = end;
+      incomplete = true;
+    } else {
+      pos = closeStart + (delimiterEnd - delimiterStart);
+      dollarContentEnd = closeStart;
     }
-    pos = to;
-    incomplete = true;
-    contentStart = tagEnd;
-    contentEnd = to;
     return SqlTokenKind.DOLLAR_STRING;
   }
 
   /**
-   * 現在の位置からドル引用符の開始の区切り（{@code $$}・{@code $tag$}）を読む
+   * ドル引用符の開始の区切り（{@code $$}・{@code $tag$}）が{@code delimiterStart}から始まるとき、その終わりを求める
    *
    * @return 区切りの直後の位置。区切りでない場合は-1
    */
-  private int dollarTagEnd() {
-    int i = pos + 1;
-    if (i < to && isIdentifierStart(source.charAt(i))) {
-      i++;
-      while (i < to && i - pos - 1 <= MAX_DOLLAR_TAG_LENGTH && isDollarTagPart(source.charAt(i))) {
-        i++;
+  private int dollarDelimiterEnd(int delimiterStart) {
+    final int tagStart = delimiterStart + 1;
+    int tagEnd = tagStart;
+    if (tagEnd < end && isIdentifierStart(source.charAt(tagEnd))) {
+      tagEnd++;
+      // 上限を超えるタグは区切りにならないので、超えたところで読むのをやめる
+      while (tagEnd < end
+          && tagEnd - tagStart <= MAX_DOLLAR_TAG_LENGTH
+          && isDollarTagPart(source.charAt(tagEnd))) {
+        tagEnd++;
       }
     }
-    if (i < to && source.charAt(i) == '$' && i - pos - 1 <= MAX_DOLLAR_TAG_LENGTH) {
-      return i + 1;
+    final boolean delimited =
+        tagEnd < end && source.charAt(tagEnd) == '$' && tagEnd - tagStart <= MAX_DOLLAR_TAG_LENGTH;
+    return delimited ? tagEnd + 1 : -1;
+  }
+
+  /**
+   * 開始の区切りと同じ区切りが、閉じとして最初に現れる位置を求める（範囲の外は探さない）
+   *
+   * @return 閉じの区切りの開始位置。閉じていない場合は-1
+   */
+  private int indexOfClosingDollarDelimiter(int delimiterStart, int delimiterEnd) {
+    final int length = delimiterEnd - delimiterStart;
+    for (int i = delimiterEnd; i + length <= end; i++) {
+      if (source.charAt(i) == '$' && source.regionMatches(i, source, delimiterStart, length)) {
+        return i;
+      }
     }
     return -1;
   }
 
-  /** {@code 1..10}（PL/SQL・PL/pgSQLの範囲）の{@code ..}は数値に含めない */
+  /** 数値（整数・小数・指数）を読む。{@code 1..10}（PL/SQL・PL/pgSQLの範囲）の{@code ..}は数値に含めない */
   private void scanNumber() {
-    while (pos < to && isDigit(source.charAt(pos))) {
+    skipDigits();
+    if (pos < end && source.charAt(pos) == '.' && peek(1) != '.') {
       pos++;
+      skipDigits();
     }
-    if (pos < to && source.charAt(pos) == '.' && peek(1) != '.') {
-      pos++;
-      while (pos < to && isDigit(source.charAt(pos))) {
-        pos++;
-      }
-    }
-    if (pos < to && (source.charAt(pos) == 'e' || source.charAt(pos) == 'E')) {
-      final int digitOffset = peek(1) == '+' || peek(1) == '-' ? 2 : 1;
-      if (isDigit(peek(digitOffset))) {
-        pos += digitOffset;
-        while (pos < to && isDigit(source.charAt(pos))) {
-          pos++;
-        }
+    // 指数部は、eの後（符号があってもよい）に数字が続くときだけ数値の一部とする
+    if (pos < end && (source.charAt(pos) == 'e' || source.charAt(pos) == 'E')) {
+      final int signLength = peek(1) == '+' || peek(1) == '-' ? 1 : 0;
+      final int exponentOffset = 1 + signLength;
+      if (isDigit(peek(exponentOffset))) {
+        pos += exponentOffset;
+        skipDigits();
       }
     }
   }
@@ -398,7 +436,7 @@ final class SqlLexer {
 
   /** 現在の位置から、範囲の終わりまでの間に{@code text}があるか */
   private boolean lookingAt(String text) {
-    return pos + text.length() <= to && source.startsWith(text, pos);
+    return pos + text.length() <= end && source.startsWith(text, pos);
   }
 
   /** 位置を{@code text}の長さだけ進める（{@code text}が何を読み飛ばすかを示す。中身は確かめないので、先に{@link #lookingAt}等で確かめておく） */
@@ -409,7 +447,7 @@ final class SqlLexer {
   /** 範囲の外は{@code \0}として扱う（比べる相手はいずれも{@code \0}以外の文字） */
   private char peek(int offset) {
     final int index = pos + offset;
-    return index < to ? source.charAt(index) : '\0';
+    return index < end ? source.charAt(index) : '\0';
   }
 
   /**
@@ -439,7 +477,7 @@ final class SqlLexer {
   }
 
   private static boolean isIdentifierStart(char c) {
-    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || isNonAsciiLetter(c);
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || isNonAsciiNameChar(c);
   }
 
   private boolean isIdentifierPart(char c) {
@@ -451,7 +489,8 @@ final class SqlLexer {
     return isIdentifierStart(c) || isDigit(c);
   }
 
-  private static boolean isNonAsciiLetter(char c) {
+  /** ASCII以外の空白でない文字か（DBの文字集合の文字を、識別子の一部として広く受け入れる） */
+  private static boolean isNonAsciiNameChar(char c) {
     return c >= 0x80 && !isWhitespace(c);
   }
 
