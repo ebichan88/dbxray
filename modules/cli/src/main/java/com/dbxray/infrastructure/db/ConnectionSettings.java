@@ -22,9 +22,16 @@ public final class ConnectionSettings {
    */
   private static final String PASSWORD_ENVIRONMENT_VARIABLE = "DBXRAY_DB_PASSWORD";
 
-  private static final String PASSWORD_KEY = "password";
+  private static final String DRIVER_KEY = "driver";
 
   private static final String URL_KEY = "url";
+
+  private static final String USERNAME_KEY = "username";
+
+  private static final String PASSWORD_KEY = "password";
+
+  /** 接続情報を上書きするCLI引数の名前の接頭辞（キーと合わせて{@code --db-url}等になる） */
+  private static final String CLI_ARGUMENT_PREFIX = "--db-";
 
   /**
    * JDBC URLに埋め込んだパスワード<br>
@@ -35,19 +42,29 @@ public final class ConnectionSettings {
       Pattern.compile("(?i)password\\s*=|^jdbc:oracle:[a-z0-9]+:[^@/]*/[^@]*@");
 
   /**
-   * DB接続情報のキー（mybatis-config.xmlが参照する）<br>
+   * DB接続情報のキー（mybatis-config.xmlが参照する。docs/usage/cli.mdの記載順）<br>
    * passwordは環境変数・CLI引数でのみ指定でき、設定ファイルには書けない
    */
-  private static final List<String> CONNECTION_KEYS =
-      List.of("driver", "url", "username", PASSWORD_KEY);
+  public static final List<String> CONNECTION_KEYS =
+      List.of(DRIVER_KEY, URL_KEY, USERNAME_KEY, PASSWORD_KEY);
 
   /** DB接続情報のうち、既定値が無く指定が必須のキー（username・passwordはDBの認証方式によっては空でよい） */
-  private static final List<String> REQUIRED_CONNECTION_KEYS = List.of("driver", "url");
+  private static final List<String> REQUIRED_CONNECTION_KEYS = List.of(DRIVER_KEY, URL_KEY);
 
   private final Map<String, String> values;
 
   private ConnectionSettings(Map<String, String> values) {
     this.values = Map.copyOf(values);
+  }
+
+  /**
+   * DB接続情報のキーを上書きするCLI引数の名前を返すメソッド
+   *
+   * @param key {@link #CONNECTION_KEYS}のいずれか
+   * @return CLI引数の名前（例: {@code --db-url}）
+   */
+  public static String cliArgumentName(String key) {
+    return CLI_ARGUMENT_PREFIX + key;
   }
 
   /**
@@ -94,14 +111,18 @@ public final class ConnectionSettings {
           "database.password cannot be set in the configuration file. Remove the password line, "
               + "and set the password with the "
               + PASSWORD_ENVIRONMENT_VARIABLE
-              + " environment variable (or the --db-password argument).");
+              + " environment variable (or the "
+              + cliArgumentName(PASSWORD_KEY)
+              + " argument).");
     }
     if (PASSWORD_IN_URL.matcher(baseValues.getOrDefault(URL_KEY, "")).find()) {
       throw new InvalidConfigurationException(
           "database.url in the configuration file must not contain a password. "
               + "Remove the password from the URL, and set it with the "
               + PASSWORD_ENVIRONMENT_VARIABLE
-              + " environment variable (or the --db-password argument).");
+              + " environment variable (or the "
+              + cliArgumentName(PASSWORD_KEY)
+              + " argument).");
     }
   }
 
@@ -144,8 +165,8 @@ public final class ConnectionSettings {
                 errors.add(
                     "database."
                         + key
-                        + " is not set. Set it in the configuration file, or use the --db-"
-                        + key
+                        + " is not set. Set it in the configuration file, or use the "
+                        + cliArgumentName(key)
                         + " argument."));
     if (!errors.isEmpty()) {
       throw new InvalidConfigurationException(
