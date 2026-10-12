@@ -97,8 +97,8 @@ public class ViewpointWriter {
     final RenderingPlan plan = content.relations().planRendering(limit);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ViewpointTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ViewpointTemplates.baseInfo(outputRoot.baseInfo()),
             ViewpointTemplates.description(content.viewpoint()), // 説明
             ViewpointTemplates.erDiagram(plan, boxes), // ER図（描画結果または省略メッセージ）
             plan instanceof RenderingPlan.Omit
@@ -106,8 +106,7 @@ public class ViewpointWriter {
                 : "", // ER図の代替の関連一覧
             tableSection, // 所属テーブル
             ViewpointTemplates.outsideRelations(content.outsideRelations()), // 観点外のテーブルとの関連
-            ViewpointTemplates.footer(outputRoot.baseInfo()) // フッター
-            );
+            ViewpointTemplates.footer(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
     logger.debug("exportViewpoint complete. [filePath={}]", layout.file());
   }
@@ -134,11 +133,10 @@ public class ViewpointWriter {
             layout);
     final List<String> fileContents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ViewpointTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ViewpointTemplates.baseInfo(outputRoot.baseInfo()),
             indexSection, // 観点一覧
-            ViewpointTemplates.indexFooter(outputRoot.baseInfo()) // フッター
-            );
+            ViewpointTemplates.indexFooter(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), fileContents);
   }
 }

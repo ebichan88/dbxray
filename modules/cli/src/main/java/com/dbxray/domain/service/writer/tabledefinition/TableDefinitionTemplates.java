@@ -47,7 +47,7 @@ public final class TableDefinitionTemplates {
 
   /**
    * テーブル説明セクション<br>
-   * サイドカー由来の説明が存在する場合はその本文を、存在しない場合は従来通り空のセクションを出力する。
+   * サイドカー由来の説明が存在する場合はその本文を、存在しない場合は見出しだけの空のセクションを出力する。
    * 説明本文は自由記述のブロックとしてそのまま出力するため、改行はエスケープしない
    */
   public static String tableExplanation(TableAnnotation annotation) {

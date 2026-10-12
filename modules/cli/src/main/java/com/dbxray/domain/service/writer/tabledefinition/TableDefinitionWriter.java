@@ -60,8 +60,8 @@ public class TableDefinitionWriter {
     final String tableListSection = pagedSectionWriter.writePagedSection(section, layout);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            TableDefinitionListTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            TableDefinitionListTemplates.baseInfo(outputRoot.baseInfo()),
             TableDefinitionListTemplates.relatedDocuments(
                 outputRoot.baseInfo(), relatedDocuments), // 関連ドキュメント
             tableListSection);
@@ -86,8 +86,8 @@ public class TableDefinitionWriter {
         outputPathResolver.resolveTableDefinitionFile(outputRoot, content.table());
     final List<String> contents =
         List.of(
-            TableDefinitionTemplates.fileHeader(content.table()), // ヘッダー
-            TableDefinitionTemplates.baseInfo(content.baseInfo()), // 基本情報
+            TableDefinitionTemplates.fileHeader(content.table()),
+            TableDefinitionTemplates.baseInfo(content.baseInfo()),
             TableDefinitionTemplates.tableExplanation(content.annotation()), // テーブル説明
             TableDefinitionTemplates.tableInfo(content.table(), content.annotation()), // テーブル情報
             TableDefinitionTemplates.viewpoints(content.viewpoints(), content.baseInfo()), // 所属する観点
@@ -104,8 +104,7 @@ public class TableDefinitionWriter {
             TableDefinitionTemplates.triggers(content.triggers()), // トリガー情報
             TableDefinitionTemplates.erDiagram(
                 content.table(), content.columns(), neighborhood, boxes), // ER図
-            TableDefinitionTemplates.footer(content.baseInfo()) // フッター
-            );
+            TableDefinitionTemplates.footer(content.baseInfo()));
     fileRepository.createDirectory(directoryPath);
     fileRepository.writeFile(filePath, contents);
     logger.debug("exportTableDefinition complete. [filePath={}]", filePath.toString());

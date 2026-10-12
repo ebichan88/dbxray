@@ -97,11 +97,10 @@ public class ObjectListWriter {
     final String objectListSection = pagedSectionWriter.writePagedSection(section, layout);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ObjectListTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ObjectListTemplates.baseInfo(outputRoot.baseInfo()),
             objectListSection, // 一覧
-            ObjectListTemplates.footer(outputRoot.baseInfo()) // フッター
-            );
+            ObjectListTemplates.footer(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
   }
 

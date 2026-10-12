@@ -142,12 +142,11 @@ public class ErDiagramWriter {
     final String detailSection = pagedSectionWriter.writePagedSection(detail, layout);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ErDiagramTemplates.baseInfo(pages.outputRoot().baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ErDiagramTemplates.baseInfo(pages.outputRoot().baseInfo()),
             ErDiagramTemplates.erDiagram(plan, pages.boxes()), // ER図（描画結果または省略メッセージ）
             detailSection, // 掲載テーブル または 外部キー一覧
-            footer // フッター
-            );
+            footer);
     fileRepository.writeFile(layout.file(), contents);
     logger.debug("exportErDiagram complete. [filePath={}]", layout.file());
   }
@@ -157,12 +156,11 @@ public class ErDiagramWriter {
     final OutputRoot outputRoot = pages.outputRoot();
     final List<String> contents =
         List.of(
-            ErDiagramTemplates.schemaFileHeader(schemaName, outputRoot.baseInfo()), // ヘッダー
-            ErDiagramTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            ErDiagramTemplates.schemaFileHeader(schemaName, outputRoot.baseInfo()),
+            ErDiagramTemplates.baseInfo(outputRoot.baseInfo()),
             ErDiagramTemplates.groupedMessage(nodeCount, pages.limit(), groups.size()), // 分割の説明
             ErDiagramTemplates.groupIndex(schemaName, groups, outputRoot.baseInfo()), // グループ一覧
-            ErDiagramTemplates.schemaFooter(outputRoot.baseInfo()) // フッター
-            );
+            ErDiagramTemplates.schemaFooter(outputRoot.baseInfo()));
     fileRepository.writeFile(
         outputPathResolver.resolveErDiagramFile(outputRoot, schemaName), contents);
   }
@@ -187,12 +185,11 @@ public class ErDiagramWriter {
         pagedSectionWriter.writePagedSection(crossSchemaSection, layout);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ErDiagramTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ErDiagramTemplates.baseInfo(outputRoot.baseInfo()),
             ErDiagramTemplates.schemaIndex(outputRoot.baseInfo(), tablesBySchema), // スキーマ別ER図へのリンク
             crossSchemaDetail, // スキーマ跨ぎの外部キー
-            ErDiagramTemplates.indexFooter(outputRoot.baseInfo()) // フッター
-            );
+            ErDiagramTemplates.indexFooter(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
   }
 
