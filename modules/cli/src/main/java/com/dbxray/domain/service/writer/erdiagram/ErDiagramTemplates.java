@@ -156,17 +156,32 @@ public class ErDiagramTemplates {
         .toString();
   }
 
-  /** グループ一覧セクションの見出し */
-  public static String groupIndexHeading() {
-    return "グループ一覧";
-  }
-
-  /** グループ一覧セクションの表ヘッダー */
-  public static String groupIndexHeader() {
-    return """
+  /**
+   * グループ一覧セクション（スキーマのER図を分割したグループごとのページへのリンク）
+   *
+   * @param groups 分割したグループ（グループ番号の順）
+   */
+  public static String groupIndex(
+      String schemaName, List<ForeignKeyGroup> groups, BaseInfoEntity baseInfo) {
+    final StringBuilder sb =
+        new StringBuilder(PagedSectionTemplates.heading("グループ一覧"))
+            .append(
+                """
                 | No. | テーブル数 | 外部キー数 | 主なテーブル | Link |
                 |:---|:---|:---|:---|:---|
-                """;
+                """);
+    for (int groupNo = 1; groupNo <= groups.size(); groupNo++) {
+      final ForeignKeyGroup group = groups.get(groupNo - 1);
+      sb.append(
+          groupIndexLine(
+              groupNo,
+              group.nodeCount(),
+              group.foreignKeys().size(),
+              group.mainTable(),
+              DocumentLocations.linkFromDatabaseRoot(
+                  DocumentLocations.erDiagramGroupFile(baseInfo.dbName(), schemaName, groupNo))));
+    }
+    return sb.append(LINE_SEPARATOR).toString();
   }
 
   /**
