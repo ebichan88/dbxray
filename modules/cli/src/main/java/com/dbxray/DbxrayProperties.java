@@ -2,6 +2,7 @@ package com.dbxray;
 
 import com.dbxray.application.CheckDocumentDiffRequest;
 import com.dbxray.application.ExportSchemaRequest;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.application.TargetSelection;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.config.InvalidConfigurationException;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -169,8 +171,9 @@ final class DbxrayProperties {
    * 通常実行のユースケースへの入力に変換する
    *
    * @param rmDist trueの場合、書き込みを開始する前に出力先ディレクトリを再帰的に削除する（{@code --rm-dist}）
+   * @param previewFeatures 有効にするプレビューの機能（{@code --preview}）
    */
-  ExportSchemaRequest toExportSchemaRequest(boolean rmDist) {
+  ExportSchemaRequest toExportSchemaRequest(boolean rmDist, Set<PreviewFeature> previewFeatures) {
     return new ExportSchemaRequest(
         targetSelection,
         sidecarPath,
@@ -178,7 +181,8 @@ final class DbxrayProperties {
         chunkSize,
         erDiagramMaxNodes,
         erDiagramDistance,
-        rmDist);
+        rmDist,
+        previewFeatures);
   }
 
   /** 通常実行と異なり、Markdownの描画・ER図の生成を行わないため{@code erDiagramMaxNodes}・{@code erDiagramDistance}は含めない */

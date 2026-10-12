@@ -1,5 +1,7 @@
 package com.dbxray;
 
+import com.dbxray.application.PreviewFeature;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /** {@code --help}・{@code --version}で表示する文言を組み立てるクラス */
@@ -9,6 +11,9 @@ final class CliUsage {
   static final String UNKNOWN_VERSION = "unknown";
 
   private static final String COMMAND_NAME = "dbxray";
+
+  /** {@code --preview}の機能の一覧の字下げ（オプションの説明の列に揃え、2字下げる） */
+  private static final String FEATURE_INDENT = " ".repeat(25);
 
   private CliUsage() {}
 
@@ -33,6 +38,9 @@ final class CliUsage {
           --check              Check the differences between the database and the committed snapshot
                                (exit code 1 if differences are found)
           --rm-dist            Delete the output directory before writing (ignored with --check)
+          --preview            Enable all preview features (no effect with --check). Their
+                               output may change without notice. Preview features:
+        %s
           --config=<path>      Configuration file to load (default: conf/config.yml)
           --help               Show this help and exit
           --version            Show the version and exit
@@ -48,6 +56,9 @@ final class CliUsage {
         See docs/usage/cli.md for details of each option.
         """
         .formatted(
+            Arrays.stream(PreviewFeature.values())
+                .map(feature -> FEATURE_INDENT + feature.id() + ": " + feature.description())
+                .collect(Collectors.joining("\n")),
             CliArguments.overrideArgumentNames().stream()
                 .map(name -> "  " + name + "=<value>")
                 .collect(Collectors.joining("\n")));

@@ -1,6 +1,8 @@
 package com.dbxray.domain.service.insight;
 
+import com.dbxray.domain.model.insight.FunctionTableUsagesInsight;
 import com.dbxray.domain.model.insight.ViewpointsInsight;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.viewpoint.ViewpointContent;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
@@ -48,6 +50,33 @@ public class InsightWriter {
       return;
     }
     write(outputPathResolver.resolveViewpointsInsightFile(root), ViewpointsInsight.of(contents));
+  }
+
+  /**
+   * 1スキーマ分の関数・プロシージャの利用しているテーブルの参考情報を書き込むメソッド<br>
+   * 抽出を行っていない実行（プレビューの機能を有効にしていない実行）では、ファイルを出力せず、以前のプレビューの実行が出力したファイルを削除する。
+   * 残すと、定義本体やテーブルが変わった後の抽出結果を、MCPサーバーがスナップショットの最新の内容に対するものとして返してしまうため。 抽出を行った関数・プロシージャだけを出力する
+   *
+   * @param contents 当該スキーマの関数・プロシージャの出力内容
+   */
+  public void writeFunctionTableUsages(
+      String schemaName, List<FunctionDefinitionContent> contents, OutputRoot root) {
+    final Path filePath =
+        outputPathResolver.resolveFunctionTableUsagesInsightFile(root, schemaName);
+    final List<FunctionDefinitionContent> analyzed =
+        contents.stream().filter(content -> content.tableUsage().isAttempted()).toList();
+    if (analyzed.isEmpty()) {
+      deletePrevious(filePath);
+      return;
+    }
+    write(filePath, FunctionTableUsagesInsight.of(root.baseInfo().dbName(), schemaName, analyzed));
+  }
+
+  private void deletePrevious(Path filePath) {
+    if (fileRepository.exists(filePath)) {
+      fileRepository.deleteFile(filePath);
+      logger.debug("Deleted the insight of a previous preview run. [filePath={}]", filePath);
+    }
   }
 
   private void write(Path filePath, Object insight) {

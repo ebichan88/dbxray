@@ -3,12 +3,15 @@ package com.dbxray;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.DbxrayProperties.SettingOverride;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.shared.exception.UserCorrectableException;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +24,24 @@ public class CliArgumentsTest {
     CliArguments args = CliArguments.parse(new String[] {});
     assertFalse(args.isCheck());
     assertFalse(args.isRmDist());
+    assertFalse(args.isPreview());
+  }
+
+  @Test
+  @DisplayName("parse: --previewが指定されている場合はisPreview=trueで、解釈できない引数としない")
+  void testParsePreview() {
+    CliArguments args = CliArguments.parse(new String[] {"--preview"});
+    assertTrue(args.isPreview());
+    assertDoesNotThrow(args::requireKnownArguments);
+  }
+
+  @Test
+  @DisplayName("previewFeatures: --previewが指定されている場合はすべての機能を、指定されていない場合は空を返す")
+  void testPreviewFeatures() {
+    assertEquals(
+        EnumSet.allOf(PreviewFeature.class),
+        CliArguments.parse(new String[] {"--preview"}).previewFeatures());
+    assertEquals(Set.of(), CliArguments.parse(new String[] {}).previewFeatures());
   }
 
   @Test

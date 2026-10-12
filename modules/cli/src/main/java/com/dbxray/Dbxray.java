@@ -79,7 +79,7 @@ public class Dbxray {
     final ConfigFile configFile = ConfigFile.load(cliArguments.configPath());
     final ExportSchemaRequest request =
         DbxrayProperties.of(configFile, cliArguments.settingOverrides())
-            .toExportSchemaRequest(cliArguments.isRmDist());
+            .toExportSchemaRequest(cliArguments.isRmDist(), cliArguments.previewFeatures());
     final Injector injector = createInjector();
     injector.getInstance(OutputDirectoryValidator.class).validate(request);
     final ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);
@@ -96,6 +96,9 @@ public class Dbxray {
   private static ExitStatus runCheck(CliArguments cliArguments) {
     if (cliArguments.isRmDist()) {
       System.out.println("Note: --rm-dist is ignored in --check mode.");
+    }
+    if (cliArguments.isPreview()) {
+      System.out.println("Note: --preview has no effect in --check mode.");
     }
     System.out.println(
         """

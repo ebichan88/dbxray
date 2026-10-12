@@ -57,4 +57,10 @@ public interface FileRepository {
    * ディレクトリが存在しない場合は何もしない
    */
   public void deleteDirectory(Path directory);
+
+  /**
+   * ファイルを1つ削除するメソッド<br>
+   * 通常のファイルでない場合（存在しない・ディレクトリ）は何もしない。ディレクトリの削除には{@link #deleteDirectory}を使う
+   */
+  public void deleteFile(Path filePath);
 }

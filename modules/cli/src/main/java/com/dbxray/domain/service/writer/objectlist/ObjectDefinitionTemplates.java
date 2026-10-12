@@ -8,6 +8,7 @@ import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
 import com.dbxray.domain.model.schemaobject.TypeEntity;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
@@ -29,12 +30,14 @@ public class ObjectDefinitionTemplates {
   }
 
   /** 関数・プロシージャの個別定義ファイル内容 */
-  public static String functionFile(FunctionEntity function, BaseInfoEntity baseInfo) {
+  public static String functionFile(FunctionDefinitionContent content, BaseInfoEntity baseInfo) {
+    final FunctionEntity function = content.function();
     final String fence = MarkdownTemplateSupport.codeFence(function.definition());
     return "# "
         + MarkdownTemplateSupport.escapeInline(function.getHeaderName())
         + LINE_SEPARATOR_DOUBLE
         + baseInfo(baseInfo)
+        + FunctionTableUsageTemplates.section(content)
         + "## 定義"
         + LINE_SEPARATOR_DOUBLE
         + fence

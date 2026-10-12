@@ -35,23 +35,37 @@ public final class FunctionTableUsageAnalyzer {
   private final Dbms dbms;
   private final FunctionBodyLocator locator;
 
-  /** テーブル名をキー、同じ名前の出力対象のテーブルを値とするマップ（スキーマの処理の間だけ持つ） */
+  /** テーブル名をキー、同じ名前の出力対象のテーブルを値とするマップ */
   private final Map<String, List<TableEntity>> tablesByName;
 
-  private FunctionTableUsageAnalyzer(Tables tables, Dbms dbms) {
+  private FunctionTableUsageAnalyzer(
+      Tables tables, Map<String, List<TableEntity>> tablesByName, Dbms dbms) {
     this.tables = tables;
+    this.tablesByName = tablesByName;
     this.dbms = dbms;
     this.locator = FunctionBodyLocator.of(dbms);
-    this.tablesByName = tables.byTableName();
   }
 
   /**
-   * スキーマ1つ分の関数・プロシージャを解析するインスタンスを生成する静的ファクトリメソッド
+   * スキーマ1つ分の関数・プロシージャを解析するインスタンスを生成する静的ファクトリメソッド<br>
+   * 出力対象のテーブルの全件からテーブル名ごとの索引を求める。スキーマごとに作り直したくない場合は{@link #of(Tables, Map, Dbms)}を使う
    *
    * @param tables 出力対象のテーブル（全スキーマ分。他のスキーマのテーブルへの参照も照らすため）
    */
   public static FunctionTableUsageAnalyzer of(Tables tables, Dbms dbms) {
-    return new FunctionTableUsageAnalyzer(tables, dbms);
+    return of(tables, tables.byTableName(), dbms);
+  }
+
+  /**
+   * テーブル名ごとの索引を受け取り、スキーマ1つ分の関数・プロシージャを解析するインスタンスを生成する静的ファクトリメソッド
+   *
+   * @param tables 出力対象のテーブル（全スキーマ分。他のスキーマのテーブルへの参照も照らすため）
+   * @param tablesByName {@code tables}を{@link Tables#byTableName()}でまとめたもの。
+   *     スキーマごとにインスタンスを作る呼び出し側が、1回だけ求めて使い回す
+   */
+  public static FunctionTableUsageAnalyzer of(
+      Tables tables, Map<String, List<TableEntity>> tablesByName, Dbms dbms) {
+    return new FunctionTableUsageAnalyzer(tables, tablesByName, dbms);
   }
 
   /**

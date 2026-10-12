@@ -1,26 +1,29 @@
 package com.dbxray;
 
 import com.dbxray.DbxrayProperties.SettingOverride;
+import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.shared.exception.UserCorrectableException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * コマンドライン引数の解析を行うクラス<br>
- * {@code --check}・{@code --rm-dist}フラグの判定と、設定ファイルのパス（{@code --config}）、DB接続情報・実行時設定 （{@code
- * conf/config.yml}の設定値）の上書き値の解決を担う。 設定ファイルの読み込みと、上書きした値の検証は含まない（{@link DbxrayProperties}・{@code
- * ConnectionSettings}が行う）。 解釈できない引数（書き誤り等）は、意図しないモード・設定で実行されないよう誤りとする（{@link
- * #requireKnownArguments()}）
+ * {@code --check}・{@code --rm-dist}・{@code --preview}フラグの判定と、設定ファイルのパス（{@code
+ * --config}）、DB接続情報・実行時設定 （{@code conf/config.yml}の設定値）の上書き値の解決を担う。
+ * 設定ファイルの読み込みと、上書きした値の検証は含まない（{@link DbxrayProperties}・{@code ConnectionSettings}が行う）。
+ * 解釈できない引数（書き誤り等）は、意図しないモード・設定で実行されないよう誤りとする（{@link #requireKnownArguments()}）
  */
 final class CliArguments {
 
@@ -30,6 +33,9 @@ final class CliArguments {
   /** 書き込み前に出力先ディレクトリを事前に削除するCLIフラグ（値を持たないブールフラグ。{@code --check}指定時は無視される） */
   private static final String RM_DIST_FLAG = "--rm-dist";
 
+  /** プレビューの機能を有効にするCLIフラグ（値を持たないブールフラグ。{@code --check}指定時は効果が無い） */
+  private static final String PREVIEW_FLAG = "--preview";
+
   /** 使い方を表示して終了するCLIフラグ（値を持たないブールフラグ。他の引数より優先する） */
   private static final String HELP_FLAG = "--help";
 
@@ -38,7 +44,7 @@ final class CliArguments {
 
   /** 値を持たないフラグ */
   private static final List<String> FLAGS =
-      List.of(CHECK_FLAG, RM_DIST_FLAG, HELP_FLAG, VERSION_FLAG);
+      List.of(CHECK_FLAG, RM_DIST_FLAG, PREVIEW_FLAG, HELP_FLAG, VERSION_FLAG);
 
   /** 設定ファイルのパスを指定するCLI引数 */
   private static final String CONFIG_ARG = "--config";
@@ -65,6 +71,7 @@ final class CliArguments {
 
   private final boolean check;
   private final boolean rmDist;
+  private final boolean preview;
   private final boolean help;
   private final boolean version;
   private final String configPath;
@@ -75,6 +82,7 @@ final class CliArguments {
   private CliArguments(
       boolean check,
       boolean rmDist,
+      boolean preview,
       boolean help,
       boolean version,
       String configPath,
@@ -83,6 +91,7 @@ final class CliArguments {
       List<String> unknownArguments) {
     this.check = check;
     this.rmDist = rmDist;
+    this.preview = preview;
     this.help = help;
     this.version = version;
     this.configPath = configPath;
@@ -104,6 +113,7 @@ final class CliArguments {
     return new CliArguments(
         argList.contains(CHECK_FLAG),
         argList.contains(RM_DIST_FLAG),
+        argList.contains(PREVIEW_FLAG),
         argList.contains(HELP_FLAG),
         argList.contains(VERSION_FLAG),
         cliArgs.getOrDefault(CONFIG_ARG, "").strip(),
@@ -120,6 +130,20 @@ final class CliArguments {
   /** {@code --rm-dist}（書き込み前の出力先の削除）が指定されたか */
   boolean isRmDist() {
     return rmDist;
+  }
+
+  /** {@code --preview}（プレビューの機能の有効化）が指定されたか */
+  boolean isPreview() {
+    return preview;
+  }
+
+  /**
+   * {@code --preview}で有効にするプレビューの機能
+   *
+   * @return {@code --preview}が指定された場合はすべての機能。指定されていない場合は空
+   */
+  Set<PreviewFeature> previewFeatures() {
+    return preview ? EnumSet.allOf(PreviewFeature.class) : Set.of();
   }
 
   /** {@code --help}（使い方の表示）が指定されたか */

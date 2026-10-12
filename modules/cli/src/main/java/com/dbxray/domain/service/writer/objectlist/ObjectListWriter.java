@@ -1,13 +1,13 @@
 package com.dbxray.domain.service.writer.objectlist;
 
 import com.dbxray.domain.model.document.ListDocumentType;
-import com.dbxray.domain.model.schemaobject.FunctionEntity;
 import com.dbxray.domain.model.schemaobject.Functions;
 import com.dbxray.domain.model.schemaobject.SequenceEntity;
 import com.dbxray.domain.model.schemaobject.Sequences;
 import com.dbxray.domain.model.schemaobject.TypeEntity;
 import com.dbxray.domain.model.schemaobject.Types;
 import com.dbxray.domain.model.table.Triggers;
+import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.path.OutputPathResolver;
@@ -106,12 +106,12 @@ public class ObjectListWriter {
   }
 
   /** 関数・プロシージャ1件分の個別定義を書き込む */
-  public void writeFunctionDefinition(FunctionEntity function, OutputRoot outputRoot) {
+  public void writeFunctionDefinition(FunctionDefinitionContent content, OutputRoot outputRoot) {
     writeSchemaObjectDefinition(
         ListDocumentType.FUNCTION,
-        function.schemaName(),
-        DocumentLocations.functionDefinitionName(function),
-        ObjectDefinitionTemplates.functionFile(function, outputRoot.baseInfo()),
+        content.function().schemaName(),
+        DocumentLocations.functionDefinitionName(content.function()),
+        ObjectDefinitionTemplates.functionFile(content, outputRoot.baseInfo()),
         outputRoot);
   }
 
