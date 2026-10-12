@@ -39,8 +39,8 @@ public record TableKey(String schema, String table) {
     if (separatorIndex < 0) {
       return Optional.empty();
     }
-    final String schema = rawKey.substring(0, separatorIndex).trim();
-    final String table = rawKey.substring(separatorIndex + 1).trim();
+    final String schema = rawKey.substring(0, separatorIndex).strip();
+    final String table = rawKey.substring(separatorIndex + 1).strip();
     if (schema.isEmpty() || table.isEmpty()) {
       return Optional.empty();
     }

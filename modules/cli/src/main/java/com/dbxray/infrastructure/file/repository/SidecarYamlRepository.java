@@ -88,7 +88,7 @@ public class SidecarYamlRepository implements SidecarRepository {
     if (sidecarPath == null || sidecarPath.isBlank()) {
       return Sidecar.empty();
     }
-    final Path path = requireFile(sidecarPath.trim());
+    final Path path = requireFile(sidecarPath.strip());
     try (final Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
       final Object root = parseYaml(reader, path);
       if (root != null && !(root instanceof Map)) {
@@ -418,7 +418,7 @@ public class SidecarYamlRepository implements SidecarRepository {
     columns.forEach(
         (columnName, remark) -> {
           if (columnName != null && !columnName.isBlank()) {
-            columnRemarks.put(columnName.trim(), asString(remark));
+            columnRemarks.put(columnName.strip(), asString(remark));
           }
         });
     return new TableAnnotation(description, remarks, columnRemarks);

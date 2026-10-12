@@ -92,9 +92,9 @@ public enum Cardinality {
     if (label == null || label.isBlank()) {
       return Optional.empty();
     }
-    final String trimmed = label.trim();
+    final String stripped = label.strip();
     return Arrays.stream(values())
-        .filter(cardinality -> cardinality.label.equals(trimmed))
+        .filter(cardinality -> cardinality.label.equals(stripped))
         .findFirst();
   }
 }

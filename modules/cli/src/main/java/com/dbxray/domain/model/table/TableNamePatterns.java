@@ -111,9 +111,9 @@ public final class TableNamePatterns {
     static Optional<Entry> parse(String pattern) {
       final int separatorIndex = pattern.indexOf(SCHEMA_TABLE_SEPARATOR);
       final String schema =
-          separatorIndex >= 0 ? pattern.substring(0, separatorIndex).trim() : null;
+          separatorIndex >= 0 ? pattern.substring(0, separatorIndex).strip() : null;
       final String tablePart =
-          (separatorIndex >= 0 ? pattern.substring(separatorIndex + 1) : pattern).trim();
+          (separatorIndex >= 0 ? pattern.substring(separatorIndex + 1) : pattern).strip();
       if (tablePart.isEmpty() || (schema != null && schema.isEmpty())) {
         return Optional.empty();
       }

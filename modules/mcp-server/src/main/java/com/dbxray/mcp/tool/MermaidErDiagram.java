@@ -194,7 +194,7 @@ final class MermaidErDiagram {
    */
   static String sanitizeType(String type) {
     final String sanitized =
-        type.replaceAll("\\(.*\\)", "").trim().replaceAll("[^A-Za-z0-9_]+", "_");
+        type.replaceAll("\\(.*\\)", "").strip().replaceAll("[^A-Za-z0-9_]+", "_");
     return sanitized.isEmpty() ? "unknown" : sanitized;
   }
 }

@@ -197,6 +197,6 @@ public final class MermaidSupport {
    * @return サニタイズ済みのデータ型文字列
    */
   public static String sanitizeType(String columnType) {
-    return columnType.replaceAll("\\(.*\\)", "").trim().replaceAll("[^A-Za-z0-9_]+", "_");
+    return columnType.replaceAll("\\(.*\\)", "").strip().replaceAll("[^A-Za-z0-9_]+", "_");
   }
 }
