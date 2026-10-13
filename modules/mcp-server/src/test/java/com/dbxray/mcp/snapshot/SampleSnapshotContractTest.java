@@ -21,6 +21,9 @@ import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.SchemaSummary;
 import com.dbxray.mcp.catalog.SearchQuery;
 import com.dbxray.mcp.catalog.SearchScope;
+import com.dbxray.mcp.catalog.SimilarTableQuery;
+import com.dbxray.mcp.catalog.SimilarTables;
+import com.dbxray.mcp.catalog.SimilarityKind;
 import com.dbxray.mcp.catalog.TableClusters;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.TableFilter;
@@ -254,6 +257,32 @@ class SampleSnapshotContractTest {
         clusters.clusters().stream().mapToInt(cluster -> cluster.tables().size()).sum()
             + clusters.hubs().size()
             + clusters.unrelatedTables());
+  }
+
+  @Test
+  @DisplayName("サンプルのカラム名から構造の似たテーブル（attendance_note）を探せ、基準にした既存のテーブル自身は含まない")
+  void findsSimilarTablesOfSample() {
+    final SimilarTables byColumns =
+        catalog
+            .tables()
+            .findSimilar(
+                SimilarTableQuery.ofColumns(List.of("attendance_id", "work_date", "note"), 3, 10),
+                SearchScope.ALL,
+                10);
+
+    assertEquals(
+        List.of("attendance_note"),
+        byColumns.tables().stream().map(similar -> similar.table().key().name()).toList());
+    assertEquals(SimilarityKind.SUPERSET, byColumns.tables().get(0).kind());
+
+    final TableEntry shipment = find("shipment");
+    assertTrue(
+        catalog
+            .tables()
+            .findSimilar(SimilarTableQuery.ofTable(shipment, 1, 10), SearchScope.ALL, 10)
+            .tables()
+            .stream()
+            .noneMatch(similar -> similar.table().key().equals(shipment.key())));
   }
 
   @Test

@@ -2,8 +2,10 @@ package com.dbxray.mcp.catalog;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.ToIntFunction;
 
@@ -96,6 +98,25 @@ public final class TableCatalog {
         .sorted(Comparator.comparingInt(ScoredColumn::score).reversed())
         .map(ScoredColumn::hit)
         .toList();
+  }
+
+  /**
+   * 構造（カラム名）が似ているテーブルを探すメソッド<br>
+   * 比べる相手は範囲内の区分が{@code table}のテーブル。基準が既存のテーブルの場合は、基準自身と、基準と関連（外部キー・論理リレーション）で
+   * 直接つながるテーブルを除く。親子は互いのキーを持つため、構造の類似ではなく関連の結果として似て見えるため。
+   * 求め方は{@link SimilarTableFinder}を参照
+   *
+   * @param limit 返すテーブルの件数の上限（1以上）
+   */
+  public SimilarTables findSimilar(SimilarTableQuery query, SearchScope scope, int limit) {
+    final TableFilter inScope = TableFilter.of(scope).withType(TableType.TABLE);
+    final Set<ObjectKey> excluded = new HashSet<>();
+    if (query.base() != null) {
+      excluded.add(query.base());
+      excluded.addAll(relations.adjacentTables(query.base()));
+    }
+    return new SimilarTableFinder(tables.stream().filter(inScope::matches).toList())
+        .find(query, excluded, limit);
   }
 
   /**
