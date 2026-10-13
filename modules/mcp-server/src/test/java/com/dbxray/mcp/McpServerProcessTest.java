@@ -147,6 +147,9 @@ class McpServerProcessTest {
           text(impact).contains("\"analyzed\":0"),
           "既定のベースラインにはプレビューの参考情報が無いため、解析済みの関数は無い: " + text(impact));
       assertTrue(text(impact).contains("--preview"), "参考情報が無い場合の対応をnotesで示す: " + text(impact));
+      assertFalse(
+          text(impact).contains("\"unverified\""),
+          "参考情報が無い関数は、件数とnotesだけで伝え、unverifiedに挙げない: " + text(impact));
 
       final CallToolResult impactViews =
           client.callTool(

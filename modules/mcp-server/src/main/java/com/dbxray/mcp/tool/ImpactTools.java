@@ -34,7 +34,7 @@ final class ImpactTools {
 
   static final String GET_IMPACT = "get_impact";
 
-  /** 各リストを返す件数の上限。共通のマスタ等では、参照元が上限を超えることがある（超えた分は総数だけを示す） */
+  /** 各リストを返す件数の上限。共通のマスタ等では、参照元が上限を超えることがある（超えた分は{@code section}で続きを取る） */
   static final int MAX_LISTED = 50;
 
   private final SchemaCatalog catalog;
@@ -61,8 +61,9 @@ final class ImpactTools {
                 + "（自テーブルとビューの両方を使う関数は2行になる）。"
                 + "functionsはcliを--previewで実行して出力した参考情報から機械的に求めた参考値で、"
                 + "載っていなくても使われていないとは限らない（動的SQL、呼び出している関数の中、出力対象外のテーブルは含まない）。"
-                + "coverageは調べがついた範囲の件数、unverifiedは自テーブルを使うかどうか確かめきれない関数"
-                + "（reason: dynamicSql・incomplete・unsupported・stale・noInsight。get_functionで確かめられる）。"
+                + "coverageは調べがついた範囲の件数（参考情報が無いnoInsight・古いstaleの関数は、ここでだけ数える）。"
+                + "unverifiedは自テーブルを使うかどうか参考情報からは確かめきれず、get_functionで定義本体を読む必要がある関数"
+                + "（reason: dynamicSql・incomplete・unsupported）。"
                 + "スキーマが決まらない名前でしか一致しなかった行はmatchがpossible。"
                 + "確定で一致したオーバーロードと候補でだけ一致したオーバーロードが混ざる行はpossibleにならず、"
                 + "候補のオーバーロードの操作もoperationsに含まれる。"
@@ -70,9 +71,8 @@ final class ImpactTools {
                 + "ビュー・関数の影響はテーブル単位で、カラム単位ではない。"
                 + "sectionなしでは各リストを"
                 + MAX_LISTED
-                + "件まで返し、超えたリストの総数をdirectTotal・viewsTotal・triggersTotal・usagesTotal・unverifiedTotalで、"
-                + "続きの取り方をmoreで示す（間接参照の総数indirectTotalは常に返す）。"
-                + "続きを取るには、同じtableにsection（"
+                + "件まで返し、超えたリストは総数と続きの取り方をmoreで示す（間接参照の総数indirectTotalは常に返す）。"
+                + "続きを取るには、同じtableにsection（概要の同じ名前のリスト。"
                 + String.join("・", Section.allValues())
                 + "のいずれか）とoffsetを指定する（limitは1ページの件数）。offset・limitはsectionを指定した場合だけ使える",
             objectSchema(
@@ -83,8 +83,8 @@ final class ImpactTools {
                         "section",
                         enumProperty(
                             "続きを取りたいリストを1つ指定する。省略すると全体の概要を返す。"
-                                + "directReferences: affected.referencedBy.direct、indirectReferences: referencedBy.indirect、"
-                                + "views、triggers、functions: functions.usages、unverifiedFunctions: functions.unverified",
+                                + "direct・indirect: affected.referencedBy、views・triggers: affected、"
+                                + "usages・unverified: affected.functionsの同じ名前のリスト",
                             Section.allValues()),
                         "offset",
                         integerProperty(
@@ -120,14 +120,14 @@ final class ImpactTools {
                 table, section.get(), impact, Page.read(arguments, Page.DEFAULT_LIMIT)));
   }
 
-  /** 続きを取れるリスト。値は結果のJSONのキーに合わせる */
+  /** 続きを取れるリスト。値は概要のJSONで、そのリストを持つキーの名前 */
   enum Section {
-    DIRECT_REFERENCES("directReferences"),
-    INDIRECT_REFERENCES("indirectReferences"),
+    DIRECT("direct"),
+    INDIRECT("indirect"),
     VIEWS("views"),
     TRIGGERS("triggers"),
-    FUNCTIONS("functions"),
-    UNVERIFIED_FUNCTIONS("unverifiedFunctions");
+    USAGES("usages"),
+    UNVERIFIED("unverified");
 
     private final String value;
 
@@ -156,25 +156,18 @@ final class ImpactTools {
     /** セクションのリストの全要素（概要の各リストと同じ形） */
     List<?> items(TableImpact impact) {
       return switch (this) {
-        case DIRECT_REFERENCES -> impact.directReferences().stream().map(DirectRef::of).toList();
-        case INDIRECT_REFERENCES ->
-            impact.indirectReferences().stream().map(IndirectRef::of).toList();
+        case DIRECT -> impact.directReferences().stream().map(DirectRef::of).toList();
+        case INDIRECT -> impact.indirectReferences().stream().map(IndirectRef::of).toList();
         case VIEWS -> impact.views().stream().map(ViewRef::of).toList();
         case TRIGGERS -> impact.triggers().stream().map(TriggerRef::of).toList();
-        case FUNCTIONS -> impact.functions().usages().stream().map(Usage::of).toList();
-        case UNVERIFIED_FUNCTIONS ->
-            impact.functions().unverified().stream().map(UnverifiedRef::of).toList();
+        case USAGES -> impact.functions().usages().stream().map(Usage::of).toList();
+        case UNVERIFIED -> impact.functions().unverified().stream().map(UnverifiedRef::of).toList();
       };
     }
   }
 
   private static <T> List<T> head(List<T> items) {
     return items.subList(0, Math.min(items.size(), MAX_LISTED));
-  }
-
-  /** 上限を超えて切り捨てた場合の総数。切り捨てていない場合はnull（結果のJSONに出力しない） */
-  private static Integer totalIfOver(List<?> items) {
-    return items.size() > MAX_LISTED ? items.size() : null;
   }
 
   private static String name(ObjectKey key) {
@@ -238,7 +231,8 @@ final class ImpactTools {
       }
       if (coverage.noInsight() > 0 || coverage.stale() > 0) {
         notes.add(
-            "関数の参考情報が無い（noInsight）または古い（stale）関数があります。"
+            "関数の参考情報が無い（noInsight）または古い（stale）関数があります（件数はcoverage）。"
+                + "これらはunverifiedに挙げていません。関数を1つずつ読むより、"
                 + "cliを--previewを付けて実行して出力・出し直すと、調べられる範囲が広がります。");
       }
       if (coverage.triggersWithoutFunction() > 0) {
@@ -296,29 +290,18 @@ final class ImpactTools {
     }
   }
 
-  /**
-   * 影響を受けるもの
-   *
-   * @param viewsTotal {@code views}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
-   * @param triggersTotal {@code triggers}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
-   */
+  /** 影響を受けるもの */
   record Affected(
       ReferencedBy referencedBy,
       List<ViewRef> views,
-      Integer viewsTotal,
       List<TriggerRef> triggers,
-      Integer triggersTotal,
       Functions functions) {
 
     static Affected of(TableImpact impact) {
-      final List<ViewRef> views = impact.views().stream().map(ViewRef::of).toList();
-      final List<TriggerRef> triggers = impact.triggers().stream().map(TriggerRef::of).toList();
       return new Affected(
           ReferencedBy.of(impact),
-          head(views),
-          totalIfOver(views),
-          head(triggers),
-          totalIfOver(triggers),
+          head(impact.views().stream().map(ViewRef::of).toList()),
+          head(impact.triggers().stream().map(TriggerRef::of).toList()),
           Functions.of(impact));
     }
   }
@@ -327,18 +310,19 @@ final class ImpactTools {
    * 外部キー・論理リレーションで参照しているテーブル
    *
    * @param direct 段1の関連。自己参照を含む
-   * @param directTotal {@code direct}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
    * @param indirect 段1に現れない、間接的な参照元
-   * @param indirectTotal {@code indirect}の総数（上限で切り捨てても、切り捨て前の数）
+   * @param indirectTotal {@code indirect}の総数（上限で切り捨てても、切り捨て前の数）。
+   *     {@code list_tables}の{@code impact}と同じく、間接参照の広さの目安として常に示す
    */
-  record ReferencedBy(
-      List<DirectRef> direct, Integer directTotal, List<IndirectRef> indirect, int indirectTotal) {
+  record ReferencedBy(List<DirectRef> direct, List<IndirectRef> indirect, int indirectTotal) {
 
     static ReferencedBy of(TableImpact impact) {
-      final List<DirectRef> direct = impact.directReferences().stream().map(DirectRef::of).toList();
       final List<IndirectRef> indirect =
           impact.indirectReferences().stream().map(IndirectRef::of).toList();
-      return new ReferencedBy(head(direct), totalIfOver(direct), head(indirect), indirect.size());
+      return new ReferencedBy(
+          head(impact.directReferences().stream().map(DirectRef::of).toList()),
+          head(indirect),
+          indirect.size());
     }
   }
 
@@ -407,38 +391,26 @@ final class ImpactTools {
    * 自テーブルを使う関数・プロシージャ
    *
    * @param preview 常にtrue。cliの{@code --preview}の参考情報から求めた参考値で、互換性の約束の対象外であることを示す
-   * @param usagesTotal {@code usages}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
-   * @param unverified 自テーブルを使うかどうか確かめきれない関数。{@code usages}に載ったオーバーロードを除く
-   * @param unverifiedTotal {@code unverified}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
+   * @param unverified 自テーブルを使うかどうか、定義本体を読む必要がある関数。{@code usages}に載ったオーバーロードを除く
    */
   record Functions(
-      boolean preview,
-      Coverage coverage,
-      List<Usage> usages,
-      Integer usagesTotal,
-      List<UnverifiedRef> unverified,
-      Integer unverifiedTotal) {
+      boolean preview, Coverage coverage, List<Usage> usages, List<UnverifiedRef> unverified) {
 
     static Functions of(TableImpact impact) {
-      final List<Usage> usages = impact.functions().usages().stream().map(Usage::of).toList();
-      final List<UnverifiedRef> unverified =
-          impact.functions().unverified().stream().map(UnverifiedRef::of).toList();
       return new Functions(
           true,
           Coverage.of(impact.functions().coverage()),
-          head(usages),
-          totalIfOver(usages),
-          head(unverified),
-          totalIfOver(unverified));
+          head(impact.functions().usages().stream().map(Usage::of).toList()),
+          head(impact.functions().unverified().stream().map(UnverifiedRef::of).toList()));
     }
   }
 
   /**
-   * 自テーブルを使うかどうか確かめきれない関数のオーバーロード1つ
+   * 自テーブルを使うかどうか、定義本体を読む必要がある関数のオーバーロード1つ
    *
    * @param function {@code スキーマ名.関数名}
    * @param arguments 引数。引数が無い場合は{@code ()}
-   * @param reason {@code dynamicSql}・{@code incomplete}・{@code unsupported}・{@code stale}・{@code noInsight}
+   * @param reason {@code dynamicSql}・{@code incomplete}・{@code unsupported}
    */
   record UnverifiedRef(String function, String arguments, String reason) {
 

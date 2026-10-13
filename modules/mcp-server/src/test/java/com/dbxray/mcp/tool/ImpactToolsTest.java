@@ -168,6 +168,9 @@ class ImpactToolsTest {
                 + "\"withDynamicSql\":0,\"incomplete\":0,\"triggersWithoutFunction\":1}"),
         result.get("affected").get("functions").get("coverage"));
     assertEquals(5, result.get("notes").size());
+    assertFalse(
+        result.get("affected").get("functions").has("unverified"),
+        "参考情報が無い・古い関数は、件数とnotesだけで伝え、unverifiedに挙げない");
     assertTrue(result.get("notes").get(1).asText().contains("noInsight"));
     assertTrue(result.get("notes").get(1).asText().contains("--preview"));
     assertTrue(result.get("notes").get(2).asText().contains("1件"));
@@ -175,7 +178,7 @@ class ImpactToolsTest {
   }
 
   @Test
-  @DisplayName("各リストは50件までを決まった順で返し、超えた場合は総数を示す。間接参照の総数は常に示す")
+  @DisplayName("各リストは50件までを決まった順で返し、超えた場合はmoreで総数と続きの取り方を示す。間接参照の総数は常に示す")
   void limitsLists() throws Exception {
     final int count = 51;
     final List<TableEntry> tables = new ArrayList<>();
@@ -220,32 +223,31 @@ class ImpactToolsTest {
 
     final JsonNode referencedBy = affected.get("referencedBy");
     assertEquals(50, referencedBy.get("direct").size());
-    assertEquals(60, referencedBy.get("directTotal").asInt());
     assertEquals("sample.child_01", referencedBy.get("direct").get(0).get("table").asText());
     assertEquals("sample.child_50", referencedBy.get("direct").get(49).get("table").asText());
     assertEquals(50, referencedBy.get("indirect").size());
     assertEquals(55, referencedBy.get("indirectTotal").asInt());
     assertEquals(50, affected.get("views").size());
-    assertEquals(count, affected.get("viewsTotal").asInt());
     assertEquals(50, affected.get("triggers").size());
-    assertEquals(count, affected.get("triggersTotal").asInt());
     assertEquals(50, affected.get("functions").get("usages").size());
-    assertEquals(count, affected.get("functions").get("usagesTotal").asInt());
     assertEquals(
         "sample.fn_01", affected.get("functions").get("usages").get(0).get("function").asText());
     assertEquals(
         objectMapper.readTree(
-            "[{\"section\":\"directReferences\",\"total\":60,\"nextOffset\":50},"
-                + "{\"section\":\"indirectReferences\",\"total\":55,\"nextOffset\":50},"
+            "[{\"section\":\"direct\",\"total\":60,\"nextOffset\":50},"
+                + "{\"section\":\"indirect\",\"total\":55,\"nextOffset\":50},"
                 + "{\"section\":\"views\",\"total\":51,\"nextOffset\":50},"
                 + "{\"section\":\"triggers\",\"total\":51,\"nextOffset\":50},"
-                + "{\"section\":\"functions\",\"total\":51,\"nextOffset\":50}]"),
+                + "{\"section\":\"usages\",\"total\":51,\"nextOffset\":50}]"),
         result.get("more"),
         "切り捨てたリストと続きの取り方を、概要に並ぶ順に示す");
+    assertFalse(
+        result.toString().matches(".*\"(direct|views|triggers|usages|unverified)Total\".*"),
+        "総数はmoreだけで示す（indirectTotalを除く）");
     assertTrue(result.get("notes").toString().contains("section"), "続きの取り方をnotesでも示す");
 
     final JsonNode secondPage =
-        json(call(catalog, Map.of("table", "master", "section", "directReferences", "offset", 50)));
+        json(call(catalog, Map.of("table", "master", "section", "direct", "offset", 50)));
     assertEquals(60, secondPage.get("total").asInt());
     assertEquals(10, secondPage.get("items").size());
     assertEquals("sample.child_51", secondPage.get("items").get(0).get("table").asText());
@@ -288,7 +290,9 @@ class ImpactToolsTest {
               final FunctionEntry used = function("FUNCTION", "used_%d".formatted(number), "");
               functions.add(used);
               usages.add(usage(used, List.of(), used("sample", "master", "R")));
-              functions.add(function("FUNCTION", "no_insight_%d".formatted(number), ""));
+              final FunctionEntry dynamic = function("FUNCTION", "dyn_%d".formatted(number), "");
+              functions.add(dynamic);
+              usages.add(usage(dynamic, List.of("EXECUTE")));
             });
     return catalogOf(tables, functions, usages, List.of());
   }
@@ -301,12 +305,12 @@ class ImpactToolsTest {
     assertFalse(overview.has("more"), "どのリストも上限以内なら、続きは示さない");
     final Map<String, String> overviewPaths =
         Map.of(
-            "directReferences", "/affected/referencedBy/direct",
-            "indirectReferences", "/affected/referencedBy/indirect",
+            "direct", "/affected/referencedBy/direct",
+            "indirect", "/affected/referencedBy/indirect",
             "views", "/affected/views",
             "triggers", "/affected/triggers",
-            "functions", "/affected/functions/usages",
-            "unverifiedFunctions", "/affected/functions/unverified");
+            "usages", "/affected/functions/usages",
+            "unverified", "/affected/functions/unverified");
 
     for (final Map.Entry<String, String> entry : overviewPaths.entrySet()) {
       final String section = entry.getKey();
@@ -354,15 +358,29 @@ class ImpactToolsTest {
   }
 
   @Test
-  @DisplayName("関数の確かめきれないオーバーロード（unverified）を、関数・引数・理由とともに返す")
+  @DisplayName("定義本体を読む必要がある関数のオーバーロード（unverified）を、関数・引数・理由とともに返す。参考情報が無い関数は挙げない")
   void returnsUnverifiedFunctions() throws Exception {
     final List<FunctionEntry> functions =
-        List.of(function("FUNCTION", "dyn", ""), function("FUNCTION", "no_insight", "a integer"));
+        List.of(
+            function("FUNCTION", "dyn", ""),
+            function("FUNCTION", "py", "a integer"),
+            function("FUNCTION", "no_insight", ""));
     final SchemaCatalog catalog =
         catalogOf(
             List.of(table("employee").build()),
             functions,
-            List.of(usage(functions.get(0), List.of("EXECUTE"))),
+            List.of(
+                usage(functions.get(0), List.of("EXECUTE")),
+                new FunctionTableUsageEntry(
+                    functions.get(1).key(),
+                    "a integer",
+                    HASH,
+                    "unsupported_language",
+                    "plpython3u",
+                    List.of(),
+                    List.of(),
+                    false,
+                    false)),
             List.of());
 
     final JsonNode functionsNode =
@@ -371,9 +389,9 @@ class ImpactToolsTest {
     assertEquals(
         objectMapper.readTree(
             "[{\"function\":\"sample.dyn\",\"arguments\":\"()\",\"reason\":\"dynamicSql\"},"
-                + "{\"function\":\"sample.no_insight\",\"arguments\":\"a integer\",\"reason\":\"noInsight\"}]"),
+                + "{\"function\":\"sample.py\",\"arguments\":\"a integer\",\"reason\":\"unsupported\"}]"),
         functionsNode.get("unverified"));
-    assertFalse(functionsNode.has("unverifiedTotal"));
+    assertEquals(1, functionsNode.get("coverage").get("noInsight").asInt());
   }
 
   @Test
@@ -391,7 +409,7 @@ class ImpactToolsTest {
       assertTrue(text(result).contains("section"), text(result));
     }
     assertTrue(
-        text(call(catalog, Map.of("table", "master", "offset", 5))).contains("directReferences"),
+        text(call(catalog, Map.of("table", "master", "offset", 5))).contains("unverified"),
         "指定できるsectionを示す");
   }
 

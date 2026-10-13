@@ -56,8 +56,8 @@ public record TableImpact(
    *
    * @param coverage 関数の参考情報で調べがついた範囲
    * @param usages 自テーブルを使う関数。関数のキー順で、同じ関数は自テーブル・ビューの順
-   * @param unverified 自テーブルを使うかどうか確かめきれない関数（{@code usages}に載ったオーバーロードを除く）。
-   *     理由（{@link UnverifiedFunction.Reason}の順）・関数のキー・引数の順
+   * @param unverified 自テーブルを使うかどうか、定義本体を読めば確かめられる関数（{@code usages}に載ったオーバーロードを除く）。
+   *     理由（{@link UnverifiedFunction.Reason}の順）・関数のキー・引数の順。参考情報が無い・古い関数は含まない（{@code coverage}で数える）
    */
   public record FunctionImpact(
       FunctionCoverage coverage, List<FunctionUse> usages, List<UnverifiedFunction> unverified) {
@@ -70,7 +70,7 @@ public record TableImpact(
   }
 
   /**
-   * 自テーブルを使うかどうか、参考情報から確かめきれない関数のオーバーロード1つ
+   * 自テーブルを使うかどうか、参考情報からは確かめきれず、定義本体を読む必要がある関数のオーバーロード1つ
    *
    * @param arguments 引数。引数が無い場合は空文字
    * @param reason 確かめきれない理由
@@ -84,11 +84,7 @@ public record TableImpact(
       /** 定義本体を最後まで読めなかった */
       INCOMPLETE("incomplete"),
       /** 参考情報はあるが、解析しなかった（対象外の言語・難読化・定義本体が無い等） */
-      UNSUPPORTED("unsupported"),
-      /** 参考情報はあるが、抽出元の定義本体がスナップショットと異なる */
-      STALE("stale"),
-      /** 参考情報が無い */
-      NO_INSIGHT("noInsight");
+      UNSUPPORTED("unsupported");
 
       private final String value;
 

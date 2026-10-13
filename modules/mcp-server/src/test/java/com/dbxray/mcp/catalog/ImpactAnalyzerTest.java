@@ -353,7 +353,7 @@ class ImpactAnalyzerTest {
 
   @Test
   @DisplayName(
-      "impactOf: 自テーブルを使うか確かめきれない関数を、理由の優先順・関数のキー・引数の順に返す。自テーブルかそのビューを使うと分かったオーバーロード・別DBの関数は含めない")
+      "impactOf: 自テーブルを使うか確かめきれない関数を、理由の優先順・関数のキー・引数の順に返す。自テーブルかそのビューを使うと分かったオーバーロード・参考情報が無い・古い関数・別DBの関数は含めない")
   void listsUnverifiedFunctions() {
     final List<FunctionEntry> functions = new ArrayList<>();
     final List<FunctionTableUsageEntry> usages = new ArrayList<>();
@@ -386,6 +386,7 @@ class ImpactAnalyzerTest {
     final FunctionEntry unsupported = function("FUNCTION", "unsupported", "");
     functions.add(unsupported);
     usages.add(usageOf(unsupported, "unsupported_language", HASH, List.of(), List.of(), false));
+    // 参考情報が無い・古い関数は、件数（coverage）だけで伝える
     final FunctionEntry stale = function("FUNCTION", "stale", "");
     functions.add(stale);
     usages.add(
@@ -413,9 +414,7 @@ class ImpactAnalyzerTest {
             "DYNAMIC_SQL:both()",
             "DYNAMIC_SQL:mixed(a text)",
             "INCOMPLETE:incomplete_only()",
-            "UNSUPPORTED:unsupported()",
-            "STALE:stale()",
-            "NO_INSIGHT:no_insight()"),
+            "UNSUPPORTED:unsupported()"),
         unverified.stream()
             .map(
                 found ->
@@ -427,7 +426,7 @@ class ImpactAnalyzerTest {
                         + ")")
             .toList());
     assertEquals(
-        List.of("dynamicSql", "incomplete", "unsupported", "stale", "noInsight"),
+        List.of("dynamicSql", "incomplete", "unsupported"),
         List.of(TableImpact.UnverifiedFunction.Reason.values()).stream()
             .map(TableImpact.UnverifiedFunction.Reason::value)
             .toList(),

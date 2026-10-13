@@ -308,14 +308,14 @@ final class ImpactAnalyzer {
     return found;
   }
 
-  /** オーバーロードの参考情報から、確かめきれない理由を求める。解析済みで、動的SQLも読み残しも無ければ空 */
+  /**
+   * オーバーロードの参考情報から、確かめきれない理由を求める<br>
+   * 参考情報が無い・古い場合は空。関数を1つずつ読んでも対処にならず（出力し直す）、全関数が該当しうるため、件数（{@link FunctionCoverage}）だけで伝える
+   */
   private Optional<UnverifiedFunction.Reason> reasonOf(FunctionEntry overload) {
     final Optional<FunctionTableUsageEntry> usage = usages.find(overload);
     if (usage.isEmpty()) {
-      return Optional.of(
-          usages.freshnessOf(overload) == FunctionTableUsages.Freshness.STALE
-              ? UnverifiedFunction.Reason.STALE
-              : UnverifiedFunction.Reason.NO_INSIGHT);
+      return Optional.empty();
     }
     if (!usage.get().status().equals(FunctionTableUsageEntry.ANALYZED)) {
       return Optional.of(UnverifiedFunction.Reason.UNSUPPORTED);
