@@ -14,7 +14,7 @@ subprojects {
     group = 'dbxray'
     // 版の出所はここだけ。リリースのタグ（v0.1.0等）はこの値と一致しなければならない（release.ymlが照合する）。
     // 版の上げ方はCONTRIBUTING.mdの「バージョンとリリース」を参照
-    version = '0.4.0'
+    version = '0.4.1'
 
     repositories {
         mavenCentral()
