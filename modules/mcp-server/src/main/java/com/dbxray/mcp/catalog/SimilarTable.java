@@ -38,7 +38,21 @@ public record SimilarTable(
    * @param column 基準でのカラム名
    */
   public record TypeMismatch(
-      String column, String baseType, String otherType, TypeDifference difference) {}
+      String column, String baseType, String otherType, TypeDifference difference) {
+
+    /**
+     * 同名のカラムの型を比べるメソッド
+     *
+     * @return 型が同じ場合、どちらかの型が未設定の場合は空
+     */
+    static Optional<TypeMismatch> between(ColumnEntry base, ColumnEntry other) {
+      if (base.type().isEmpty() || other.type().isEmpty()) {
+        return Optional.empty();
+      }
+      return TypeDifference.between(ColumnType.parse(base.type()), ColumnType.parse(other.type()))
+          .map(difference -> new TypeMismatch(base.name(), base.type(), other.type(), difference));
+    }
+  }
 
   /** 型の違いの程度 */
   public enum TypeDifference {

@@ -28,14 +28,7 @@ class SimilarTableFinderTest {
   }
 
   private static TableEntry tableOf(String name, String... columns) {
-    return tableOf(TestTables.table(name), columns);
-  }
-
-  private static TableEntry tableOf(TestTables table, String... columns) {
-    for (final String column : columns) {
-      table.column(column);
-    }
-    return table.build();
+    return TestTables.table(name).columns(columns).build();
   }
 
   private static SchemaCatalog catalogOf(TableEntry... tables) {
@@ -178,14 +171,14 @@ class SimilarTableFinderTest {
         catalogOf(
             tableOf("customer", columns),
             tableOf("customer_bk", columns),
-            tableOf(
-                TestTables.table("customer_fk")
-                    .foreignKey("customer_id", "customer", "customer_id"),
-                columns),
-            tableOf(
-                TestTables.table("customer_lr")
-                    .logicalRelation("customer_id", "customer", "customer_id"),
-                columns));
+            TestTables.table("customer_fk")
+                .foreignKey("customer_id", "customer", "customer_id")
+                .columns(columns)
+                .build(),
+            TestTables.table("customer_lr")
+                .logicalRelation("customer_id", "customer", "customer_id")
+                .columns(columns)
+                .build());
 
     assertEquals(
         List.of("customer_bk:false", "customer_fk:true", "customer_lr:true"),
@@ -209,15 +202,17 @@ class SimilarTableFinderTest {
     final SchemaCatalog catalog =
         catalogOf(
             tableOf("orders", "order_id", "customer_id", "order_date", "amount", "status"),
-            tableOf(
-                TestTables.table("orders_hist").foreignKey("order_id", "orders", "order_id"),
-                "hist_id",
-                "order_id",
-                "customer_id",
-                "order_date",
-                "amount",
-                "status",
-                "changed_at"));
+            TestTables.table("orders_hist")
+                .foreignKey("order_id", "orders", "order_id")
+                .columns(
+                    "hist_id",
+                    "order_id",
+                    "customer_id",
+                    "order_date",
+                    "amount",
+                    "status",
+                    "changed_at")
+                .build());
 
     final SimilarTable found = similarTo(catalog, "orders", 3, 50).tables().get(0);
 
@@ -232,8 +227,11 @@ class SimilarTableFinderTest {
     final SchemaCatalog catalog =
         catalogOf(
             tableOf("order_detail", ORDER_DETAIL),
-            tableOf(TestTables.table("order_detail_view").type("view"), ORDER_DETAIL),
-            tableOf(TestTables.table("order_detail_mv").type("materialized_view"), ORDER_DETAIL));
+            TestTables.table("order_detail_view").type("view").columns(ORDER_DETAIL).build(),
+            TestTables.table("order_detail_mv")
+                .type("materialized_view")
+                .columns(ORDER_DETAIL)
+                .build());
 
     assertEquals(List.of(), names(similarTo(catalog, "order_detail", 3, 50)));
   }
@@ -244,9 +242,9 @@ class SimilarTableFinderTest {
     final SchemaCatalog catalog =
         TestCatalogs.of(
             List.of(
-                tableOf(TestTables.table("db1", "sales", "order_detail"), ORDER_DETAIL),
-                tableOf(TestTables.table("db1", "archive", "order_detail"), ORDER_DETAIL),
-                tableOf(TestTables.table("db2", "sales", "order_detail"), ORDER_DETAIL)));
+                TestTables.table("db1", "sales", "order_detail").columns(ORDER_DETAIL).build(),
+                TestTables.table("db1", "archive", "order_detail").columns(ORDER_DETAIL).build(),
+                TestTables.table("db2", "sales", "order_detail").columns(ORDER_DETAIL).build()));
 
     final SimilarTables result = similarTo(catalog, "order_detail", 3, 50);
 
@@ -261,8 +259,8 @@ class SimilarTableFinderTest {
     final SchemaCatalog catalog =
         TestCatalogs.of(
             List.of(
-                tableOf(TestTables.table("db1", "sales", "order_detail"), ORDER_DETAIL),
-                tableOf(TestTables.table("db2", "sales", "order_detail"), ORDER_DETAIL)));
+                TestTables.table("db1", "sales", "order_detail").columns(ORDER_DETAIL).build(),
+                TestTables.table("db2", "sales", "order_detail").columns(ORDER_DETAIL).build()));
     final SimilarTableQuery query =
         SimilarTableQuery.ofColumns(
             List.of("ＯＲＤＥＲ＿ＩＤ", "Item_No", "ITEM_NO", "QTY", "memo"), 3, 10);
@@ -303,20 +301,20 @@ class SimilarTableFinderTest {
     final SchemaCatalog catalog =
         TestCatalogs.of(
             List.of(
-                tableOf(
-                    TestTables.table("base")
-                        .column(typed("order_id", "INTEGER"))
-                        .column(typed("qty", "integer"))
-                        .column(typed("code", "character varying(10)"))
-                        .column(typed("price", "numeric(10, 2)"))
-                        .column(typed("note", "text"))),
-                tableOf(
-                    TestTables.table("other")
-                        .column(typed("order_id", "integer"))
-                        .column(typed("qty", "numeric(10,2)"))
-                        .column(typed("code", "character varying(50)"))
-                        .column(typed("price", "NUMERIC(10,2)"))
-                        .column(typed("note", null)))));
+                TestTables.table("base")
+                    .column(typed("order_id", "INTEGER"))
+                    .column(typed("qty", "integer"))
+                    .column(typed("code", "character varying(10)"))
+                    .column(typed("price", "numeric(10, 2)"))
+                    .column(typed("note", "text"))
+                    .build(),
+                TestTables.table("other")
+                    .column(typed("order_id", "integer"))
+                    .column(typed("qty", "numeric(10,2)"))
+                    .column(typed("code", "character varying(50)"))
+                    .column(typed("price", "NUMERIC(10,2)"))
+                    .column(typed("note", null))
+                    .build()));
 
     final SimilarTable found = similarTo(catalog, "base", 3, 50).tables().get(0);
 
@@ -365,11 +363,13 @@ class SimilarTableFinderTest {
   void weighsByWholeDatabase() {
     final List<TableEntry> tables = new ArrayList<>(fillers());
     tables.add(
-        tableOf(
-            TestTables.table("testdb", "small", "a"), "id", "created_at", "updated_at", "a_name"));
+        TestTables.table("testdb", "small", "a")
+            .columns("id", "created_at", "updated_at", "a_name")
+            .build());
     tables.add(
-        tableOf(
-            TestTables.table("testdb", "small", "b"), "id", "created_at", "updated_at", "b_name"));
+        TestTables.table("testdb", "small", "b")
+            .columns("id", "created_at", "updated_at", "b_name")
+            .build());
     final SchemaCatalog catalog = TestCatalogs.of(tables);
     final TableEntry base = find(catalog, "a");
 
@@ -410,7 +410,7 @@ class SimilarTableFinderTest {
   void findsTablesSimilarToView() {
     final SchemaCatalog catalog =
         catalogOf(
-            tableOf(TestTables.table("order_detail_view").type("view"), ORDER_DETAIL),
+            TestTables.table("order_detail_view").type("view").columns(ORDER_DETAIL).build(),
             tableOf("order_detail", ORDER_DETAIL));
 
     final SimilarTables result = similarTo(catalog, "order_detail_view", 3, 50);

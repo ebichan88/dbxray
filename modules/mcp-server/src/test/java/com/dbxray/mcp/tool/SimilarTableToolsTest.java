@@ -43,22 +43,15 @@ class SimilarTableToolsTest {
                       "qty",
                       "unit_price",
                       "valid_from"),
-                  table(
-                      TestTables.table("order_detail_note")
-                          .foreignKey("order_id", "order_detail", "order_id"),
-                      ORDER_DETAIL))));
+                  TestTables.table("order_detail_note")
+                      .foreignKey("order_id", "order_detail", "order_id")
+                      .columns(ORDER_DETAIL)
+                      .build())));
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private static TableEntry table(String name, String... columns) {
-    return table(TestTables.table(name), columns);
-  }
-
-  private static TableEntry table(TestTables table, String... columns) {
-    for (final String column : columns) {
-      table.column(column);
-    }
-    return table.build();
+    return TestTables.table(name).columns(columns).build();
   }
 
   private static TableEntry orderDetailWithQtyType(String name, String qtyType) {
@@ -204,9 +197,15 @@ class SimilarTableToolsTest {
         new TableDefinitionTools(
             TestCatalogs.of(
                 List.of(
-                    table(TestTables.table("testdb", "sales", "order_detail"), ORDER_DETAIL),
-                    table(TestTables.table("testdb", "archive", "order_detail"), ORDER_DETAIL),
-                    table(TestTables.table("testdb", "sales", "order_detail_bk"), ORDER_DETAIL))));
+                    TestTables.table("testdb", "sales", "order_detail")
+                        .columns(ORDER_DETAIL)
+                        .build(),
+                    TestTables.table("testdb", "archive", "order_detail")
+                        .columns(ORDER_DETAIL)
+                        .build(),
+                    TestTables.table("testdb", "sales", "order_detail_bk")
+                        .columns(ORDER_DETAIL)
+                        .build())));
 
     final JsonNode result =
         json(

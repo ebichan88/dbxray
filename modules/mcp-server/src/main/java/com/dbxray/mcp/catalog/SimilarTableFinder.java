@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * 構造（カラム名）が似ているテーブルを求めるクラス<br>
@@ -20,8 +21,18 @@ import java.util.Set;
  */
 final class SimilarTableFinder {
 
+  /** 類似度の高い順。同じ場合は共通のカラムの多い順、DB名・スキーマ名・テーブル名の順 */
+  private static final Comparator<SimilarTable> MOST_SIMILAR_FIRST =
+      Comparator.comparingInt(SimilarTable::similarity)
+          .reversed()
+          .thenComparing(Comparator.comparingInt(SimilarTable::sharedColumns).reversed())
+          .thenComparing(similar -> similar.table().key(), ObjectKey.ORDER);
+
+  /** カラムが同じ相手の類似度（%） */
+  private static final int FULL_SIMILARITY = 100;
+
   /** カラムが同じでない相手の類似度の上限。丸めて100になっても、カラムが同じ相手と区別できるようにする */
-  private static final int MAX_SIMILARITY_UNLESS_IDENTICAL = 99;
+  private static final int MAX_SIMILARITY_UNLESS_IDENTICAL = FULL_SIMILARITY - 1;
 
   /** 比べる相手になりうるテーブル（区分が{@code table}）。カラム名の正規化を呼び出しのたびに繰り返さないよう、組み立て時に1回だけ行う */
   private final List<ComparedTable> candidates = new ArrayList<>();
@@ -31,7 +42,7 @@ final class SimilarTableFinder {
 
   SimilarTableFinder(List<TableEntry> tables) {
     for (final TableEntry table : tables) {
-      if (TableType.TABLE.value().equals(table.type())) {
+      if (isComparable(table)) {
         final ComparedTable compared = new ComparedTable(table, columnsByName(table.columns()));
         candidates.add(compared);
         frequenciesByDatabase
@@ -50,25 +61,22 @@ final class SimilarTableFinder {
    */
   SimilarTables find(
       SimilarTableQuery query, TableFilter filter, Set<ObjectKey> related, int limit) {
-    final Map<String, ColumnEntry> base = columnsByName(query.columns());
-    final ColumnFrequencies frequencies = frequenciesFor(query.base(), base.keySet(), filter);
-    final List<SimilarTable> found = new ArrayList<>();
-    for (final ComparedTable candidate : candidates) {
-      if (filter.matches(candidate.table()) && !isBase(query, candidate.table())) {
-        compare(query, base, candidate, frequencies, related.contains(candidate.table().key()))
-            .ifPresent(found::add);
-      }
-    }
-    found.sort(
-        Comparator.comparingInt(SimilarTable::similarity)
-            .reversed()
-            .thenComparing(Comparator.comparingInt(SimilarTable::sharedColumns).reversed())
-            .thenComparing(similar -> similar.table().key(), ObjectKey.ORDER));
+    final Map<String, ColumnEntry> baseColumns = columnsByName(query.columns());
+    final Comparison comparison =
+        new Comparison(
+            query,
+            baseColumns,
+            frequenciesFor(query.base(), baseColumns.keySet(), filter),
+            related);
+    final List<SimilarTable> found =
+        candidates.stream()
+            .filter(candidate -> filter.matches(candidate.table()))
+            .filter(candidate -> !comparison.isBase(candidate.table()))
+            .map(comparison::with)
+            .flatMap(Optional::stream)
+            .sorted(MOST_SIMILAR_FIRST)
+            .toList();
     return new SimilarTables(found.size(), found.stream().limit(limit).toList());
-  }
-
-  private static boolean isBase(SimilarTableQuery query, TableEntry table) {
-    return query.base() != null && query.base().key().equals(table.key());
   }
 
   /** 範囲のDBのテーブルのカラム名の数を求める。基準自身は数えない（カラム名で指定した場合と重みを揃えるため） */
@@ -81,85 +89,39 @@ final class SimilarTableFinder {
             frequencies.addAll(counted);
           }
         });
-    if (base != null
-        && TableType.TABLE.value().equals(base.type())
-        && filter.matchesDatabase(base.key().database())) {
+    if (base != null && isComparable(base) && filter.matchesDatabase(base.key().database())) {
       frequencies.remove(baseNames);
     }
     return frequencies;
   }
 
   /**
-   * 基準と1テーブルを比べるメソッド
+   * 重み付きJaccard係数を類似度（%）にするメソッド
    *
-   * @return 共通のカラムが無い場合、条件を満たさない場合は空
+   * @param ratio 共通のカラムの重みの合計が、両者のカラムの重みの合計に占める割合
    */
-  private static Optional<SimilarTable> compare(
-      SimilarTableQuery query,
-      Map<String, ColumnEntry> base,
-      ComparedTable candidate,
-      ColumnFrequencies frequencies,
-      boolean relatedToBase) {
-    final Map<String, ColumnEntry> other = candidate.columns();
-    final List<String> onlyInBase = new ArrayList<>();
-    final List<String> onlyInOther = new ArrayList<>();
-    final List<SimilarTable.TypeMismatch> typeMismatches = new ArrayList<>();
-    int shared = 0;
-    double sharedWeight = 0;
-    double totalWeight = 0;
-    for (final Map.Entry<String, ColumnEntry> entry : base.entrySet()) {
-      final double weight = frequencies.weightOf(entry.getKey());
-      totalWeight += weight;
-      final ColumnEntry counterpart = other.get(entry.getKey());
-      if (counterpart == null) {
-        onlyInBase.add(entry.getValue().name());
-        continue;
-      }
-      shared++;
-      sharedWeight += weight;
-      typeMismatch(entry.getValue(), counterpart).ifPresent(typeMismatches::add);
+  private static int similarity(SimilarityKind kind, double ratio) {
+    if (kind == SimilarityKind.IDENTICAL) {
+      return FULL_SIMILARITY;
     }
-    for (final Map.Entry<String, ColumnEntry> entry : other.entrySet()) {
-      if (!base.containsKey(entry.getKey())) {
-        onlyInOther.add(entry.getValue().name());
-        totalWeight += frequencies.weightOf(entry.getKey());
-      }
-    }
-    if (shared == 0) {
-      return Optional.empty();
-    }
-    final SimilarityKind kind = SimilarityKind.of(!onlyInBase.isEmpty(), !onlyInOther.isEmpty());
-    final int similarity =
-        kind == SimilarityKind.IDENTICAL
-            ? 100
-            : Math.min(
-                MAX_SIMILARITY_UNLESS_IDENTICAL,
-                (int) Math.round(100 * sharedWeight / totalWeight));
-    if (!query.accepts(shared, similarity)) {
-      return Optional.empty();
-    }
-    return Optional.of(
-        new SimilarTable(
-            candidate.table(),
-            similarity,
-            kind,
-            shared,
-            onlyInBase,
-            onlyInOther,
-            typeMismatches,
-            relatedToBase));
+    return Math.min(MAX_SIMILARITY_UNLESS_IDENTICAL, (int) Math.round(FULL_SIMILARITY * ratio));
   }
 
-  private static Optional<SimilarTable.TypeMismatch> typeMismatch(
-      ColumnEntry base, ColumnEntry other) {
-    if (base.type().isEmpty() || other.type().isEmpty()) {
-      return Optional.empty();
-    }
-    return SimilarTable.TypeDifference.between(
-            ColumnType.parse(base.type()), ColumnType.parse(other.type()))
-        .map(
-            difference ->
-                new SimilarTable.TypeMismatch(base.name(), base.type(), other.type(), difference));
+  /** 正規化したカラム名のうち、条件に当てはまるものを並び順のまま返す */
+  private static List<String> namesIn(
+      Map<String, ColumnEntry> columns, Predicate<String> condition) {
+    return columns.keySet().stream().filter(condition).toList();
+  }
+
+  /** 正規化したカラム名を、テーブルでの元の名前にする */
+  private static List<String> originalNames(
+      List<String> normalizedNames, Map<String, ColumnEntry> columns) {
+    return normalizedNames.stream().map(name -> columns.get(name).name()).toList();
+  }
+
+  /** 比べる相手・重みの数に入れる区分（{@code table}）か判定する */
+  private static boolean isComparable(TableEntry table) {
+    return TableType.TABLE.value().equals(table.type());
   }
 
   /** 正規化したカラム名から、カラムを引く。正規化後に同じ名前になるカラムは、先に現れたものを使う */
@@ -169,6 +131,60 @@ final class SimilarTableFinder {
       byName.putIfAbsent(TextValues.normalize(column.name()), column);
     }
     return byName;
+  }
+
+  /**
+   * 基準と、基準を相手と比べるのに使う値
+   *
+   * @param base 基準のカラム（キーは正規化したカラム名）
+   * @param frequencies 重みを求めるカラム名の数
+   * @param related 基準と関連で直接つながるテーブル
+   */
+  private record Comparison(
+      SimilarTableQuery query,
+      Map<String, ColumnEntry> base,
+      ColumnFrequencies frequencies,
+      Set<ObjectKey> related) {
+
+    boolean isBase(TableEntry table) {
+      return query.base() != null && query.base().key().equals(table.key());
+    }
+
+    /**
+     * 基準と1テーブルを比べるメソッド
+     *
+     * @return 共通のカラムが無い場合、条件を満たさない場合は空
+     */
+    Optional<SimilarTable> with(ComparedTable candidate) {
+      final Map<String, ColumnEntry> other = candidate.columns();
+      final List<String> shared = namesIn(base, other::containsKey);
+      if (shared.isEmpty()) {
+        return Optional.empty();
+      }
+      final List<String> onlyInBase = namesIn(base, name -> !other.containsKey(name));
+      final List<String> onlyInOther = namesIn(other, name -> !base.containsKey(name));
+      final SimilarityKind kind = SimilarityKind.of(!onlyInBase.isEmpty(), !onlyInOther.isEmpty());
+      final double sharedWeight = frequencies.weightOf(shared);
+      final double unionWeight =
+          sharedWeight + frequencies.weightOf(onlyInBase) + frequencies.weightOf(onlyInOther);
+      final int similarity = similarity(kind, sharedWeight / unionWeight);
+      if (!query.accepts(shared.size(), similarity)) {
+        return Optional.empty();
+      }
+      return Optional.of(
+          new SimilarTable(
+              candidate.table(),
+              similarity,
+              kind,
+              shared.size(),
+              originalNames(onlyInBase, base),
+              originalNames(onlyInOther, other),
+              shared.stream()
+                  .map(name -> SimilarTable.TypeMismatch.between(base.get(name), other.get(name)))
+                  .flatMap(Optional::stream)
+                  .toList(),
+              related.contains(candidate.table().key())));
+    }
   }
 
   /** 比べる相手のテーブルと、正規化したカラム名から引くカラム */
@@ -201,6 +217,11 @@ final class SimilarTableFinder {
      */
     double weightOf(String name) {
       return Math.log((tables + 1.0) / Math.max(counts.getOrDefault(name, 0), 1));
+    }
+
+    /** カラム名の重みの合計を返すメソッド */
+    double weightOf(List<String> names) {
+      return names.stream().mapToDouble(this::weightOf).sum();
     }
   }
 }

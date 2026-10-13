@@ -99,39 +99,48 @@ final class SimilarTableTools {
     if (arguments.isPresent("table") == arguments.isPresent("columns")) {
       throw new InvalidToolArgumentException("引数tableとcolumnsは、どちらか一方を指定してください。");
     }
-    final int minShared = arguments.optionalInt("minShared", DEFAULT_MIN_SHARED);
-    final int minSimilarity = arguments.optionalInt("minSimilarity", DEFAULT_MIN_SIMILARITY);
-    final int limit = arguments.optionalInt("limit", DEFAULT_LIMIT);
-    if (arguments.isPresent("columns")) {
-      final SimilarTableQuery query =
-          SimilarTableQuery.ofColumns(
-              arguments.requiredStringList("columns", MAX_COLUMNS), minShared, minSimilarity);
-      return ToolResults.json(
-          FindSimilarTablesOutput.of(
-              null,
-              query,
-              catalog.tables().findSimilar(query, scoped(arguments, arguments.scope()), limit)));
-    }
-    final TableEntry base =
-        ObjectResolver.resolve(
-            ObjectReference.of(
-                arguments.optionalString("database"), null, arguments.requiredString("table")),
-            "テーブル",
-            TableTools.SEARCH_TABLES,
-            "tableをスキーマ名.テーブル名の形（DBが異なる場合はdatabaseも）で指定してください。",
-            catalog.tables()::lookup);
-    final SimilarTableQuery query = SimilarTableQuery.ofTable(base, minShared, minSimilarity);
-    final SearchScope sameDatabase =
-        new SearchScope(base.key().database(), arguments.optionalString("schema"));
-    return ToolResults.json(
-        FindSimilarTablesOutput.of(
-            base.key().qualifiedName(),
-            query,
-            catalog.tables().findSimilar(query, scoped(arguments, sameDatabase), limit)));
+    final SimilarTableQuery query = query(arguments);
+    final SimilarTables found =
+        catalog
+            .tables()
+            .findSimilar(
+                query,
+                searchFilter(query, arguments),
+                arguments.optionalInt("limit", DEFAULT_LIMIT));
+    return ToolResults.json(FindSimilarTablesOutput.of(query, found));
   }
 
-  /** 探す範囲（DB・スキーマ・観点） */
-  private TableFilter scoped(ToolArguments arguments, SearchScope scope) {
+  /** 引数{@code table}（既存のテーブル）か{@code columns}（カラム名）のどちらかを基準にした条件 */
+  private SimilarTableQuery query(ToolArguments arguments) {
+    final int minShared = arguments.optionalInt("minShared", DEFAULT_MIN_SHARED);
+    final int minSimilarity = arguments.optionalInt("minSimilarity", DEFAULT_MIN_SIMILARITY);
+    if (arguments.isPresent("columns")) {
+      return SimilarTableQuery.ofColumns(
+          arguments.requiredStringList("columns", MAX_COLUMNS), minShared, minSimilarity);
+    }
+    return SimilarTableQuery.ofTable(resolveBase(arguments), minShared, minSimilarity);
+  }
+
+  /**
+   * 基準のテーブルを、引数{@code table}（{@code スキーマ名.テーブル名}も可）と{@code database}で解決する。
+   * {@code schema}は探す範囲に使うため、ここでは使わない
+   */
+  private TableEntry resolveBase(ToolArguments arguments) {
+    return ObjectResolver.resolve(
+        ObjectReference.of(
+            arguments.optionalString("database"), null, arguments.requiredString("table")),
+        "テーブル",
+        TableTools.SEARCH_TABLES,
+        "tableをスキーマ名.テーブル名の形（DBが異なる場合はdatabaseも）で指定してください。",
+        catalog.tables()::lookup);
+  }
+
+  /** 探す範囲（DB・スキーマ・観点）。既存のテーブルを基準にした場合は、基準と同じDBに限る */
+  private TableFilter searchFilter(SimilarTableQuery query, ToolArguments arguments) {
+    final SearchScope scope =
+        query.base() == null
+            ? arguments.scope()
+            : new SearchScope(query.base().key().database(), arguments.optionalString("schema"));
     final TableFilter filter = TableFilter.of(scope);
     return ViewpointResolver.resolve(catalog, arguments).map(filter::withViewpoint).orElse(filter);
   }
@@ -145,9 +154,9 @@ final class SimilarTableTools {
    */
   record FindSimilarTablesOutput(String base, int total, List<Table> tables, String message) {
 
-    static FindSimilarTablesOutput of(String base, SimilarTableQuery query, SimilarTables found) {
+    static FindSimilarTablesOutput of(SimilarTableQuery query, SimilarTables found) {
       return new FindSimilarTablesOutput(
-          base,
+          query.base() == null ? null : query.base().key().qualifiedName(),
           found.total(),
           found.tables().stream().map(Table::of).toList(),
           found.total() == 0 ? messageWhenNothingFound(query) : null);
