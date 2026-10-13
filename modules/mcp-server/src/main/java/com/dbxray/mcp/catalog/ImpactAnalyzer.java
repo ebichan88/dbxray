@@ -140,12 +140,11 @@ final class ImpactAnalyzer {
     final Set<FunctionEntry> matched = new HashSet<>();
     for (final FunctionOverloads function : inDatabase) {
       for (final Target target : targets) {
-        useOf(function, target)
-            .ifPresent(
-                found -> {
-                  uses.add(found.use());
-                  found.matches().forEach(match -> matched.add(match.overload()));
-                });
+        final List<OverloadMatch> matches = matchesOf(function, target.key());
+        if (!matches.isEmpty()) {
+          uses.add(useOf(function, target, matches));
+          matches.forEach(match -> matched.add(match.overload()));
+        }
       }
     }
     final Map<FunctionEntry, Insight> insights = new LinkedHashMap<>();
@@ -156,66 +155,59 @@ final class ImpactAnalyzer {
         coverage(insights.values(), database), uses, unverified(insights, matched));
   }
 
-  /**
-   * 関数が対象のテーブルを使っているか求めるメソッド（同名のオーバーロードは1つにまとめる）<br>
-   * 一致したオーバーロードの中に、確定で一致したものと候補でだけ一致したものが混ざる場合は、候補としては扱わず、
-   * 候補のオーバーロードの操作も合算する（その操作は確定のように見える）
-   */
-  private Optional<FoundUse> useOf(FunctionOverloads function, Target target) {
-    final List<OverloadMatch> matches =
-        function.overloads().stream()
-            .map(overload -> matchOf(overload, target.key()))
-            .flatMap(Optional::stream)
-            .toList();
-    if (matches.isEmpty()) {
-      return Optional.empty();
-    }
-    final boolean possible = matches.stream().allMatch(OverloadMatch::possible);
-    return Optional.of(
-        new FoundUse(
-            new FunctionUse(
-                function.key(),
-                kindOf(matches),
-                matches.stream().map(match -> match.overload().arguments()).toList(),
-                mergedOperations(matches.stream().map(OverloadMatch::operations).toList()),
-                possible,
-                possible ? matches.get(0).schemaResolution() : "",
-                matches.stream()
-                    .flatMap(match -> match.usage().dynamicSql().stream())
-                    .distinct()
-                    .toList(),
-                target.via(),
-                tables.triggersCalling(function)),
-            matches));
+  /** 関数のオーバーロードのうち、対象のテーブルを使っているものを求める */
+  private List<OverloadMatch> matchesOf(FunctionOverloads function, ObjectKey target) {
+    return function.overloads().stream()
+        .map(overload -> matchOf(overload, target))
+        .flatMap(Optional::stream)
+        .toList();
   }
 
   /**
    * オーバーロード1つが対象のテーブルを使っているか求めるメソッド<br>
-   * 同じテーブルへの一致が確定と候補の両方にまたがる場合は、確定を採る
+   * 確定を候補より先に調べ、同じテーブルへの一致が両方にまたがる場合は確定を採る
    */
   private Optional<OverloadMatch> matchOf(FunctionEntry overload, ObjectKey target) {
-    return usages
-        .find(overload)
-        .flatMap(
-            usage -> {
-              final List<UsedTable> confirmed =
-                  usedTables(usage, target, UsedTable.Match.CONFIRMED);
-              if (!confirmed.isEmpty()) {
-                return Optional.of(
-                    new OverloadMatch(overload, usage, false, "", operationsOf(confirmed)));
-              }
-              final List<UsedTable> candidates =
-                  usedTables(usage, target, UsedTable.Match.CANDIDATE);
-              return candidates.isEmpty()
-                  ? Optional.empty()
-                  : Optional.of(
-                      new OverloadMatch(
-                          overload,
-                          usage,
-                          true,
-                          candidates.get(0).schemaResolution(),
-                          operationsOf(candidates)));
-            });
+    final Optional<FunctionTableUsageEntry> usage = usages.find(overload);
+    if (usage.isEmpty()) {
+      return Optional.empty();
+    }
+    for (final UsedTable.Match match :
+        List.of(UsedTable.Match.CONFIRMED, UsedTable.Match.CANDIDATE)) {
+      final List<UsedTable> found = usedTables(usage.get(), target, match);
+      if (!found.isEmpty()) {
+        return Optional.of(
+            new OverloadMatch(
+                overload,
+                usage.get(),
+                match == UsedTable.Match.CANDIDATE,
+                found.get(0).schemaResolution(),
+                operationsOf(found)));
+      }
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * 一致したオーバーロードを、関数1つ分の結果にまとめるメソッド（同名のオーバーロードは1つにまとめる）<br>
+   * 確定で一致したものと候補でだけ一致したものが混ざる場合は、候補としては扱わず、
+   * 候補のオーバーロードの操作も合算する（その操作は確定のように見える）
+   *
+   * @param matches 1つ以上
+   */
+  private FunctionUse useOf(
+      FunctionOverloads function, Target target, List<OverloadMatch> matches) {
+    final boolean possible = matches.stream().allMatch(OverloadMatch::possible);
+    return new FunctionUse(
+        function.key(),
+        kindOf(matches),
+        matches.stream().map(match -> match.overload().arguments()).toList(),
+        mergedOperations(matches.stream().map(OverloadMatch::operations).toList()),
+        possible,
+        possible ? matches.get(0).schemaResolution() : "",
+        matches.stream().flatMap(match -> match.usage().dynamicSql().stream()).distinct().toList(),
+        target.via(),
+        tables.triggersCalling(function));
   }
 
   private static List<UsedTable> usedTables(
@@ -341,9 +333,6 @@ final class ImpactAnalyzer {
    * @param via 対象がビューの場合、そのビュー。自テーブルの場合はnull
    */
   private record Target(ObjectKey key, ObjectKey via) {}
-
-  /** 関数が対象を使っている、という結果と、その元になったオーバーロードの一致 */
-  private record FoundUse(FunctionUse use, List<OverloadMatch> matches) {}
 
   /**
    * オーバーロード1つの参考情報の状態（{@link FunctionCoverage}の数え方と、確かめきれない理由の元）
