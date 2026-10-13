@@ -4,7 +4,6 @@ import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
 import com.dbxray.domain.service.writer.template.RowRenderer;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -22,7 +21,6 @@ public class PagedSectionWriter {
   private final FileRepository fileRepository;
   private final OutputPathResolver outputPathResolver;
 
-  @Inject
   public PagedSectionWriter(FileRepository fileRepository, OutputPathResolver outputPathResolver) {
     this.fileRepository = fileRepository;
     this.outputPathResolver = outputPathResolver;

@@ -8,7 +8,6 @@ import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.snapshot.SnapshotSerializer;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +28,6 @@ public class InsightWriter {
   private final OutputPathResolver outputPathResolver;
   private final SnapshotSerializer serializer;
 
-  @Inject
   public InsightWriter(
       FileRepository fileRepository,
       OutputPathResolver outputPathResolver,

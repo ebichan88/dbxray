@@ -16,7 +16,6 @@ import com.dbxray.domain.service.writer.PagedSectionWriter;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PageLayout;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PagedSection;
 import com.dbxray.domain.service.writer.template.RowRenderer;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
@@ -30,7 +29,6 @@ public class ObjectListWriter {
   private final OutputPathResolver outputPathResolver;
   private final PagedSectionWriter pagedSectionWriter;
 
-  @Inject
   public ObjectListWriter(
       FileRepository fileRepository,
       OutputPathResolver outputPathResolver,

@@ -14,7 +14,6 @@ import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.writer.PagedSectionWriter;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PageLayout;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PagedSection;
-import jakarta.inject.Inject;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,7 +32,6 @@ public class ViewpointWriter {
   private final OutputPathResolver outputPathResolver;
   private final PagedSectionWriter pagedSectionWriter;
 
-  @Inject
   public ViewpointWriter(
       FileRepository fileRepository,
       OutputPathResolver outputPathResolver,

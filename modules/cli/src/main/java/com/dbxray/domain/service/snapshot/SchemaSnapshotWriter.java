@@ -15,7 +15,6 @@ import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.path.OutputRoot;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,7 +38,6 @@ public class SchemaSnapshotWriter {
   private final OutputPathResolver outputPathResolver;
   private final SnapshotSerializer serializer;
 
-  @Inject
   public SchemaSnapshotWriter(
       FileRepository fileRepository,
       OutputPathResolver outputPathResolver,

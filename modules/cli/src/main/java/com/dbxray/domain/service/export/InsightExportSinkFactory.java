@@ -7,7 +7,6 @@ import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.model.viewpoint.ViewpointContent;
 import com.dbxray.domain.service.insight.InsightWriter;
 import com.dbxray.domain.service.path.OutputRoot;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -16,7 +15,6 @@ public class InsightExportSinkFactory {
 
   private final InsightWriter insightWriter;
 
-  @Inject
   public InsightExportSinkFactory(InsightWriter insightWriter) {
     this.insightWriter = insightWriter;
   }

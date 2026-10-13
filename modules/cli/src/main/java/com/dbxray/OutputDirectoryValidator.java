@@ -5,7 +5,6 @@ import com.dbxray.application.ExportSchemaRequest;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.shared.exception.UserCorrectableException;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 
 /**
@@ -26,7 +25,6 @@ class OutputDirectoryValidator {
   private final OutputPathResolver outputPathResolver;
   private final FileRepository fileRepository;
 
-  @Inject
   OutputDirectoryValidator(OutputPathResolver outputPathResolver, FileRepository fileRepository) {
     this.outputPathResolver = outputPathResolver;
     this.fileRepository = fileRepository;

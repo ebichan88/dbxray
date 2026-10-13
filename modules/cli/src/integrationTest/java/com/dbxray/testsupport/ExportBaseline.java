@@ -2,12 +2,9 @@ package com.dbxray.testsupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.dbxray.config.module.DatabaseDependentModule;
-import com.dbxray.config.module.DbxrayModule;
+import com.dbxray.Components;
 import com.dbxray.infrastructure.db.DatabaseTypeDetector;
 import com.dbxray.presentation.ExportSchemaController;
-import com.google.inject.Guice;
-import com.google.inject.util.Modules;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -34,19 +31,14 @@ public final class ExportBaseline {
   private ExportBaseline() {}
 
   /**
-   * エントリーポイントと同じ手順（DB種別に依存しない部品のコンテナに、接続後に子のコンテナを足す）でコントローラーを取得するメソッド
+   * エントリーポイントと同じ組み立て役で、接続先のDB種別に応じたコントローラーを取得するメソッド
    *
    * @param sqlSessionFactory 接続先のサンプルDB
    * @return 生成日を固定したコントローラー
    */
   public static ExportSchemaController controller(SqlSessionFactory sqlSessionFactory) {
-    return Guice.createInjector(
-            Modules.override(new DbxrayModule())
-                .with(binder -> binder.bind(Clock.class).toInstance(FIXED_CLOCK)))
-        .createChildInjector(
-            new DatabaseDependentModule(
-                DatabaseTypeDetector.detect(sqlSessionFactory), sqlSessionFactory))
-        .getInstance(ExportSchemaController.class);
+    return new Components(FIXED_CLOCK)
+        .controller(DatabaseTypeDetector.detect(sqlSessionFactory), sqlSessionFactory);
   }
 
   /**

@@ -4,8 +4,6 @@ import com.dbxray.application.CheckDocumentDiffRequest;
 import com.dbxray.application.ExportSchemaRequest;
 import com.dbxray.config.ConfigFile;
 import com.dbxray.config.InvalidConfigurationException;
-import com.dbxray.config.module.DatabaseDependentModule;
-import com.dbxray.config.module.DbxrayModule;
 import com.dbxray.infrastructure.db.ConnectionSettings;
 import com.dbxray.infrastructure.db.DatabaseTypeDetector;
 import com.dbxray.infrastructure.db.MyBatisSqlSessionFactories;
@@ -14,8 +12,6 @@ import com.dbxray.presentation.FailureReporter;
 import com.dbxray.presentation.dto.DiffCheckResultDto;
 import com.dbxray.presentation.dto.ResultDto;
 import com.dbxray.presentation.type.ExitStatus;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.ibatis.session.SqlSessionFactory;
 
 /**
@@ -80,10 +76,10 @@ public class Dbxray {
     final ExportSchemaRequest request =
         DbxrayProperties.of(configFile, cliArguments.settingOverrides())
             .toExportSchemaRequest(cliArguments.isRmDist(), cliArguments.previewFeatures());
-    final Injector injector = createInjector();
-    injector.getInstance(OutputDirectoryValidator.class).validate(request);
+    final Components components = Components.create();
+    components.outputDirectoryValidator().validate(request);
     final ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);
-    final ResultDto resultDto = createController(injector, connectionSettings).execute(request);
+    final ResultDto resultDto = createController(components, connectionSettings).execute(request);
     System.out.println(resultDto.resultMessage());
     return ExitStatus.SUCCESS;
   }
@@ -110,11 +106,11 @@ public class Dbxray {
     final CheckDocumentDiffRequest request =
         DbxrayProperties.of(configFile, cliArguments.settingOverrides())
             .toCheckDocumentDiffRequest();
-    final Injector injector = createInjector();
-    injector.getInstance(OutputDirectoryValidator.class).validate(request);
+    final Components components = Components.create();
+    components.outputDirectoryValidator().validate(request);
     final ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);
     final DiffCheckResultDto diffCheckResultDto =
-        createController(injector, connectionSettings).checkDiff(request);
+        createController(components, connectionSettings).checkDiff(request);
     System.out.println(diffCheckResultDto.resultMessage());
     return diffCheckResultDto.exitStatus();
   }
@@ -133,35 +129,21 @@ public class Dbxray {
   }
 
   /**
-   * DB種別に依存しない部品のDIコンテナを組み立てるメソッド<br>
+   * DBへ接続して接続先のDB種別を判定し、DB種別に依存する部品を組み立ててコントローラーを取得するメソッド<br>
    * 入力の検証は、DBへ接続する前に行う。接続した後に検証すると、DBに接続できない環境（接続情報の誤り・DBの停止中）では
-   * 接続エラーだけが報告され、それを直して再実行するまで入力の誤りに気付けないため。<br>
-   * ただし、出力先の検証に使う部品（出力先パスの解決・パスの状態の問い合わせ）はDIコンテナから取得する一方で、
-   * DB種別で実装が変わる部品（CatalogRepositoryと、それに依存するユースケース）は、DB種別が接続して初めて分かるため、
-   * 接続した後にしか束縛できない。そこでDIコンテナを2段階に分け、DB種別に依存しない部品だけのコンテナをここで先に組み立てて
-   * 検証に使い、DB種別に依存する部品は、接続した後に子のコンテナとして足す（{@link #createController}）
+   * 接続エラーだけが報告され、それを直して再実行するまで入力の誤りに気付けないため。
+   * ただし、DB種別で実装が変わる部品（CatalogRepositoryと、それに依存するユースケース）は、DB種別が接続して初めて分かるため、
+   * 接続した後にしか組み立てられない。そこで、DB種別に依存しない部品は検証のために先に{@link Components}から取得し、
+   * DB種別に依存する部品は、接続した後にここで足す。<br>
+   * {@link SqlSessionFactory}はここで1回だけ生成し、リポジトリで使い回す
    *
-   * @return DB種別に依存しない部品のDIコンテナ
-   */
-  private static Injector createInjector() {
-    return Guice.createInjector(new DbxrayModule());
-  }
-
-  /**
-   * DBへ接続して接続先のDB種別を判定し、DB種別に依存する部品を束縛した子のDIコンテナからコントローラーを取得するメソッド<br>
-   * {@link SqlSessionFactory}はここで1回だけ生成し、子のDIコンテナを通じてリポジトリで使い回す
-   *
-   * @param injector DB種別に依存しない部品のDIコンテナ（{@link #createInjector()}）
+   * @param components DB種別に依存しない部品を持つ、依存関係の組み立て役
    * @param connectionSettings 検証済みのDB接続情報
    */
   private static ExportSchemaController createController(
-      Injector injector, ConnectionSettings connectionSettings) {
+      Components components, ConnectionSettings connectionSettings) {
     final SqlSessionFactory sqlSessionFactory =
         MyBatisSqlSessionFactories.create(connectionSettings);
-    return injector
-        .createChildInjector(
-            new DatabaseDependentModule(
-                DatabaseTypeDetector.detect(sqlSessionFactory), sqlSessionFactory))
-        .getInstance(ExportSchemaController.class);
+    return components.controller(DatabaseTypeDetector.detect(sqlSessionFactory), sqlSessionFactory);
   }
 }

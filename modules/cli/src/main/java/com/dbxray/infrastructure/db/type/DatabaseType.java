@@ -1,27 +1,22 @@
 package com.dbxray.infrastructure.db.type;
 
 import com.dbxray.domain.model.database.Dbms;
-import com.dbxray.domain.repository.CatalogRepository;
-import com.dbxray.infrastructure.db.repository.OracleCatalogRepository;
-import com.dbxray.infrastructure.db.repository.PostgresCatalogRepository;
 import java.util.Arrays;
 import java.util.Objects;
 
-/** 接続先のDB種別と、DB種別ごとに使い分ける部品（mapperの名前空間・カタログのリポジトリ実装）の対応 */
+/** 接続先のDB種別と、DB種別ごとに使い分ける部品（mapperの名前空間・ドメインのDBMS種別）の対応 */
 public enum DatabaseType {
   /** PostgreSQL */
-  POSTGRESQL("postgresql", Dbms.POSTGRESQL, PostgresCatalogRepository.class),
+  POSTGRESQL("postgresql", Dbms.POSTGRESQL),
   /** Oracle */
-  ORACLE("oracle", Dbms.ORACLE, OracleCatalogRepository.class);
+  ORACLE("oracle", Dbms.ORACLE);
 
   private final String id;
   private final Dbms dbms;
-  private final Class<? extends CatalogRepository> repositoryClass;
 
-  DatabaseType(String id, Dbms dbms, Class<? extends CatalogRepository> repositoryClass) {
+  DatabaseType(String id, Dbms dbms) {
     this.id = id;
     this.dbms = dbms;
-    this.repositoryClass = repositoryClass;
   }
 
   /**
@@ -36,11 +31,6 @@ public enum DatabaseType {
   /** DB種別に対応する、ドメインのDBMS種別を取得するメソッド */
   public Dbms dbms() {
     return dbms;
-  }
-
-  /** DB種別に対応する、カタログのリポジトリ実装を取得するメソッド */
-  public Class<? extends CatalogRepository> repositoryClass() {
-    return repositoryClass;
   }
 
   /**

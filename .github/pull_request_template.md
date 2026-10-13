@@ -35,7 +35,7 @@
 - [ ] 設定項目・CLI引数を変えた場合、`docs/usage/cli.md`の仕様と入力の検証（`DbxrayProperties`・`CliArguments`等）を更新した
 - [ ] ドメインの概念を追加・改名・削除した場合、`docs/architecture/domain-model.md`を更新した
 - [ ] スナップショットの形式を互換性なく変えた場合、`DatabaseSnapshot.FORMAT_VERSION`を上げ、`SnapshotDirectoryReader.SUPPORTED_FORMAT_VERSION`を追従させた
-- [ ] 新しいリポジトリ実装・ドメインサービスを追加した場合、Guiceの束縛を追加した
+- [ ] 新しいリポジトリ実装・ドメインサービスを追加した場合、またコンストラクタの引数を変えた場合、`Components`の組み立てを直した
 - [ ] DB由来の文字列の出力・パス・秘密情報・ファイルの削除・依存ライブラリに触れた場合、コーディングガイドライン（docs/development/coding-guidelines.md）の「セキュリティ」の項目を確認した
 
 ## 補足

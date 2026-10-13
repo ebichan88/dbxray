@@ -3,8 +3,6 @@ package com.dbxray.infrastructure.db.type;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.dbxray.domain.model.database.Dbms;
-import com.dbxray.infrastructure.db.repository.OracleCatalogRepository;
-import com.dbxray.infrastructure.db.repository.PostgresCatalogRepository;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -31,18 +29,6 @@ public class DatabaseTypeTest {
     IllegalArgumentException e =
         assertThrows(IllegalArgumentException.class, () -> DatabaseType.fromId("mysql"));
     assertTrue(e.getMessage().contains("mysql"));
-  }
-
-  @Test
-  @DisplayName("repositoryClass: POSTGRESQLはPostgresCatalogRepositoryを返す")
-  void testGetRepositoryClassPostgresql() {
-    assertEquals(PostgresCatalogRepository.class, DatabaseType.POSTGRESQL.repositoryClass());
-  }
-
-  @Test
-  @DisplayName("repositoryClass: ORACLEはOracleCatalogRepositoryを返す")
-  void testGetRepositoryClassOracle() {
-    assertEquals(OracleCatalogRepository.class, DatabaseType.ORACLE.repositoryClass());
   }
 
   @Test

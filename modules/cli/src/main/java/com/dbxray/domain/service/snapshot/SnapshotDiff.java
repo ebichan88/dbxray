@@ -6,7 +6,6 @@ import com.dbxray.domain.model.snapshot.SnapshotKind;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.UnifiedDiffGenerator;
 import com.dbxray.domain.service.path.OutputPathResolver;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -35,7 +34,6 @@ public class SnapshotDiff {
   private final SnapshotSerializer serializer;
   private final UnifiedDiffGenerator diffGenerator;
 
-  @Inject
   public SnapshotDiff(
       FileRepository fileRepository,
       OutputPathResolver outputPathResolver,

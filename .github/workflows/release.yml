@@ -87,7 +87,7 @@ jobs:
           chmod +x ./gradlew
           ./gradlew build generateLicenseReport
 
-      # 依存ライブラリ（JDBCドライバ、log4j、Guice、MCPのSDK等）が実際に使用するJDKモジュールを検出する。
+      # 依存ライブラリ（JDBCドライバ、log4j、MCPのSDK等）が実際に使用するJDKモジュールを検出する。
       # cliとMCPサーバーで同梱のJava実行環境（runtime）を共有するため、両方のjarを渡して必要なモジュールを合算する。
       # jdk.crypto.ec / jdk.charsets / jdk.unsupported はリフレクションやSPI経由で使われ
       # jdeps検出から漏れやすいため明示的に追加する（jdk.charsetsは日本語(Shift_JIS等)の

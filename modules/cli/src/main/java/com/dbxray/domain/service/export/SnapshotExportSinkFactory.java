@@ -6,7 +6,6 @@ import com.dbxray.domain.model.target.FunctionDefinitionContent;
 import com.dbxray.domain.model.target.TableDefinitionContent;
 import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.snapshot.SchemaSnapshotWriter;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -15,7 +14,6 @@ public class SnapshotExportSinkFactory {
 
   private final SchemaSnapshotWriter snapshotWriter;
 
-  @Inject
   public SnapshotExportSinkFactory(SchemaSnapshotWriter snapshotWriter) {
     this.snapshotWriter = snapshotWriter;
   }

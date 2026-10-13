@@ -5,11 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.dbxray.application.CheckDocumentDiffRequest;
 import com.dbxray.application.ExportSchemaRequest;
 import com.dbxray.application.TargetSelection;
-import com.dbxray.config.module.DbxrayModule;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.infrastructure.path.DefaultOutputPathResolver;
 import com.dbxray.shared.exception.UserCorrectableException;
-import com.google.inject.Guice;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -156,12 +154,5 @@ public class OutputDirectoryValidatorTest {
     fileRepository.directories.add(Path.of("."));
 
     assertDoesNotThrow(() -> validator.validate(exportRequest(".", false)));
-  }
-
-  @Test
-  @DisplayName("DB種別に依存しない部品のDIコンテナ（DBへ接続する前に組み立てるもの）から取得できる")
-  void testResolvesFromInjectorBeforeConnectingToDatabase() {
-    assertNotNull(
-        Guice.createInjector(new DbxrayModule()).getInstance(OutputDirectoryValidator.class));
   }
 }

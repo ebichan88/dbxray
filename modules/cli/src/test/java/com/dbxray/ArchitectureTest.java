@@ -177,19 +177,12 @@ public class ArchitectureTest {
   }
 
   @Test
-  @DisplayName("@Injectはjakarta.injectのものを使い、Guiceに依存するのはエントリーポイントとconfigだけ")
-  void testOnlyEntryAndConfigDependOnGuice() {
-    noClasses()
-        .that()
-        .resideOutsideOfPackages(ROOT, ROOT + ".config..")
-        .should()
-        .dependOnClassesThat()
-        .resideInAPackage("com.google.inject..")
-        .check(MAIN_CLASSES);
+  @DisplayName("DIコンテナ（Guice・jakarta.inject）に依存しない")
+  void testNoDependencyOnDiContainer() {
     noClasses()
         .should()
         .dependOnClassesThat()
-        .haveFullyQualifiedName("com.google.inject.Inject")
+        .resideInAnyPackage("com.google.inject..", "jakarta.inject..")
         .check(MAIN_CLASSES);
   }
 

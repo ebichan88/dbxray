@@ -3,12 +3,13 @@
 本プロジェクトは、DBのメタ情報（テーブル・カラム・制約・外部キー・トリガー・関数・シーケンス・ユーザー定義型等）を
 取得し、Markdown形式のテーブル定義書・ER図を出力するCLIアプリケーションである。あわせて、同じ取得結果から
 機械可読なスキーマのスナップショット（JSON Lines）を出力し、`--check`モードではDBとコミット済みのスナップショットの差分を検知する。
-Java 21 / Gradle製で、DIコンテナにGoogle Guiceを、O/RマッパーにMyBatisを使用する。
+Java 21 / Gradle製で、O/RマッパーにMyBatisを使用する。DIコンテナは使わず、依存関係はコンストラクタで受け取り、
+`Components`（エントリーポイントと同じパッケージ）が手で組み立てる。
 
 この文書はcli（`modules/cli/`）のアーキテクチャを扱う。スナップショットをAIから検索するMCPサーバー（`modules/mcp-server/`）は
 [mcp-server.md](./mcp-server.md)を参照。
 
-初めてコードを読む人向けに、入出力と使っている技術（Guice・MyBatis等）の事前知識、起動から終了までと取得・書き出しの流れ、
+初めてコードを読む人向けに、入出力と使っている技術（MyBatis等）の事前知識、起動から終了までと取得・書き出しの流れ、
 データの持ち方、ソースごとの役割と繋がりを図でまとめた読解ガイド（[cli-guide.html](./cli-guide.html)。最新の正式版の時点のものを[GitHub Pages](https://ebichan88.github.io/dbxray/cli-guide.html)で読める）がある。
 ガイドはある時点のコードを読んで書いたもので、クラス名・行数等が食い違う場合はこの文書とコードを正とする。
 
@@ -33,14 +34,14 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
 | application | `application` | ユースケース（DBドキュメント出力・差分検知それぞれのフロー制御）を実装する |
 | domain | `domain.model.*`, `domain.repository`, `domain.service.*` | エンティティ・値オブジェクト・リポジトリIF・書き込み処理（ドメインサービス）を持つ、DB種別に依存しない中核 |
 | infrastructure | `infrastructure.db`, `infrastructure.file`, `infrastructure.path`, `infrastructure.snapshot` | MyBatisによるDBアクセス、ファイル入出力、出力パス解決、JSON変換などドメインIFの実装を提供する |
-| config | `config`, `config.module` | プロパティ読み込み、Guiceによる依存関係の束縛（DI設定） |
+| config | `config` | 設定ファイル（YAML）の読み込み |
 | shared | `shared.exception` | 層をまたいで失敗の分類を伝える例外（`UserCorrectableException`） |
 
 `config`と`shared`は4層の外に置く。`shared.exception`は、どの層からも依存してよい唯一のパッケージで、自身はJDK以外に依存しない。
 置くのは失敗の分類を伝える例外だけとし、`shared`の直下や、例外以外の共通部品の置き場所にはしない
 （範囲を広げると、層に属さない何でも置き場になり、依存の向きのルールが形骸化するため）。
 
-これらの依存の向きは`ArchitectureTest`（ArchUnit）が単体テストとして検査する。エントリーポイント（直下のパッケージ）と`config`は、
+これらの依存の向きは`ArchitectureTest`（ArchUnit）が単体テストとして検査する。エントリーポイント（直下のパッケージ）は、
 全体を組み立てる役割のため全層に依存してよい。`config`に依存してよいのはエントリーポイントと`infrastructure`
 （`ConnectionSettings`が`InvalidConfigurationException`を使う）だけ。
 
@@ -66,20 +67,20 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
    - 設定の誤りは`config.InvalidConfigurationException`1種類で、見つかった誤りをまとめて表す。DBへの接続や`--rm-dist`による
      削除より前に`[result]:FAIL`として報告されるため、エントリーポイントは読み込み処理の内部で起きる個々の例外を知らずに済む
    - requestはエントリーポイント→コントローラー→ユースケースの3層を、分解・再構築を繰り返さず同じrecordのまま通過する
-   - DB種別に依存しない部品のDIコンテナ（`DbxrayModule`）を組み立て、`OutputDirectoryValidator`が出力先
+   - `Components.create()`で依存関係の組み立て役を作り、そこから取得した`OutputDirectoryValidator`が出力先
      （`output.path`）を検証する。既存のファイルを指す場合と、`--rm-dist`で削除してはならないディレクトリ（ルート・ホーム
      ディレクトリ・カレントディレクトリ自体）を指す場合は、DBへ接続する前に`[result]:FAIL`として報告する
    - `ConnectionSettings.merge()`（`infrastructure.db`）が設定ファイルの`database`の値を、環境変数のパスワード・CLI引数の値で
      上書きし、DB接続情報を検証する。パスワードは設定ファイルに書けない（秘密をファイルに残さないため）
 3. 入力の検証に成功した後、`MyBatisSqlSessionFactories.create()`で`SqlSessionFactory`を1回だけ生成し、
    `DatabaseTypeDetector.detect()`がDBへ接続して接続先のDB種別を判定する。
-   2.のDIコンテナの子として、DB種別に依存する部品（`DatabaseDependentModule`）を束縛したコンテナを組み立て、
-   `ExportSchemaController` を取得する（[設定・DI](#設定di)を参照）。
+   2.の`Components#controller`が、判定したDB種別に依存する部品（`CatalogRepository`と、それに依存するユースケース）を
+   組み立て、`ExportSchemaController` を返す（[設定・DI](#設定di)を参照）。
 4. コントローラーは `ExportSchemaUsecase.exportSchema()`（`--check`時は
    `CheckDocumentDiffUsecase.checkDocumentDiff()`）を呼び出し、結果を `ResultDto`（`--check`時は差分の有無を持つ
    `DiffCheckResultDto`）に変換する。例外は捕捉せず、エントリーポイントまで伝える。
 5. 通常実行のユースケース（`ExportSchemaUsecase`）は、以下を順に行う。DBからの取得と出力形式ごとの書き出しの
-   段取りは `SchemaExportPipeline`（`application`、パッケージプライベート）に委ね、差分検知のユースケースと共有する。
+   段取りは `SchemaExportPipeline`（`application`）に委ね、差分検知のユースケースと共有する。
    - `SchemaExportPipeline.fetchTargets()`：`CatalogRepository` からテーブル一覧・外部キー・トリガー・パーティション・ビューの参照等をMyBatis経由で取得し、
      `SidecarRepository` でサイドカーYAML（手動付帯情報・論理リレーション・観点）を読み込む。
      `ExportTargetConsistency`（`domain.service.target`）が両者を出力対象のテーブルと突き合わせ、
@@ -113,7 +114,7 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
   「利用者が直せる」という分類は入口側の関心であり、ドメインの概念ではないため。入力の誤りはユースケースを呼ぶ前に入口で検証し、
   インフラは外部に触れて初めて分かる誤り（DBに接続できない、YAMLとして読めない等）だけを投げる。
   入口とインフラの双方から投げるため、例外はどの層からも依存できるレイヤーの外（`shared.exception`）に置く
-- 捕捉するのはエントリーポイント（`Dbxray.main()`）の1箇所だけ。設定の読み込み・DBへの接続・DIコンテナの
+- 捕捉するのはエントリーポイント（`Dbxray.main()`）の1箇所だけ。設定の読み込み・DBへの接続・依存関係の
   組み立てを含む処理全体を1つのtry-catchで囲むため、捕捉漏れがない。コントローラー・ユースケースでは捕捉しない。
   捕捉した例外は`presentation.FailureReporter`へ渡し、種類に応じた報告（画面・ログ）を任せる
 - 途中の層でcatchしてよいのは、(a) 検査例外を非検査例外で包む、(b) 下位の例外を利用者が直せる誤りへ置き換える、
@@ -175,7 +176,7 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
 - 検証は入口でまとめて行い、見つかった誤りを一度に報告する（1つ直して再実行するたびに次の誤りが見つかる、を繰り返させない）
 - 実行のしかたを決める入力（CLI引数・設定ファイル・出力先）の誤りは、DBへ接続する前に報告する。接続した後に検証すると、
   DBに接続できない環境（接続情報の誤り・DBの停止中）では接続エラーだけが報告され、それを直して再実行するまで入力の誤りに気付けないため。
-  出力先の検証のようにDIコンテナの部品を使う検証もこの時点で行えるよう、DIコンテナを2段階で組み立てている（[設定・DI](#設定di)を参照）
+  出力先の検証のように依存する部品（出力先パスの解決・パスの状態の問い合わせ）を使う検証もこの時点で行えるよう、依存関係の組み立てを2段階に分けている（[設定・DI](#設定di)を参照）
 
 | 入力 | 検証する場所 | 検証のタイミング |
 |---|---|---|
@@ -195,8 +196,8 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
 `infrastructure.db.type.DatabaseType` （enum）がDB種別名と対応する
 `infrastructure.db.repository.*CatalogRepository` 実装クラスを紐づけている。
 エントリーポイントが（入力の検証に成功した後に）`DatabaseTypeDetector.detect()` で接続先のDB種別を判定して
-`DatabaseDependentModule` のコンストラクタへ（`SqlSessionFactory`とともに）渡し、`configure()` が `DatabaseType.repositoryClass()` を通じて
-`CatalogRepository` の実装クラスをDBごとに動的に束縛する（束縛定義の中ではDBへ接続しない）。DB固有のSQLは
+`Components#controller` へ（`SqlSessionFactory`とともに）渡し、`DatabaseType` に応じて
+`CatalogRepository` の実装クラスを選んで生成する（`switch`が`DatabaseType`を網羅するため、DB種別を足すと選択の書き漏れをコンパイルで検知できる）。DB固有のSQLは
 [modules/cli/src/main/resources/mapper/oracle/catalogMapper.xml](../../modules/cli/src/main/resources/mapper/oracle/catalogMapper.xml) と
 [modules/cli/src/main/resources/mapper/postgresql/catalogMapper.xml](../../modules/cli/src/main/resources/mapper/postgresql/catalogMapper.xml) に分離されている。
 両リポジトリは共通処理を `AbstractCatalogRepository` に持つ。
@@ -236,7 +237,7 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
 各ドキュメントの先頭に掲載する基本情報（`domain.model.database.BaseInfoEntity`）は、DBのカタログから取得する
 データベースの情報（`DatabaseEntity`：DB名・DBMS種別・メジャーバージョン。`CatalogRepository.selectDatabase()`）に、
 ドキュメントの生成日を加えたもの。生成日はDBではなく実行時に決まる値のため、`SchemaExportPipeline` がDIで受け取る
-`java.time.Clock` から与える（`DbxrayModule` が実行環境のタイムゾーンの時計を束縛する。テストでは固定の時計を渡せる）。
+`java.time.Clock` から与える（`Components.create()` が実行環境のタイムゾーンの時計を渡す。テストでは固定の時計で`Components`を作れる）。
 
 ## 出力対象の突き合わせ
 
@@ -442,18 +443,16 @@ DBのメタ情報だけでは表現できない情報を、サイドカーYAML�
 - `DbxrayProperties`（エントリーポイントと同じパッケージ）: 読み込みは`ConfigFile`に委ね、設定ファイルの`database`以外の
   設定項目の仕様（位置・CLI引数名・既定値・値の形式）と検証を1箇所に持つ（リストの値は各要素の前後の空白を除去し、空要素を除く）。
   `database`の仕様と検証は`ConnectionSettings`が持つ
-- `config.module.DbxrayModule`: Guiceの束縛定義（インターフェース→実装クラスの対応表）のうち、DB種別に依存しないもの
-- `config.module.DatabaseDependentModule`: DB種別が決まってから束縛するもの（`SqlSessionFactory`・`CatalogRepository`と、それに依存するユースケース）
+- `Components`（エントリーポイントと同じパッケージ）: 依存関係を手で組み立てる（composition root）。全レイヤーの具象クラスを
+  `new`するため、すべてのレイヤーを参照できるエントリーポイントと同じパッケージに置く
 
-DIコンテナは2段階で組み立てる。出力先の検証等の入力の検証はDBへ接続する前に行う（理由は[入力の検証](#入力の検証)を参照）が、
-DB種別は接続して初めて分かるため、まず`DbxrayModule`だけでコンテナを組み立てて入力の検証に使い、DBへ接続した後に`DatabaseDependentModule`を束縛した
-子のコンテナ（`Injector#createChildInjector`）を足して、コントローラーを取得する。
+組み立ては2段階に分かれる。出力先の検証等の入力の検証はDBへ接続する前に行う（理由は[入力の検証](#入力の検証)を参照）が、
+DB種別は接続して初めて分かるため、まず`Components.create()`で作った`Components`から`outputDirectoryValidator()`を取得して入力の検証に使い、
+DBへ接続した後に`Components#controller`へDB種別と`SqlSessionFactory`を渡して、DB種別に依存する部品を含むコントローラーまでを組み立てる。
 `SqlSessionFactory`（設定XMLとmapperの解析を伴い生成が重い。DB接続はこれが持つコネクションプールが使い回す）は、エントリーポイントで
-1回だけ生成して子のコンテナへインスタンスとして束縛し、リポジトリはコンストラクタで受け取る。静的なシングルトンから取得しないため、
+1回だけ生成して`Components#controller`へ渡し、リポジトリはコンストラクタで受け取る。静的なシングルトンから取得しないため、
 テストでは任意の接続先（テスト用のDB等）の`SqlSessionFactory`を渡してリポジトリを組み立てられる。
-新しいリポジトリ実装やドメインサービスを追加する場合は、`DbxrayModule`に束縛を追加する
-（`CatalogRepository`の実装のように、DB接続後でないと決まらないものだけは、親のコンテナでは解決できないため`DatabaseDependentModule`に置く）。
-各クラスのコンストラクタには標準の`jakarta.inject.Inject`を付け、ドメイン層・アプリケーション層がGuiceのAPIに依存しないようにしている。
-ユースケース（具象クラス）・`application.SchemaExportPipeline`・`OutputDirectoryValidator`はインターフェースを持たないためモジュールでは束縛せず、Guiceのジャストインタイム束縛
-（`@Inject`付きコンストラクタ）で生成する。束縛漏れ・`@Inject`の付け忘れは、エントリーポイントと同じ手順で実際にDIコンテナを組み立てる
-`DbxrayModuleTest`で検知する。
+DIコンテナ（Guice等）は使わない。各クラスは依存を（`@Inject`等のアノテーションなしで）コンストラクタの引数で受け取り、
+`Components`がそれを`new`で渡す。新しいリポジトリ実装やドメインサービスを追加する場合、また既存のクラスのコンストラクタの引数を変える場合は、
+`Components`の組み立てを直す（直し漏れはコンパイルエラーになる）。`CatalogRepository`の実装のように、DB接続後でないと決まらないものは
+`Components#controller`の中だけで生成する。組み立てられることは、DBへ接続せずに両方のDB種別でコントローラーを組み立てる`ComponentsTest`で確かめる。
