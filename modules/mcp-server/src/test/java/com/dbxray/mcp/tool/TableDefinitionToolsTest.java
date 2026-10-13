@@ -187,6 +187,7 @@ class TableDefinitionToolsTest {
             "find_similar_tables",
             "get_related_tables",
             "find_join_path",
+            "get_impact",
             "get_er_diagram",
             "list_functions",
             "get_function",

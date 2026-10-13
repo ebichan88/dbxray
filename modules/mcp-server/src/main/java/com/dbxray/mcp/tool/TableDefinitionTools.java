@@ -33,6 +33,7 @@ public final class TableDefinitionTools {
             new TableTools(catalog).specifications(),
             new SimilarTableTools(catalog).specifications(),
             new RelationTools(catalog).specifications(),
+            new ImpactTools(catalog).specifications(),
             new DiagramTools(catalog).specifications(),
             new FunctionTools(catalog).specifications(),
             new SequenceTools(catalog).specifications(),

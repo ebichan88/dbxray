@@ -45,6 +45,9 @@ test {
     // --previewで変わる・増えるファイルだけを置いたベースライン。参考情報はスナップショットのディレクトリの親の兄弟から読むため、
     // 実在しないsnapshotディレクトリを指定して、その親（差分のベースライン）のinsightsを読ませる
     systemProperty 'samplePreviewSnapshotDir', rootProject.file('docs/sample/postgres/output-preview/snapshot').absolutePath
+    // Oracleのサンプル。Oracleのトリガーは関数名を持たず本体を直接持つため、PostgreSQLのサンプルでは確かめられない振る舞いを確かめる
+    systemProperty 'oracleSampleSnapshotDir', rootProject.file('docs/sample/oracle/output/snapshot').absolutePath
+    systemProperty 'oracleSamplePreviewSnapshotDir', rootProject.file('docs/sample/oracle/output-preview/snapshot').absolutePath
     finalizedBy jacocoTestReport
 }
 
