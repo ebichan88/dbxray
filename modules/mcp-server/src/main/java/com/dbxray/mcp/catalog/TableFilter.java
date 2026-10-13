@@ -57,6 +57,6 @@ public final class TableFilter {
     return scope.matches(table.key())
         && (type == null || type.value().equals(table.type()))
         && (viewpoint == null || viewpoint.contains(table.key()))
-        && (junctionsOnly == null || junctionsOnly.of(table).isPresent());
+        && (junctionsOnly == null || junctionsOnly.find(table).isPresent());
   }
 }

@@ -272,7 +272,7 @@ class SampleSnapshotContractTest {
         List.of(
             new ObjectKey("testdb", "sample", "employee"),
             new ObjectKey("testdb", "sample", "project")),
-        catalog.junctions().of(find("project_assignment")).orElseThrow().parents(),
+        catalog.junctions().find(find("project_assignment")).orElseThrow().parents(),
         "スナップショットの外部キーの並び（制約名順）に従う");
     assertEquals(
         List.of(

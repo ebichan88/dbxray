@@ -24,29 +24,12 @@ public final class JunctionTables {
 
   JunctionTables(List<TableEntry> tables, RelationGraph relations) {
     for (final TableEntry table : tables) {
-      JunctionTable.detect(table, relations.outgoing(table.key()))
+      JunctionDetector.detect(table, relations.outgoing(table.key()))
           .ifPresent(junction -> junctions.put(junction.key(), junction));
     }
     final Set<ObjectKey> existing =
         tables.stream().map(TableEntry::key).collect(Collectors.toSet());
-    final Map<ObjectKey, Set<ManyToMany>> partners = new HashMap<>();
-    for (final JunctionTable junction : junctions.values()) {
-      final List<ObjectKey> parents = junction.links().stream().map(Relation::to).toList();
-      for (int ownerIndex = 0; ownerIndex < parents.size(); ownerIndex++) {
-        for (int partnerIndex = 0; partnerIndex < parents.size(); partnerIndex++) {
-          final ObjectKey owner = parents.get(ownerIndex);
-          final ObjectKey partner = parents.get(partnerIndex);
-          if (ownerIndex != partnerIndex
-              && existing.contains(owner)
-              && existing.contains(partner)) {
-            partners
-                .computeIfAbsent(owner, key -> new TreeSet<>(BY_TABLE_THEN_VIA))
-                .add(new ManyToMany(partner, junction.key()));
-          }
-        }
-      }
-    }
-    partners.forEach((owner, found) -> manyToMany.put(owner, List.copyOf(found)));
+    collectPartners(existing).forEach((owner, found) -> manyToMany.put(owner, List.copyOf(found)));
   }
 
   /**
@@ -54,7 +37,7 @@ public final class JunctionTables {
    *
    * @return 中間テーブルでない場合は空
    */
-  public Optional<JunctionTable> of(TableEntry table) {
+  public Optional<JunctionTable> find(TableEntry table) {
     return Optional.ofNullable(junctions.get(table.key()));
   }
 
@@ -64,7 +47,7 @@ public final class JunctionTables {
    * @return 区分を持たない（通常の）テーブルは空
    */
   public Optional<ErRole> roleOf(TableEntry table) {
-    return of(table).map(junction -> ErRole.JUNCTION);
+    return find(table).map(junction -> ErRole.JUNCTION);
   }
 
   /**
@@ -75,5 +58,32 @@ public final class JunctionTables {
    */
   public List<ManyToMany> manyToMany(TableEntry table) {
     return manyToMany.getOrDefault(table.key(), List.of());
+  }
+
+  /**
+   * 中間テーブルごとに、つなぐテーブルを互いの相手として集める
+   *
+   * @param existing スナップショットにあるテーブル。これに無いテーブルは、起点にも相手にもしない
+   */
+  private Map<ObjectKey, Set<ManyToMany>> collectPartners(Set<ObjectKey> existing) {
+    final Map<ObjectKey, Set<ManyToMany>> partners = new HashMap<>();
+    for (final JunctionTable junction : junctions.values()) {
+      final List<ObjectKey> linkTargets = junction.links().stream().map(Relation::to).toList();
+      // 自己多対多では同じテーブルが2本の関連の参照先になるため、テーブルではなく関連の位置で比べる
+      for (int ownerIndex = 0; ownerIndex < linkTargets.size(); ownerIndex++) {
+        for (int partnerIndex = 0; partnerIndex < linkTargets.size(); partnerIndex++) {
+          final ObjectKey owner = linkTargets.get(ownerIndex);
+          final ObjectKey partner = linkTargets.get(partnerIndex);
+          if (ownerIndex != partnerIndex
+              && existing.contains(owner)
+              && existing.contains(partner)) {
+            partners
+                .computeIfAbsent(owner, key -> new TreeSet<>(BY_TABLE_THEN_VIA))
+                .add(new ManyToMany(partner, junction.key()));
+          }
+        }
+      }
+    }
+    return partners;
   }
 }

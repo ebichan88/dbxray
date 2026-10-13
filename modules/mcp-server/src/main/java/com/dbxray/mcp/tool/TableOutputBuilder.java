@@ -62,7 +62,8 @@ final class TableOutputBuilder {
       addReferencingViews(output, table);
     }
     addViewpoints(output, table);
-    addErRole(output, table);
+    addJunction(output, table);
+    addManyToMany(output, table);
     return output;
   }
 
@@ -127,29 +128,35 @@ final class TableOutputBuilder {
   }
 
   /**
-   * ER上の区分と多対多の関係を加える<br>
-   * 中間テーブルの場合は{@code erRole}と、つなぐテーブル（{@code junctionOf}）を、多対多の関係にあるテーブルがある場合は、
-   * 相手のテーブルと中間テーブル（{@code manyToMany}）を加える。
-   * {@code junctionOf}はスナップショットに含まれないテーブルも含み、{@code manyToMany}はスナップショットにあるテーブルだけを相手にする。
-   * {@code manyToMany}は{@value #MAX_MANY_TO_MANY}件までとし、超える場合は全体の件数を{@code manyToManyTotal}で示す。
+   * 中間テーブルの場合に、{@code erRole}とつなぐテーブル（{@code junctionOf}）を加える<br>
+   * {@code junctionOf}は、スナップショットに含まれないテーブルも含む。
    * スナップショットの項目ではない（導出した値）ため{@code sections}では絞り込まず、該当すれば常に加える
    */
-  private void addErRole(ObjectNode output, TableEntry table) {
+  private void addJunction(ObjectNode output, TableEntry table) {
     catalog
         .junctions()
-        .of(table)
+        .find(table)
         .ifPresent(
             junction -> {
               output.put("erRole", ErRole.JUNCTION.value());
               final ArrayNode parents = output.putArray("junctionOf");
               junction.parents().forEach(parent -> parents.add(parent.qualifiedName()));
             });
+  }
+
+  /**
+   * 中間テーブルを介して多対多の関係にあるテーブルがある場合に、相手のテーブルと中間テーブル（{@code manyToMany}）を加える<br>
+   * スナップショットにあるテーブルだけを相手にする。{@value #MAX_MANY_TO_MANY}件までとし、
+   * 超える場合は全体の件数を{@code manyToManyTotal}で示す。{@code sections}では絞り込まず、該当すれば常に加える
+   */
+  private void addManyToMany(ObjectNode output, TableEntry table) {
     final List<ManyToMany> partners = catalog.junctions().manyToMany(table);
     if (partners.isEmpty()) {
       return;
     }
     final ArrayNode entries = output.putArray("manyToMany");
-    for (final ManyToMany partner : partners.stream().limit(MAX_MANY_TO_MANY).toList()) {
+    for (final ManyToMany partner :
+        partners.subList(0, Math.min(partners.size(), MAX_MANY_TO_MANY))) {
       entries
           .addObject()
           .put("table", partner.table().qualifiedName())
