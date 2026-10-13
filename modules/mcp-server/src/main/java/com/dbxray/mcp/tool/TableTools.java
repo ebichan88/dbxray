@@ -16,6 +16,7 @@ import static com.dbxray.mcp.tool.ToolSpecifications.stringProperty;
 
 import com.dbxray.mcp.catalog.ColumnHit;
 import com.dbxray.mcp.catalog.ColumnQuery;
+import com.dbxray.mcp.catalog.ErRole;
 import com.dbxray.mcp.catalog.MatchMode;
 import com.dbxray.mcp.catalog.ObjectReference;
 import com.dbxray.mcp.catalog.RelationCounts;
@@ -100,6 +101,7 @@ final class TableTools {
                 + "段までたどって届くテーブルの数（impact。変更の影響範囲）。"
                 + "スキーマにどんなテーブルがあるか眺めるときに使い、どこから読むか迷う場合はorderByで"
                 + "関連の多い（中心となる）テーブルから並べる。関連の無いテーブルも0として一覧に含める。"
+                + "多対多をつなぐ中間テーブルは、erRoleにjunctionが付き、erRole引数で絞り込める。"
                 + "キーワードで探す場合はsearch_tablesを使う",
             objectSchema(
                 withPageProperties(
@@ -118,7 +120,12 @@ final class TableTools {
                         enumProperty(
                             "並べ方。name: DB名・スキーマ名・テーブル名の順（既定）、incoming・outgoing・impact: "
                                 + "その数の多い順（同数は名前の順）",
-                            ToolArguments.lowerNames(TableOrder.class))),
+                            ToolArguments.lowerNames(TableOrder.class)),
+                        "erRole",
+                        enumProperty(
+                            "ER上の区分で絞り込む場合に指定する。junction: 多対多をつなぐ中間テーブル"
+                                + "（主キーが、2つ以上の外部キー・論理リレーションの列だけで構成されるテーブル）",
+                            ErRole.allValues())),
                     Page.DEFAULT_LIMIT,
                     Page.MAX_LIMIT),
                 List.of()),
@@ -130,6 +137,9 @@ final class TableTools {
                 + "インデックス、制約、外部キー、論理リレーション、トリガー、説明・備考を含む。"
                 + "ビューの場合は参照するテーブル（referencedTables）、テーブルを参照しているビューがある場合はそのビュー（referencedByViews）も返す。"
                 + "テーブルが観点（list_viewpoints）に所属する場合は、所属する観点（viewpoints。id・表示名）も返す。"
+                + "多対多をつなぐ中間テーブルの場合は、erRole（junction）とつなぐテーブル（junctionOf）を、"
+                + "中間テーブルを介して多対多の関係にあるテーブルがある場合は、その相手と中間テーブル（manyToMany）も返す"
+                + "（JOINの条件はfind_join_pathで調べる）。"
                 + "必要な項目だけをsections・columnsで指定すると結果が小さくなる。"
                 + "複数のテーブルをまとめて取得する場合はtableに配列を指定する（最大"
                 + MAX_TABLES
@@ -185,10 +195,14 @@ final class TableTools {
 
   private CallToolResult listTables(ToolArguments arguments) {
     final TableFilter scoped = tableFilter(arguments);
-    final TableFilter filter =
+    final TableFilter typed =
         TableType.of(arguments.optionalChoice("type", TableType.allValues()))
             .map(scoped::withType)
             .orElse(scoped);
+    final TableFilter filter =
+        ErRole.of(arguments.optionalChoice("erRole", ErRole.allValues()))
+            .map(role -> typed.withErRole(role, catalog.junctions()))
+            .orElse(typed);
     final boolean includeDescription = arguments.optionalBoolean("includeDescription", false);
     final TableOrder order = arguments.optionalEnum("orderBy", TableOrder.class, TableOrder.NAME);
     final Page page = Page.read(arguments, Page.DEFAULT_LIMIT);
@@ -201,7 +215,10 @@ final class TableTools {
                 .map(
                     table ->
                         ListTablesOutput.Table.of(
-                            table, catalog.relations().counts(table), includeDescription))
+                            table,
+                            catalog.relations().counts(table),
+                            catalog.junctions().roleOf(table).map(ErRole::value).orElse(null),
+                            includeDescription))
                 .toList()));
   }
 
@@ -320,6 +337,7 @@ final class TableTools {
     /**
      * 1テーブルの概要
      *
+     * @param erRole ER上の区分。区分を持たない（通常の）テーブルはnull
      * @see RelationCounts incoming・outgoing・impactの数え方
      */
     record Table(
@@ -328,18 +346,21 @@ final class TableTools {
         String name,
         String logicalName,
         String type,
+        String erRole,
         String description,
         int incoming,
         int outgoing,
         int impact) {
 
-      static Table of(TableEntry table, RelationCounts counts, boolean includeDescription) {
+      static Table of(
+          TableEntry table, RelationCounts counts, String erRole, boolean includeDescription) {
         return new Table(
             table.key().database(),
             table.key().schema(),
             table.key().name(),
             table.logicalName(),
             table.type(),
+            erRole,
             includeDescription ? table.description() : null,
             counts.incoming(),
             counts.outgoing(),

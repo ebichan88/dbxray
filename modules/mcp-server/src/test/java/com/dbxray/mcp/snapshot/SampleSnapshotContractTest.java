@@ -7,10 +7,12 @@ import com.dbxray.mcp.catalog.ColumnEntry;
 import com.dbxray.mcp.catalog.ColumnHit;
 import com.dbxray.mcp.catalog.ColumnQuery;
 import com.dbxray.mcp.catalog.Direction;
+import com.dbxray.mcp.catalog.ErRole;
 import com.dbxray.mcp.catalog.FunctionEntry;
 import com.dbxray.mcp.catalog.FunctionOverloads;
 import com.dbxray.mcp.catalog.JoinPaths;
 import com.dbxray.mcp.catalog.Lookups;
+import com.dbxray.mcp.catalog.ManyToMany;
 import com.dbxray.mcp.catalog.MatchMode;
 import com.dbxray.mcp.catalog.ObjectKey;
 import com.dbxray.mcp.catalog.ObjectReference;
@@ -23,6 +25,7 @@ import com.dbxray.mcp.catalog.SearchScope;
 import com.dbxray.mcp.catalog.TableClusters;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.TableFilter;
+import com.dbxray.mcp.catalog.TableOrder;
 import com.dbxray.mcp.catalog.TriggerEntry;
 import java.nio.file.Path;
 import java.util.List;
@@ -252,6 +255,33 @@ class SampleSnapshotContractTest {
         clusters.clusters().stream().mapToInt(cluster -> cluster.tables().size()).sum()
             + clusters.hubs().size()
             + clusters.unrelatedTables());
+  }
+
+  @Test
+  @DisplayName("サンプルの中間テーブル（project_assignment）だけを判定し、projectとemployeeを多対多の関係として返す")
+  void detectsJunctionOfSample() {
+    assertEquals(
+        List.of("project_assignment"),
+        catalog
+            .tables()
+            .list(
+                TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions()), TableOrder.NAME)
+            .stream()
+            .map(table -> table.key().name())
+            .toList(),
+        "1対1の拡張（employee_profile）や複合外部キー（shipment）は中間テーブルにしない");
+    assertEquals(
+        List.of(
+            new ObjectKey("testdb", "sample", "project"),
+            new ObjectKey("testdb", "sample", "employee")),
+        catalog.junctions().of(find("project_assignment")).orElseThrow().parents());
+    assertEquals(
+        List.of(
+            new ManyToMany(
+                new ObjectKey("testdb", "sample", "employee"),
+                new ObjectKey("testdb", "sample", "project_assignment"))),
+        catalog.junctions().manyToMany(find("project")));
+    assertTrue(catalog.junctions().manyToMany(find("department")).isEmpty());
   }
 
   @Test

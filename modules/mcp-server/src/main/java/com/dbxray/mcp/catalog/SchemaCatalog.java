@@ -7,12 +7,13 @@ import java.util.stream.Collectors;
 /**
  * スナップショットから読み込んだ全オブジェクトを保持し、関心ごとの窓口を返すクラス<br>
  * 検索・一覧・名前の解決・関連のたどりは各窓口（{@link TableCatalog}・{@link ObjectCatalog}・{@link ViewpointCatalog}・
- * {@link RelationGraph}）が担い、ここには複数の窓口にまたがる処理だけを置く
+ * {@link RelationGraph}・{@link JunctionTables}）が担い、ここには複数の窓口にまたがる処理だけを置く
  */
 public final class SchemaCatalog {
 
   private final List<DatabaseEntry> databases;
   private final RelationGraph relations;
+  private final JunctionTables junctions;
   private final TableCatalog tables;
   private final ObjectCatalog<FunctionOverloads> functions;
   private final ObjectCatalog<SequenceEntry> sequences;
@@ -23,6 +24,7 @@ public final class SchemaCatalog {
   private SchemaCatalog(
       List<DatabaseEntry> databases,
       RelationGraph relations,
+      JunctionTables junctions,
       TableCatalog tables,
       ObjectCatalog<FunctionOverloads> functions,
       ObjectCatalog<SequenceEntry> sequences,
@@ -31,6 +33,7 @@ public final class SchemaCatalog {
       FunctionTableUsages functionTableUsages) {
     this.databases = List.copyOf(databases);
     this.relations = relations;
+    this.junctions = junctions;
     this.tables = tables;
     this.functions = functions;
     this.sequences = sequences;
@@ -68,6 +71,7 @@ public final class SchemaCatalog {
     return new SchemaCatalog(
         databases,
         relations,
+        new JunctionTables(tables, relations),
         new TableCatalog(tables, relations),
         new ObjectCatalog<>(overloads),
         new ObjectCatalog<>(sequences),
@@ -98,6 +102,7 @@ public final class SchemaCatalog {
     return new SchemaCatalog(
         databases,
         relations,
+        junctions,
         tables,
         functions,
         sequences,
@@ -114,6 +119,7 @@ public final class SchemaCatalog {
     return new SchemaCatalog(
         databases,
         relations,
+        junctions,
         tables,
         functions,
         sequences,
@@ -155,6 +161,11 @@ public final class SchemaCatalog {
   /** テーブル間の関連（外部キー・論理リレーション）のグラフを返すメソッド */
   public RelationGraph relations() {
     return relations;
+  }
+
+  /** 中間テーブルの判定結果と、中間テーブルを介した多対多の関係の窓口を返すメソッド */
+  public JunctionTables junctions() {
+    return junctions;
   }
 
   /**

@@ -1,6 +1,8 @@
 package com.dbxray.mcp.tool;
 
 import com.dbxray.mcp.catalog.ColumnEntry;
+import com.dbxray.mcp.catalog.ErRole;
+import com.dbxray.mcp.catalog.ManyToMany;
 import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.ViewpointEntry;
@@ -18,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * {@code get_table}の1テーブル分の結果の組み立て<br>
- * スナップショットの1行に、{@code sections}・{@code columns}による絞り込みと、所属する観点を反映する
+ * スナップショットの1行に、{@code sections}・{@code columns}による絞り込みと、所属する観点・ER上の区分を反映する
  */
 final class TableOutputBuilder {
 
@@ -57,6 +59,7 @@ final class TableOutputBuilder {
       addReferencingViews(output, table);
     }
     addViewpoints(output, table);
+    addErRole(output, table);
     return output;
   }
 
@@ -118,6 +121,35 @@ final class TableOutputBuilder {
               + table.columns().stream().map(ColumnEntry::name).collect(Collectors.joining(", ")));
     }
     return selected;
+  }
+
+  /**
+   * ER上の区分と多対多の関係を加える<br>
+   * 中間テーブルの場合は{@code erRole}と、つなぐテーブル（{@code junctionOf}）を、多対多の関係にあるテーブルがある場合は、
+   * 相手のテーブルと中間テーブル（{@code manyToMany}）を加える。
+   * スナップショットの項目ではない（導出した値）ため{@code sections}では絞り込まず、該当すれば常に加える
+   */
+  private void addErRole(ObjectNode output, TableEntry table) {
+    catalog
+        .junctions()
+        .of(table)
+        .ifPresent(
+            junction -> {
+              output.put("erRole", ErRole.JUNCTION.value());
+              final ArrayNode parents = output.putArray("junctionOf");
+              junction.parents().forEach(parent -> parents.add(parent.qualifiedName()));
+            });
+    final List<ManyToMany> partners = catalog.junctions().manyToMany(table);
+    if (partners.isEmpty()) {
+      return;
+    }
+    final ArrayNode entries = output.putArray("manyToMany");
+    for (final ManyToMany partner : partners) {
+      entries
+          .addObject()
+          .put("table", partner.table().qualifiedName())
+          .put("via", partner.via().qualifiedName());
+    }
   }
 
   /**
