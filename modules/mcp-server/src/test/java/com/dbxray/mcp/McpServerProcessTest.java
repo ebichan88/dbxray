@@ -294,7 +294,7 @@ class McpServerProcessTest {
       assertTrue(client.listResourceTemplates().resourceTemplates().isEmpty());
 
       final List<Resource> resources = client.listResources().resources();
-      assertEquals(14, resources.size());
+      assertEquals(15, resources.size());
       final Resource employee =
           resources.stream()
               .filter(resource -> resource.uri().equals("dbxray://testdb/sample/employee"))

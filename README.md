@@ -37,11 +37,13 @@ dbxray（旧名: exportTableDefinition）は、DBに接続し、テーブル一�
 erDiagram
     sample_department["department"]
     sample_employee["employee（従業員）"]
+    sample_employee_history["employee_history（従業員履歴）"]
     sample_employee_profile["employee_profile"]
     sample_parking_spot["parking_spot"]
     sample_department ||--o{ sample_employee : "employee_department_id_fkey"
     sample_employee |o--o{ sample_employee : "employee_manager_id_fkey"
     sample_parking_spot |o--o| sample_employee : "employee_parking_spot_id_fkey"
+    sample_employee ||--o{ sample_employee_history : "employee_history_employee_id_fkey"
     sample_employee ||--o| sample_employee_profile : "employee_profile_employee_id_fkey"
     sample_department {
         integer department_id PK
@@ -51,6 +53,9 @@ erDiagram
         integer department_id FK "所属部署ID"
         integer manager_id FK "上長の従業員ID"
         integer parking_spot_id FK "駐車場ID"
+    }
+    sample_employee_history {
+        integer employee_id FK
     }
     sample_employee_profile {
         integer employee_id PK, FK

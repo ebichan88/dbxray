@@ -50,6 +50,7 @@ class SampleInsightsContractTest {
         List.of(
             new ObjectKey("testdb", "sample", "department"),
             new ObjectKey("testdb", "sample", "employee"),
+            new ObjectKey("testdb", "sample", "employee_history"),
             new ObjectKey("testdb", "sample", "employee_profile"),
             new ObjectKey("testdb", "sample", "parking_spot")),
         personnel.tables());

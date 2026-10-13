@@ -88,6 +88,25 @@ create table sample.employee_profile (
     notes text
 );
 
+-- 履歴テーブル：employeeの全カラムに履歴ID・有効期間を足し、employeeを参照する（従業員名だけ桁数を広げている）。
+-- MCPサーバーのfind_similar_tablesで、基準を参照する構造の似たテーブル（superset）と、桁数だけの型の違いを確かめる
+create table sample.employee_history (
+    history_id serial primary key,
+    employee_id integer not null references sample.employee(employee_id),
+    employee_code varchar(10) not null,
+    employee_name varchar(100) not null,
+    department_id integer not null,
+    manager_id integer,
+    parking_spot_id integer,
+    status sample.employee_status_enum not null,
+    salary numeric(10, 2) not null,
+    profile jsonb not null,
+    hired_date date not null,
+    updated_at timestamp not null,
+    valid_from timestamp not null,
+    valid_to timestamp
+);
+
 create table sample.project (
     project_id serial primary key,
     project_code varchar(10) not null unique,
@@ -400,6 +419,8 @@ comment on column sample.employee.salary is '給与';
 comment on column sample.employee.profile is 'プロフィール（JSON）';
 comment on column sample.employee.hired_date is '入社日';
 comment on column sample.employee.updated_at is '更新日時';
+
+comment on table sample.employee_history is '従業員履歴';
 
 comment on table sample.project is 'プロジェクト';
 comment on column sample.project.project_id is 'プロジェクトID';

@@ -66,6 +66,7 @@ class PostgresCatalogRepositoryIT {
             "department",
             "employee",
             "employee_directory_view",
+            "employee_history",
             "employee_profile",
             "parking_spot",
             "project",
