@@ -1,6 +1,5 @@
 package com.dbxray.domain.service;
 
-import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,7 +21,6 @@ public class UnifiedDiffGenerator {
    */
   static final int MAX_EDIT_DISTANCE = 1000;
 
-  @Inject
   public UnifiedDiffGenerator() {}
 
   /**

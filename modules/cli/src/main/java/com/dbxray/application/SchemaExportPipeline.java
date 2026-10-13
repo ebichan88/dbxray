@@ -32,7 +32,6 @@ import com.dbxray.domain.service.export.ExportSink;
 import com.dbxray.domain.service.tableusage.FunctionTableUsageAnalyzer;
 import com.dbxray.domain.service.target.ExportTargetConsistency;
 import com.dbxray.domain.service.target.ExportTargetConsistency.ResolvedForeignKeys;
-import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -51,7 +50,7 @@ import org.apache.logging.log4j.Logger;
  * テーブル数に比例して重くなる情報はスキーマ・チャンク単位で取得・書き出し・破棄する（{@link #export}）。
  * 取得した情報同士の突き合わせは{@link ExportTargetConsistency}に委ねる
  */
-final class SchemaExportPipeline {
+public final class SchemaExportPipeline {
 
   private static final Logger logger = LogManager.getLogger(SchemaExportPipeline.class);
   private final CatalogRepository repository;
@@ -62,8 +61,7 @@ final class SchemaExportPipeline {
   /**
    * @param clock ドキュメントの生成日を決める時計
    */
-  @Inject
-  SchemaExportPipeline(
+  public SchemaExportPipeline(
       CatalogRepository repository,
       SidecarRepository sidecarRepository,
       ExportTargetConsistency consistency,

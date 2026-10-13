@@ -35,7 +35,7 @@ cli（`modules/cli/`）とMCPサーバー（`modules/mcp-server/`）のコード
 - cliのレイヤーの依存方向は`presentation → application → domain ← infrastructure`。規約の意図は
   [overview.mdの「レイヤー構成」](../architecture/overview.md#レイヤー構成)を参照。
   `ArchitectureTest`は、依存方向に加えて、`shared.exception`の制約、`domain.model`配下のパッケージの循環
-  （向きそのものは[domain-model.md](../architecture/domain-model.md)に従う）、`java.nio.file.Files`・引数なしの`now()`・Guiceへの依存、
+  （向きそのものは[domain-model.md](../architecture/domain-model.md)に従う）、`java.nio.file.Files`・引数なしの`now()`・DIコンテナ（Guice・`jakarta.inject`）への依存、
   接尾辞とパッケージの対応、関数の定義本体を読むパッケージ（`domain.service.tableusage`・`domain.model.tableusage`）で正規表現を使わないこと、`FileRepository#deleteFile`を`InsightWriter`以外が呼ばないことを検査する。
 - クラス名の接尾辞は[package-structure.mdの「命名」](../architecture/package-structure.md#命名)の表に揃える。
   名前の本体は[domain-model.mdの用語集](../architecture/domain-model.md)の用語（利用者向けのドキュメントで使っている呼び方）に揃え、
@@ -49,14 +49,16 @@ cli（`modules/cli/`）とMCPサーバー（`modules/mcp-server/`）のコード
   MCPサーバーの`ArchitectureTest`は、パッケージの依存の向き（`tool → catalog ← snapshot`・`catalog ← insight`）、
   `catalog`がJDK以外に依存しないこと、標準出力への書き込み、cliへの依存を検査する。
 
-### DI（Guice）
+### DI（手で組み立てる）
 
-- 新しいリポジトリ実装やドメインサービスを追加した場合は、`config/module/DbxrayModule.java`に束縛を追加する。
-  接続先の`SqlSessionFactory`と、DB種別で実装が変わる`CatalogRepository`だけは、DB接続後に組み立てる子のコンテナ用の
-  `config/module/DatabaseDependentModule.java`に置く。
-- コンストラクタには`jakarta.inject.Inject`を付ける（Guiceのアノテーションには依存しない）。
-- インターフェースを持たない具象クラス（ユースケース等）は、`@Inject`付きコンストラクタがあればジャストインタイム束縛で解決されるため束縛しない。
-- 束縛漏れは`DbxrayModuleTest`（実際にDIコンテナを組み立てるテスト）で検知できる。
+DIコンテナ（Guice等）は使わず、依存はコンストラクタの引数で受け取り、`Components`（エントリーポイントと同じパッケージ）が手で組み立てる。
+
+- 新しいリポジトリ実装やドメインサービスを追加した場合、また既存のクラスのコンストラクタの引数を変えた場合は、`Components.java`の組み立てを直す。
+  接続先の`SqlSessionFactory`と、DB種別で実装が変わる`CatalogRepository`に依存するものは、DB接続後に呼ぶ`Components#controller`の中で生成する。
+- コンストラクタに`@Inject`等のDI用のアノテーションは付けない（`ArchitectureTest`が`com.google.inject`・`jakarta.inject`への依存を検出する）。
+- 具象クラス（ユースケース等）も`Components`で`new`する。呼び出し元のレイヤーが違うために`Components`から呼べない場合（パッケージプライベート等）は、
+  そのクラスとコンストラクタを`public`にする。
+- 組み立ての書き漏れ・引数の不一致はコンパイルエラーになる。コントローラーまで組み立てられることは`ComponentsTest`で確かめる。
 
 ## 責務の分け方
 
@@ -287,7 +289,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 | 設定項目・CLI引数 | `docs/usage/cli.md`の仕様の表と、検証する場所（`DbxrayProperties`・`CliArguments`等）を更新する |
 | ログの仕様 | `docs/usage/cli.md`の「ログ」の節を更新する |
 | ドメインの概念（`domain.model`のクラス）・ルールを持つ場所 | `docs/architecture/domain-model.md`の図・ルール表・用語集を更新する |
-| リポジトリ実装・ドメインサービスの追加 | Guiceの束縛を追加する（[DI](#diguice)） |
+| リポジトリ実装・ドメインサービスの追加、コンストラクタの引数の変更 | `Components`の組み立てを直す（[DI](#di手で組み立てる)） |
 | Javadoc | `./gradlew javadoc`を実行する |
 | DB由来の文字列の出力・パス・秘密情報・ファイルの削除・依存ライブラリ | [セキュリティ](#セキュリティ)の項目を確認し、PRを作る前に`/security-review`を実行する |
 | [CONTRIBUTING.mdの「互換性を約束する範囲」](../../CONTRIBUTING.md#互換性を約束する範囲)を壊す変更 | PRに`breaking`ラベルを付け、PRの本文に移行の手順を書く |

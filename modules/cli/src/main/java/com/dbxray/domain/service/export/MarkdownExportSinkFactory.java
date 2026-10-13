@@ -15,7 +15,6 @@ import com.dbxray.domain.service.writer.objectlist.ObjectListWriter;
 import com.dbxray.domain.service.writer.readme.ReadmeWriter;
 import com.dbxray.domain.service.writer.tabledefinition.TableDefinitionWriter;
 import com.dbxray.domain.service.writer.viewpoint.ViewpointWriter;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.List;
@@ -30,7 +29,6 @@ public class MarkdownExportSinkFactory {
   private final ViewpointWriter viewpointWriter;
   private final ReadmeWriter readmeWriter;
 
-  @Inject
   public MarkdownExportSinkFactory(
       TableDefinitionWriter tableDefinitionWriter,
       ErDiagramWriter erDiagramWriter,

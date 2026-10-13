@@ -6,7 +6,6 @@ import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.export.SnapshotExportSinkFactory;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.snapshot.SnapshotDiff;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +24,6 @@ public class CheckDocumentDiffUsecase {
   private final FileRepository fileRepository;
   private final OutputPathResolver outputPathResolver;
 
-  @Inject
   public CheckDocumentDiffUsecase(
       SchemaExportPipeline schemaExportPipeline,
       SnapshotExportSinkFactory snapshotSinkFactory,

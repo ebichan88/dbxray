@@ -7,7 +7,6 @@ import com.dbxray.application.ExportSchemaUsecase;
 import com.dbxray.domain.model.snapshot.DiffResult;
 import com.dbxray.presentation.dto.DiffCheckResultDto;
 import com.dbxray.presentation.dto.ResultDto;
-import jakarta.inject.Inject;
 import java.time.Clock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,7 +26,6 @@ public class ExportSchemaController {
   /**
    * @param clock 処理時間を計る時計
    */
-  @Inject
   public ExportSchemaController(
       ExportSchemaUsecase exportSchemaUsecase,
       CheckDocumentDiffUsecase checkDocumentDiffUsecase,

@@ -10,7 +10,6 @@ import com.dbxray.domain.service.export.MarkdownExportSinkFactory;
 import com.dbxray.domain.service.export.SnapshotExportSinkFactory;
 import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.path.OutputPathResolver;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,7 +31,6 @@ public class ExportSchemaUsecase {
   private final FileRepository fileRepository;
   private final OutputPathResolver outputPathResolver;
 
-  @Inject
   public ExportSchemaUsecase(
       SchemaExportPipeline schemaExportPipeline,
       MarkdownExportSinkFactory markdownSinkFactory,

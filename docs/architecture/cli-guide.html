@@ -445,7 +445,6 @@ viewpoints:
   <thead><tr><th>技術</th><th>何に使うか</th><th>主な場所</th></tr></thead>
   <tbody>
     <tr><td>Java 21</td><td>record・sealed interface・パターンマッチ・テキストブロック</td><td>コード全体</td></tr>
-    <tr><td>Google Guice 7</td><td>DIコンテナ。2段階で組み立てる。<code>@Inject</code>は<code>jakarta.inject</code>のもの</td><td><code>config.module</code>・<code>Dbxray</code></td></tr>
     <tr><td>MyBatis 3.5</td><td>SQLをXMLに書き、結果をDTO（record）に詰める</td><td><code>resources/mapper</code>・<code>infrastructure.db</code></td></tr>
     <tr><td>SnakeYAML 2.7</td><td>サイドカーYAMLの読み込み</td><td><code>SidecarYamlRepository</code></td></tr>
     <tr><td>Jackson 2</td><td>スナップショット・参考情報のJSON化</td><td><code>JacksonSnapshotSerializer</code></td></tr>
@@ -488,65 +487,62 @@ viewpoints:
 </table>
 </div>
 
-<h3>2.2 Google Guice：2段階で組み立てるDIコンテナ</h3>
-<p>DI（依存性の注入）は、クラスが使う部品を自分で<code>new</code>せず、コンストラクタの引数で受け取る書き方です。誰に何を渡すかは、DIコンテナ（Guiceの<code>Injector</code>）が「束縛」の表に従って決めます。押さえる規則は4つです。</p>
+<h3>2.2 依存関係の組み立て：コンストラクタで受け取り、Componentsが2段階で組み立てる</h3>
+<p>DI（依存性の注入）は、クラスが使う部品を自分で<code>new</code>せず、コンストラクタの引数で受け取る書き方です。このツールはDIコンテナ（Guice等）を使わず、誰に何を渡すかを<code>Components</code>（エントリーポイントと同じパッケージ）が<code>new</code>で書き下します。押さえる規則は3つです。</p>
 <ul>
-  <li><strong>束縛</strong>：<code>bind(FileRepository.class).to(LocalFileRepository.class)</code>のように、インタフェースに実装を対応させる。<code>config.module</code>の2つのモジュールに書く。</li>
-  <li><strong>ジャストインタイム（JIT）束縛</strong>：束縛の無い具象クラスでも、<code>@Inject</code>付きのコンストラクタがあればGuiceがその場で作る。コントローラー・2つのユースケース・<code>SchemaExportPipeline</code>・<code>OutputDirectoryValidator</code>はこれで作られる。</li>
-  <li><strong><code>jakarta.inject.Inject</code></strong>：<code>@Inject</code>はGuiceのものではなく標準のものを使う。Guiceに依存してよいのはエントリーポイントと<code>config</code>だけ（<code>ArchitectureTest</code>が検査）。</li>
-  <li><strong>子のコンテナ</strong>：<code>injector.createChildInjector(module)</code>で、親の束縛を引き継いで束縛を足したコンテナを作れる。</li>
+  <li><strong>アノテーションなし</strong>：コンストラクタに<code>@Inject</code>等は付けない。<code>ArchitectureTest</code>が<code>com.google.inject</code>・<code>jakarta.inject</code>への依存を検出する。</li>
+  <li><strong>具象クラスも<code>Components</code>が<code>new</code>する</strong>：コントローラー・2つのユースケース・<code>SchemaExportPipeline</code>・<code>OutputDirectoryValidator</code>も同じ。コンストラクタの引数を変えたときの直し漏れは、コンパイルエラーになる。</li>
+  <li><strong>2段階</strong>：出力先の検証をDBへ接続する前に行うため、DB種別に依存しない部品（<code>outputDirectoryValidator()</code>）と、接続して種別が分かってから組み立てる部品（<code>controller(databaseType, sqlSessionFactory)</code>）に分ける。</li>
 </ul>
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 900 320" role="img" aria-label="左は親のコンテナで、DBへ接続する前に作る。ファイル・サイドカー・出力先パス・JSON変換のインタフェースと実装、時計、Writer等14クラスを束縛し、出力先の検証に使う。右は子のコンテナで、接続して種別が分かった後に作る。SqlSessionFactoryとCatalogRepositoryの実装を束縛し、コントローラー、ユースケース、SchemaExportPipelineはジャストインタイム束縛で作られる。" style="min-width: 780px">
+    <svg viewBox="0 0 900 320" role="img" aria-label="左は第1段で、DBへ接続する前に作る。ファイル・サイドカー・出力先パス・JSON変換の実装と時計を持ち、出力先の検証に使う。右は第2段で、接続して種別が分かった後に作る。SqlSessionFactoryとCatalogRepositoryの実装を使い、SchemaExportPipeline、Writer、ユースケース、コントローラーをnewで組み立てる。" style="min-width: 780px">
       <defs>
         <marker id="g2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
       </defs>
-      <text x="450" y="18" text-anchor="middle" class="d-t-s">DBへ接続して種別を判定したら、子のコンテナを足す</text>
+      <text x="450" y="18" text-anchor="middle" class="d-t-s">DBへ接続して種別を判定したら、第2段で組み立てる</text>
       <rect x="10" y="30" width="410" height="270" rx="8" class="d-box"/>
-      <text x="26" y="54" class="d-t-b">親のコンテナ（DBへ接続する前）</text>
-      <text x="26" y="74" class="d-t-ms">Guice.createInjector(new DbxrayModule())</text>
+      <text x="26" y="54" class="d-t-b">第1段（DBへ接続する前）</text>
+      <text x="26" y="74" class="d-t-ms">Components.create()</text>
       <line x1="26" y1="88" x2="404" y2="88" class="d-sep"/>
       <text x="26" y="110" class="d-t-ms">FileRepository → LocalFileRepository</text>
       <text x="26" y="130" class="d-t-ms">SidecarRepository → SidecarYamlRepository</text>
       <text x="26" y="150" class="d-t-ms">OutputPathResolver → DefaultOutputPathResolver</text>
       <text x="26" y="170" class="d-t-ms">SnapshotSerializer → JacksonSnapshotSerializer</text>
       <text x="26" y="190" class="d-t-ms">Clock → Clock.systemDefaultZone()</text>
-      <text x="26" y="214" class="d-t">Writer・Sinkの工場・ドメインサービス 14クラス</text>
-      <text x="26" y="232" class="d-t-s">PagedSectionWriter、TableDefinitionWriter、SnapshotDiff など</text>
+      <text x="26" y="214" class="d-t">Writer・Sinkの工場・ドメインサービス</text>
+      <text x="26" y="232" class="d-t-s">PagedSectionWriter、TableDefinitionWriter、SnapshotDiff など（第2段で組み立てる）</text>
       <line x1="26" y1="248" x2="404" y2="248" class="d-sep"/>
-      <text x="26" y="274" class="d-t-acc">使い道：OutputDirectoryValidator（JIT）で出力先を検証</text>
+      <text x="26" y="274" class="d-t-acc">使い道：outputDirectoryValidator()で出力先を検証</text>
 
       <rect x="480" y="30" width="410" height="270" rx="8" class="d-box-acc"/>
-      <text x="496" y="54" class="d-t-b">子のコンテナ（接続して種別が分かった後）</text>
-      <text x="496" y="74" class="d-t-ms">createChildInjector(new DatabaseDependentModule(…))</text>
+      <text x="496" y="54" class="d-t-b">第2段（接続して種別が分かった後）</text>
+      <text x="496" y="74" class="d-t-ms">controller(databaseType, sqlSessionFactory)</text>
       <line x1="496" y1="88" x2="874" y2="88" class="d-sep"/>
       <text x="496" y="110" class="d-t-ms">SqlSessionFactory → mainで作った1個</text>
-      <text x="496" y="130" class="d-t-ms">CatalogRepository →</text>
+      <text x="496" y="130" class="d-t-ms">CatalogRepository（switchで選ぶ）→</text>
       <text x="496" y="148" class="d-t-ms">  PostgresCatalogRepository</text>
       <text x="496" y="166" class="d-t-ms">  または OracleCatalogRepository</text>
       <line x1="496" y1="182" x2="874" y2="182" class="d-sep"/>
-      <text x="496" y="204" class="d-t">ジャストインタイム束縛で作られるもの</text>
-      <text x="496" y="226" class="d-t-ms">ExportSchemaController</text>
+      <text x="496" y="204" class="d-t">上の部品を渡してnewで組み立てるもの</text>
+      <text x="496" y="226" class="d-t-ms">SchemaExportPipeline → CatalogRepository</text>
       <text x="496" y="244" class="d-t-ms">→ ExportSchemaUsecase・CheckDocumentDiffUsecase</text>
-      <text x="496" y="262" class="d-t-ms">→ SchemaExportPipeline → CatalogRepository</text>
-      <text x="496" y="288" class="d-t-acc">使い道：mainがコントローラーを取り出す</text>
+      <text x="496" y="262" class="d-t-ms">→ ExportSchemaController</text>
+      <text x="496" y="288" class="d-t-acc">使い道：mainがコントローラーを受け取って実行</text>
 
       <line x1="422" y1="165" x2="476" y2="165" class="d-line" marker-end="url(#g2a)"/>
     </svg>
   </div>
-  <figcaption><b>図2 DIコンテナの2段階。</b>出力先の検証などDB種別に関係ない部品は、DBへ接続する前に親のコンテナから取り出して使います。<code>CatalogRepository</code>の実装は接続先がPostgreSQLかOracleかで変わるため、接続して種別が分かってから子のコンテナで束縛します。Guiceは子のコンテナで作るJIT束縛をできるだけ親に作りますが、<code>CatalogRepository</code>に依存する3つ（パイプライン・ユースケース・コントローラー）は親では作れないため子に作られます。</figcaption>
+  <figcaption><b>図2 組み立ての2段階。</b>出力先の検証などDB種別に関係ない部品は、DBへ接続する前に第1段から取り出して使います。<code>CatalogRepository</code>の実装は接続先がPostgreSQLかOracleかで変わるため、接続して種別が分かってから第2段（<code>controller</code>）で選びます。<code>CatalogRepository</code>に依存する3つ（パイプライン・ユースケース・コントローラー）は、このため第2段で組み立てます。</figcaption>
 </figure>
 
 <pre><code><span class="c">// Dbxray.createController：DBへ接続するのはここだけ</span>
 <span class="k">final</span> SqlSessionFactory sqlSessionFactory = MyBatisSqlSessionFactories.create(connectionSettings);
-<span class="k">return</span> injector
-    .createChildInjector(
-        <span class="k">new</span> DatabaseDependentModule(
-            DatabaseTypeDetector.detect(sqlSessionFactory), sqlSessionFactory))   <span class="c">// ここで接続して種別を判定</span>
-    .getInstance(ExportSchemaController.<span class="k">class</span>);</code></pre>
-<p class="small muted">接続を束縛の定義（<code>configure()</code>）の中で行わないのは、そこで失敗するとGuiceの例外に包まれて届き、「DBに接続できない」を利用者が直せる誤りとして報告できなくなるためです（<code>DatabaseDependentModule</code>のJavadoc）。束縛の漏れ・<code>@Inject</code>の付け忘れは、本番と同じ手順でコンテナを組み立てる<code>DbxrayModuleTest</code>が検知します。</p>
+<span class="k">return</span> components.controller(
+    DatabaseTypeDetector.detect(sqlSessionFactory),   <span class="c">// ここで接続して種別を判定</span>
+    sqlSessionFactory);</code></pre>
+<p class="small muted">コンストラクタの引数の直し漏れ・<code>CatalogRepository</code>の実装の選び漏れ（<code>switch</code>が<code>DatabaseType</code>を網羅する）はコンパイルエラーになります。両方のDB種別でコントローラーまで組み立てられることは、DBへ接続しない<code>ComponentsTest</code>が確かめます。</p>
 
 <h3>2.3 MyBatis：SQLはXML、結果はrecord</h3>
 <p>MyBatisは、SQLをXMLに書き、結果の列をJavaのオブジェクトへ詰めるライブラリです。このツールが発行するのはすべて<code>SELECT</code>で、更新はありません。</p>
@@ -703,7 +699,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       </defs>
       <rect x="300" y="10" width="320" height="60" rx="6" class="d-box"/>
       <text x="460" y="34" text-anchor="middle" class="d-t-b">エントリーポイント（直下）</text>
-      <text x="460" y="56" text-anchor="middle" class="d-t-s">main・CLI引数・設定・出力先の検証</text>
+      <text x="460" y="56" text-anchor="middle" class="d-t-s">main・CLI引数・設定・出力先の検証・Components</text>
 
       <rect x="30" y="110" width="250" height="88" rx="6" class="d-box"/>
       <text x="46" y="132" class="d-t-s">presentation</text>
@@ -720,8 +716,8 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <rect x="30" y="362" width="250" height="96" rx="6" class="d-box-soft"/>
       <text x="46" y="384" class="d-t-s">config</text>
       <text x="46" y="406" class="d-t-ms">ConfigFile</text>
-      <text x="46" y="424" class="d-t-ms">DbxrayModule</text>
-      <text x="46" y="442" class="d-t-ms">DatabaseDependentModule</text>
+      <text x="46" y="424" class="d-t-ms">YamlSyntaxErrors</text>
+      <text x="46" y="442" class="d-t-ms">InvalidConfigurationException</text>
 
       <rect x="340" y="100" width="360" height="360" rx="8" class="d-box-acc"/>
       <text x="356" y="122" class="d-t-s">domain</text>
@@ -766,14 +762,14 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <line x1="738" y1="225" x2="703" y2="225" class="d-line" marker-end="url(#g4a)"/>
     </svg>
   </div>
-  <figcaption><b>図4 パッケージと依存の向き。</b>矢印は「相手を知っている（importしている）」向きで、domainから外へ向かう矢印はありません。infrastructureはdomainのインタフェース（リポジトリ・<code>OutputPathResolver</code>・<code>SnapshotSerializer</code>）を実装します。エントリーポイントとconfigは全体を組み立てる役割のため全層に依存でき（configのモジュールはinfrastructureの実装を束縛する）、configに依存してよいのはエントリーポイントとinfrastructure（<code>ConnectionSettings</code>が<code>InvalidConfigurationException</code>を使う）だけです。</figcaption>
+  <figcaption><b>図4 パッケージと依存の向き。</b>矢印は「相手を知っている（importしている）」向きで、domainから外へ向かう矢印はありません。infrastructureはdomainのインタフェース（リポジトリ・<code>OutputPathResolver</code>・<code>SnapshotSerializer</code>）を実装します。エントリーポイントは全体を組み立てる役割（<code>Components</code>がinfrastructureの実装を<code>new</code>する）のため全層に依存でき、configに依存してよいのはエントリーポイントとinfrastructure（<code>ConnectionSettings</code>が<code>InvalidConfigurationException</code>を使う）だけです。</figcaption>
 </figure>
 
 <div class="table-wrap">
 <table>
   <thead><tr><th>層・パッケージ</th><th>ひとことで</th></tr></thead>
   <tbody>
-    <tr><td>エントリーポイント（直下）</td><td><code>main</code>。CLI引数・設定・出力先の検証と、DIコンテナの組み立て。<code>--help</code>・<code>--version</code>の表示</td></tr>
+    <tr><td>エントリーポイント（直下）</td><td><code>main</code>。CLI引数・設定・出力先の検証と、依存関係の組み立て（<code>Components</code>）。<code>--help</code>・<code>--version</code>の表示</td></tr>
     <tr><td><code>presentation</code>（<code>.dto</code>・<code>.type</code>）</td><td>ユースケースを呼んで結果を文面にする。失敗の報告、終了コード</td></tr>
     <tr><td><code>application</code></td><td>2つのユースケースと、両者が共有する取得・書き出しの段取り</td></tr>
     <tr><td><code>domain.model</code>（12パッケージ）</td><td>エンティティ・集合・値オブジェクトと、それらが持つルール</td></tr>
@@ -781,7 +777,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
     <tr><td><code>domain.service</code>（writer以外）</td><td>出力形式ごとのSink、突き合わせ、配置の規則（DB由来の名前を安全なパスにする）、スナップショットの書き込み・比較、関数の定義本体から利用しているテーブルを抽出する<code>tableusage</code>（9.9節）</td></tr>
     <tr><td><code>domain.service.writer</code></td><td>Markdownの段取り（Writer）と組み立て（Templates）</td></tr>
     <tr><td><code>infrastructure</code></td><td>MyBatis・DTO・接続、ファイル、サイドカーYAML、パス、Jackson</td></tr>
-    <tr><td><code>config</code>（<code>.module</code>）</td><td>設定ファイルの読み込み（YAMLの構文誤りの文言を含む）と、Guiceのモジュール</td></tr>
+    <tr><td><code>config</code></td><td>設定ファイルの読み込み（YAMLの構文誤りの文言を含む）</td></tr>
     <tr><td><code>shared.exception</code></td><td>利用者が直せる誤りを表す例外</td></tr>
   </tbody>
 </table>
@@ -799,7 +795,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
     <tr><td>ファイルI/O</td><td>application・domainは<code>java.nio.file.Files</code>を直接使わない（<code>FileRepository</code>を通す）</td></tr>
     <tr><td>出力先のパス</td><td><code>Path.resolve</code>・<code>resolveSibling</code>を呼ぶのは<code>infrastructure.path</code>だけ（DB由来の名前を含むパスを、出力先の外を指さないことを確かめる<code>OutputPathResolver</code>の実装でだけ組み立てる。10章）</td></tr>
     <tr><td>現在日時</td><td>引数なしの<code>now()</code>を呼ばない（DIで受け取る<code>Clock</code>から求める。テストで日付を固定するため）</td></tr>
-    <tr><td>Guice</td><td><code>@Inject</code>は<code>jakarta.inject</code>のもの。Guiceに依存するのはエントリーポイントとconfigだけ</td></tr>
+    <tr><td>DIコンテナ</td><td>Guice・<code>jakarta.inject</code>に依存しない（<code>@Inject</code>は付けず、<code>Components</code>が<code>new</code>で組み立てる）</td></tr>
     <tr><td>接尾辞と置き場所</td><td><code>…Entity</code>→<code>domain.model</code>、<code>…Dto</code>→<code>infrastructure.db.repository.dto</code>か<code>presentation.dto</code>、<code>…Templates</code>→<code>domain.service.writer</code>、<code>…Writer</code>→<code>domain.service</code>、<code>…Locations</code>→<code>domain.service.path</code>、<code>…Usecase</code>・<code>…Request</code>→<code>application</code></td></tr>
     <tr><td>リポジトリ</td><td><code>domain.repository</code>には<code>…Repository</code>のインタフェースだけ。実装は<code>infrastructure..repository</code></td></tr>
     <tr><td>定義本体を読むパッケージ</td><td><code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>は正規表現を使わない（<code>java.util.regex</code>と、<code>String.matches</code>・<code>replaceAll</code>・<code>replaceFirst</code>・<code>split</code>・<code>splitWithDelimiters</code>と、<code>java.util.Scanner</code>）。定義本体はDBでCREATEの権限を持つ人が書ける入力で、正規表現はバックトラックで入力の長さに比例しない時間がかかり得る（ReDoS）ため、1文字ずつ読む（9.9節）</td></tr>
@@ -830,7 +826,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
 <h3>おすすめの読む順</h3>
 <p>上から順に読むと、外側（起動と入口）から内側（ルール）へ進めます。</p>
 <ol class="steps">
-  <li><div><code>Dbxray</code>：<code>main</code>→<code>run</code>→<code>createInjector</code>→<code>createController</code>。処理全体の骨格です（4章）。</div></li>
+  <li><div><code>Dbxray</code>：<code>main</code>→<code>run</code>→<code>Components.create</code>→<code>createController</code>。処理全体の骨格です（4章）。</div></li>
   <li><div><code>ExportSchemaController</code>と2つのユースケース：2つのモードの違いが「どのSinkを渡すか」だけだと分かります。</div></li>
   <li><div><code>SchemaExportPipeline</code>：取得の順序と、スキーマ・チャンク単位の分割。6章の図と合わせて読むと速いです。</div></li>
   <li><div><code>ExportSink</code>と3つの<code>…SinkFactory</code>：出力形式ごとに「いつ何を書くか」（6章の表）。</div></li>
@@ -848,7 +844,7 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 870 720" role="img" aria-label="左に11の段階が縦に並ぶ。1 CliArguments.parse、2 requireKnownArguments、3 DbxrayProperties.load、4 親のコンテナ、5 OutputDirectoryValidator、6 ConnectionSettings.load。ここまでDBに接続しない。7 SqlSessionFactoryの生成、8 DatabaseTypeDetectorで接続、9 子のコンテナからコントローラー、10 ユースケースの実行、11 結果の表示と終了。右に、2・3・5・6・8・10の段階で起こる誤りが並び、すべてmainのcatchに集まり、FailureReporterが報告して終了コード2になる。" style="min-width: 760px">
+    <svg viewBox="0 0 870 720" role="img" aria-label="左に11の段階が縦に並ぶ。1 CliArguments.parse、2 requireKnownArguments、3 DbxrayProperties.load、4 Componentsの生成、5 OutputDirectoryValidator、6 ConnectionSettings.load。ここまでDBに接続しない。7 SqlSessionFactoryの生成、8 DatabaseTypeDetectorで接続、9 Components#controllerでコントローラー、10 ユースケースの実行、11 結果の表示と終了。右に、2・3・5・6・8・10の段階で起こる誤りが並び、すべてmainのcatchに集まり、FailureReporterが報告して終了コード2になる。" style="min-width: 760px">
       <defs>
         <marker id="g5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
         <marker id="g5w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-warn"/></marker>
@@ -864,10 +860,10 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <text x="44" y="156" class="d-t-ms">DbxrayProperties.of(ConfigFile.load(…), …)</text>
       <text x="44" y="174" class="d-t-s">conf/config.ymlを1回読み、CLI引数を重ねて検証し、Requestにする</text>
       <rect x="20" y="194" width="440" height="46" rx="6" class="d-box"/>
-      <text x="44" y="214" class="d-t-ms">Guice.createInjector(DbxrayModule)</text>
-      <text x="44" y="232" class="d-t-s">親のコンテナ（DB種別に依存しない部品）</text>
+      <text x="44" y="214" class="d-t-ms">Components.create()</text>
+      <text x="44" y="232" class="d-t-s">DB種別に依存しない部品（第1段）</text>
       <rect x="20" y="252" width="440" height="46" rx="6" class="d-box"/>
-      <text x="44" y="272" class="d-t-ms">OutputDirectoryValidator.validate(request)</text>
+      <text x="44" y="272" class="d-t-ms">outputDirectoryValidator().validate(request)</text>
       <text x="44" y="290" class="d-t-s">出力先がファイルでないか、--rm-distで消してよいか</text>
       <rect x="20" y="310" width="440" height="46" rx="6" class="d-box"/>
       <text x="44" y="330" class="d-t-ms">ConnectionSettings.merge(…)</text>
@@ -884,8 +880,8 @@ INFO  ExportSchemaController [ END ] exportSchema [elapsedMillis=498]</code></pr
       <text x="44" y="498" class="d-t-ms">DatabaseTypeDetector.detect(…)</text>
       <text x="44" y="516" class="d-t-s">接続し、製品名から種別を判定する（版をログへ）</text>
       <rect x="20" y="536" width="440" height="46" rx="6" class="d-box-acc"/>
-      <text x="44" y="556" class="d-t-ms">createChildInjector(DatabaseDependentModule)</text>
-      <text x="44" y="574" class="d-t-s">子のコンテナからコントローラーを取り出す</text>
+      <text x="44" y="556" class="d-t-ms">components.controller(種別, sqlSessionFactory)</text>
+      <text x="44" y="574" class="d-t-s">DB種別に依存する部品を組み立て、コントローラーを返す（第2段）</text>
       <rect x="20" y="594" width="440" height="46" rx="6" class="d-box-acc"/>
       <text x="44" y="614" class="d-t-ms">controller.execute(request) / checkDiff(request)</text>
       <text x="44" y="632" class="d-t-s">ユースケース → SchemaExportPipeline（6章・7章）</text>
@@ -965,10 +961,10 @@ cliArguments.requireKnownArguments();
 <span class="k">final</span> ExportSchemaRequest request =
     DbxrayProperties.of(configFile, cliArguments.settingOverrides())
         .toExportSchemaRequest(cliArguments.isRmDist(), cliArguments.isPreview());
-<span class="k">final</span> Injector injector = createInjector();
-injector.getInstance(OutputDirectoryValidator.<span class="k">class</span>).validate(request);
+<span class="k">final</span> Components components = Components.create();
+components.outputDirectoryValidator().validate(request);
 <span class="k">final</span> ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);   <span class="c">// ConnectionSettings.merge</span>
-<span class="k">final</span> ResultDto resultDto = createController(injector, connectionSettings).execute(request);
+<span class="k">final</span> ResultDto resultDto = createController(components, connectionSettings).execute(request);
 System.out.println(resultDto.resultMessage());
 <span class="k">return</span> ExitStatus.SUCCESS;</code></pre>
 
@@ -1067,7 +1063,7 @@ Failed to output database documents.
 
 <!-- ============================================================ -->
 <h2 id="pipeline"><span class="n">6</span>取得と書き出しの段取り（SchemaExportPipeline）</h2>
-<p>通常実行のユースケースは短く、取得と書き出しの段取りを<code>SchemaExportPipeline</code>（パッケージプライベート）に任せています。<code>--check</code>のユースケースも同じパイプラインを使い、違いは渡す<code>ExportSink</code>のリストだけです。</p>
+<p>通常実行のユースケースは短く、取得と書き出しの段取りを<code>SchemaExportPipeline</code>に任せています。<code>--check</code>のユースケースも同じパイプラインを使い、違いは渡す<code>ExportSink</code>のリストだけです。</p>
 <pre><code><span class="c">// ExportSchemaUsecase.exportSchema</span>
 <span class="k">final</span> Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
 <span class="k">final</span> ExportTargets targets =
@@ -1208,7 +1204,7 @@ schemaExportPipeline.export(
 
 <div class="note key">
   <p class="note-title">出力形式を足すときに触る場所</p>
-  <p><code>ExportSink</code>を実装したクラスとそのFactoryを作り、Factoryを<code>DbxrayModule</code>に束縛して、ユースケースが渡すリストに加えます。<code>SchemaExportPipeline</code>は出力形式を知らないので変えません。<code>--check</code>の比較対象にしたくない出力は、<code>CheckDocumentDiffUsecase</code>のリストに加えないだけで、比較から外れます（参考情報がこの方法で外れています）。</p>
+  <p><code>ExportSink</code>を実装したクラスとそのFactoryを作り、Factoryを<code>Components</code>で組み立てて、ユースケースが渡すリストに加えます。<code>SchemaExportPipeline</code>は出力形式を知らないので変えません。<code>--check</code>の比較対象にしたくない出力は、<code>CheckDocumentDiffUsecase</code>のリストに加えないだけで、比較から外れます（参考情報がこの方法で外れています）。</p>
 </div>
 
 <h3>突き合わせの通知はログへ</h3>
@@ -2025,10 +2021,11 @@ erDiagram
   <thead><tr><th>ファイル</th><th>役割</th><th>使う相手・使われる相手</th></tr></thead>
   <tbody>
     <tr class="group"><td colspan="3">com.dbxray（直下）：エントリーポイント</td></tr>
-    <tr><td class="file">Dbxray</td><td><code>main</code>。処理全体を1つの<code>try-catch</code>で囲み、通常実行（<code>run</code>）か差分検知（<code>runCheck</code>）を呼ぶ。DIコンテナを2段階で組み立て、失敗は<code>FailureReporter</code>で報告して終了コードに変える</td><td>→ <code>CliArguments</code>・<code>DbxrayProperties</code>・<code>OutputDirectoryValidator</code>・<code>ConnectionSettings</code>・<code>MyBatisSqlSessionFactories</code>・<code>DatabaseTypeDetector</code>・2つのModule・Controller・<code>FailureReporter</code></td></tr>
+    <tr><td class="file">Dbxray</td><td><code>main</code>。処理全体を1つの<code>try-catch</code>で囲み、通常実行（<code>run</code>）か差分検知（<code>runCheck</code>）を呼ぶ。依存関係を<code>Components</code>で2段階に組み立て、失敗は<code>FailureReporter</code>で報告して終了コードに変える</td><td>→ <code>CliArguments</code>・<code>DbxrayProperties</code>・<code>OutputDirectoryValidator</code>・<code>ConnectionSettings</code>・<code>MyBatisSqlSessionFactories</code>・<code>DatabaseTypeDetector</code>・<code>Components</code>・Controller・<code>FailureReporter</code></td></tr>
     <tr><td class="file">CliArguments<span class="sub">パッケージプライベート</span></td><td>CLI引数の解析（<code>--check</code>・<code>--rm-dist</code>・<code>--preview</code>・<code>--help</code>・<code>--version</code>、接続情報と実行時設定の上書き値）。未知の引数は集めておき、<code>requireKnownArguments</code>で誤りにする（値は伏せて報告）。設定の引数名は<code>SETTINGS</code>から引く</td><td>← <code>Dbxray</code>／→ <code>DbxrayProperties.KEYS</code></td></tr>
     <tr><td class="file">DbxrayProperties<span class="sub">パッケージプライベート</span></td><td><code>conf/config.yml</code>のうち<code>database</code>以外の仕様（8項目の位置・CLI引数名・既定値・形式・範囲）と検証。CLI引数で上書きしてから検証し、誤りをまとめて<code>InvalidConfigurationException</code>にする。2種類のRequestへ変換（<code>--preview</code>は<code>previewFeatures</code>＝<code>PreviewFeature</code>の全部へ）</td><td>← <code>Dbxray</code>／→ <code>ConfigFile</code>・<code>TargetSelection</code></td></tr>
-    <tr><td class="file">OutputDirectoryValidator<span class="sub">パッケージプライベート</span></td><td>出力先の検証（既存のファイルを指していないか、<code>--rm-dist</code>で消してよいか）。DBへの接続前に、親のコンテナから取り出して使う</td><td>← <code>Dbxray</code>／→ <code>OutputPathResolver</code>・<code>FileRepository</code></td></tr>
+    <tr><td class="file">OutputDirectoryValidator<span class="sub">パッケージプライベート</span></td><td>出力先の検証（既存のファイルを指していないか、<code>--rm-dist</code>で消してよいか）。DBへの接続前に、<code>Components</code>から取り出して使う</td><td>← <code>Dbxray</code>／→ <code>OutputPathResolver</code>・<code>FileRepository</code></td></tr>
+    <tr><td class="file">Components</td><td>依存関係を<code>new</code>で組み立てる（composition root）。DB種別に依存しない部品は接続前に、<code>CatalogRepository</code>とそれに依存するユースケースは<code>controller(種別, sqlSessionFactory)</code>で接続後に組み立てる</td><td>← <code>Dbxray</code>／→ 全レイヤーの具象クラス</td></tr>
     <tr><td class="file">CliUsage<span class="sub">パッケージプライベート</span></td><td><code>--help</code>・<code>--version</code>の文言。版はjarのマニフェスト（<code>Implementation-Version</code>）から</td><td>← <code>Dbxray</code></td></tr>
 
     <tr class="group"><td colspan="3">presentation（.dto・.type）：コントローラーと報告</td></tr>
@@ -2042,7 +2039,7 @@ erDiagram
     <tr class="group"><td colspan="3">application：ユースケース</td></tr>
     <tr><td class="file">ExportSchemaUsecase</td><td>通常実行。一括取得→ER図の箱→（<code>--rm-dist</code>なら削除）→3つのSinkで書き出し。有効にしたプレビューの機能をINFOでログへ</td><td>← Controller／→ <code>SchemaExportPipeline</code>・3つの<code>…SinkFactory</code></td></tr>
     <tr><td class="file">CheckDocumentDiffUsecase</td><td><code>--check</code>。スナップショットのSinkだけで一時ディレクトリへ書き、<code>SnapshotDiff</code>で比べる。プレビューの機能は渡さない（<code>Set.of()</code>）。一時ディレクトリは必ず消す</td><td>← Controller／→ <code>SchemaExportPipeline</code>・<code>SnapshotExportSinkFactory</code>・<code>SnapshotDiff</code></td></tr>
-    <tr><td class="file">SchemaExportPipeline<span class="sub">パッケージプライベート</span></td><td>両ユースケースが共有する取得と書き出しの段取り（<code>fetchTargets</code>・<code>fetchDiagramBoxes</code>・<code>export</code>）。通知と件数をログへ出し、生成日を<code>Clock</code>から求める。関数は、スキーマごとに<code>FunctionDefinitionContent</code>を作る（<code>--preview</code>なら<code>FunctionTableUsageAnalyzer</code>で抽出）</td><td>← 2つのUsecase／→ <code>CatalogRepository</code>・<code>SidecarRepository</code>・<code>ExportTargetConsistency</code>・<code>ExportSink</code></td></tr>
+    <tr><td class="file">SchemaExportPipeline</td><td>両ユースケースが共有する取得と書き出しの段取り（<code>fetchTargets</code>・<code>fetchDiagramBoxes</code>・<code>export</code>）。通知と件数をログへ出し、生成日を<code>Clock</code>から求める。関数は、スキーマごとに<code>FunctionDefinitionContent</code>を作る（<code>--preview</code>なら<code>FunctionTableUsageAnalyzer</code>で抽出）</td><td>← 2つのUsecase／→ <code>CatalogRepository</code>・<code>SidecarRepository</code>・<code>ExportTargetConsistency</code>・<code>ExportSink</code></td></tr>
     <tr><td class="file">ExportSchemaRequest<br>CheckDocumentDiffRequest</td><td>ユースケースへの入力のrecord。3層を同じrecordのまま通る。通常実行用は有効にするプレビューの機能<code>previewFeatures</code>も持つ。<code>--check</code>用は<code>erDiagramMaxNodes</code>・<code>erDiagramDistance</code>・<code>rmDist</code>・<code>previewFeatures</code>を持たない</td><td>← <code>DbxrayProperties</code> → Controller → Usecase</td></tr>
     <tr><td class="file">PreviewFeature</td><td><code>--preview</code>で有効にするプレビューの機能のenum（今は<code>FUNCTION_TABLE_USAGE</code>＝<code>functionTableUsage</code>）。出力は互換性の対象外で、スナップショットは変えない</td><td>← <code>DbxrayProperties</code>・<code>ExportSchemaUsecase</code>・<code>SchemaExportPipeline</code></td></tr>
     <tr><td class="file">TargetSelection</td><td>出力対象の絞り込み条件（<code>TableScope</code>＋<code>OutputObjectType</code>の集合）。<code>of</code>で文字列を型に変え、2種類の誤りをまとめる</td><td>← <code>DbxrayProperties</code>・<code>SchemaExportPipeline</code></td></tr>
@@ -2169,24 +2166,22 @@ erDiagram
     <tr><td class="file">ConnectionSettings</td><td>検証済みの接続情報。<code>config.yml</code>の<code>database</code>＋環境変数のパスワード＋CLI引数。<code>driver</code>・<code>url</code>必須、ファイルの<code>password</code>と<code>url</code>へのパスワードの埋め込みは誤り</td><td>← <code>Dbxray</code></td></tr>
     <tr><td class="file">MyBatisSqlSessionFactories</td><td><code>mybatis-config.xml</code>から<code>SqlSessionFactory</code>を作る（接続はしない）</td><td>← <code>Dbxray</code></td></tr>
     <tr><td class="file">DatabaseTypeDetector</td><td>接続して製品名から<code>DatabaseType</code>を判定し、DBMS・ドライバの版をログへ残す。接続できない・非対応のDBは<code>UserCorrectableException</code></td><td>← <code>Dbxray</code></td></tr>
-    <tr><td class="file">DatabaseType</td><td>postgresql・oracleと、ドメインのDBMS種別（<code>Dbms</code>）・リポジトリの実装クラスの対応。名前はSQLの名前空間にも使う</td><td>← <code>DatabaseDependentModule</code>・<code>AbstractCatalogRepository</code></td></tr>
+    <tr><td class="file">DatabaseType</td><td>postgresql・oracleと、ドメインのDBMS種別（<code>Dbms</code>）の対応。名前はSQLの名前空間にも使う</td><td>← <code>Components</code>・<code>AbstractCatalogRepository</code></td></tr>
     <tr><td class="file">AbstractCatalogRepository</td><td><code>CatalogRepository</code>の共通実装。SQLのIDを組み立てて実行し、DTO→エンティティ。SQLの失敗はどのSQLかを添えて包む</td><td>← 2つの実装／→ 12のDTO</td></tr>
     <tr><td class="file">PostgresCatalogRepository<br>OracleCatalogRepository</td><td>DB種別を渡すだけの実装</td><td>← <code>DatabaseType</code></td></tr>
     <tr><td class="file">TableDto 等 12個のDTO</td><td><code>TableDto</code>・<code>ColumnDto</code>・<code>IndexDto</code>・<code>ConstraintDto</code>・<code>ForeignKeyDto</code>・<code>TriggerDto</code>・<code>PartitionDto</code>・<code>ViewReferenceDto</code>・<code>FunctionDto</code>・<code>SequenceDto</code>・<code>TypeDto</code>・<code>DatabaseDto</code>。SQLの結果の受け皿（record）で、<code>toEntity()</code>で値の形を揃える。<code>ForeignKeyDto</code>は多重度を判定し、<code>TriggerDto</code>はイベントを分解して本体の末尾の空白を除く</td><td>← <code>AbstractCatalogRepository</code></td></tr>
     <tr><td class="file">DtoValues<span class="sub">パッケージプライベート</span></td><td><code>null</code>・空白を空文字へ、区切り文字で連結された値をリストへ</td><td>← 各DTO</td></tr>
 
     <tr class="group"><td colspan="3">infrastructure.file・path・snapshot</td></tr>
-    <tr><td class="file">LocalFileRepository</td><td><code>FileRepository</code>の実装（UTF-8で書く・追記・再帰削除・ファイル1つの削除等）</td><td>← <code>DbxrayModule</code></td></tr>
-    <tr><td class="file">SidecarYamlRepository</td><td>サイドカーYAMLの読み込み（SnakeYAMLの<code>SafeConstructor</code>）。ファイルが無い・YAMLとして読めないのは誤り（文言は<code>YamlSyntaxErrors</code>）、個々の記述の誤りは何件目の定義かを添えて警告し、読み飛ばす</td><td>← <code>DbxrayModule</code>／→ <code>TableKey.parse</code>・<code>Viewpoint.of</code>・<code>Cardinality</code></td></tr>
+    <tr><td class="file">LocalFileRepository</td><td><code>FileRepository</code>の実装（UTF-8で書く・追記・再帰削除・ファイル1つの削除等）</td><td>← <code>Components</code></td></tr>
+    <tr><td class="file">SidecarYamlRepository</td><td>サイドカーYAMLの読み込み（SnakeYAMLの<code>SafeConstructor</code>）。ファイルが無い・YAMLとして読めないのは誤り（文言は<code>YamlSyntaxErrors</code>）、個々の記述の誤りは何件目の定義かを添えて警告し、読み飛ばす</td><td>← <code>Components</code>／→ <code>TableKey.parse</code>・<code>Viewpoint.of</code>・<code>Cardinality</code></td></tr>
     <tr><td class="file">DefaultOutputPathResolver</td><td><code>OutputPathResolver</code>の実装。既定の出力先<code>./output</code>。解決したパスが起点の外を指さないことを<code>within</code>で確かめる。<code>--rm-dist</code>でルート、カレント・ホームとその上位を拒否</td><td>→ <code>DocumentLocations</code>・<code>SnapshotLocations</code>・<code>InsightLocations</code></td></tr>
-    <tr><td class="file">JacksonSnapshotSerializer</td><td><code>SnapshotSerializer</code>の実装（<code>NON_EMPTY</code>、差分表示用の整形）</td><td>← <code>DbxrayModule</code></td></tr>
+    <tr><td class="file">JacksonSnapshotSerializer</td><td><code>SnapshotSerializer</code>の実装（<code>NON_EMPTY</code>、差分表示用の整形）</td><td>← <code>Components</code></td></tr>
 
     <tr class="group"><td colspan="3">config・shared.exception</td></tr>
     <tr><td class="file">ConfigFile</td><td>設定ファイル（<code>--config</code>、無ければ<code>conf/config.yml</code>）をYAMLとして読む。仕様と検証は値を使う側が持つ</td><td>← <code>Dbxray</code>・<code>DbxrayProperties</code>・<code>CliArguments</code></td></tr>
     <tr><td class="file">YamlSyntaxErrors</td><td>SnakeYAMLの構文誤りを、ファイルの内容を引用しない文言（種類と位置）へ変える</td><td>← <code>ConfigFile</code>・<code>SidecarYamlRepository</code></td></tr>
     <tr><td class="file">InvalidConfigurationException</td><td>設定の誤り（<code>UserCorrectableException</code>の派生）</td><td>← <code>ConfigFile</code>・<code>DbxrayProperties</code>・<code>ConnectionSettings</code></td></tr>
-    <tr><td class="file">DbxrayModule</td><td>DB種別に依存しない束縛（親のコンテナ）</td><td>← <code>Dbxray</code></td></tr>
-    <tr><td class="file">DatabaseDependentModule</td><td><code>SqlSessionFactory</code>と<code>CatalogRepository</code>の束縛（子のコンテナ）</td><td>← <code>Dbxray</code></td></tr>
     <tr><td class="file">UserCorrectableException</td><td>利用者が直せる誤り。投げてよいのは入口と、入力・実行環境に触れるインフラだけ</td><td>← <code>CliArguments</code>・<code>OutputDirectoryValidator</code>・<code>DatabaseTypeDetector</code>・<code>SidecarYamlRepository</code>・<code>FailureReporter</code></td></tr>
     <tr><td class="file">package-info</td><td>各パッケージの要旨。<code>shared.exception</code>だけは置いてよいものの規約も書く</td><td class="muted">—</td></tr>
 
@@ -2199,7 +2194,7 @@ erDiagram
 
     <tr class="group"><td colspan="3">テスト（modules/cli/src/test・modules/cli/src/integrationTest）</td></tr>
     <tr><td class="file">ArchitectureTest</td><td>構造の規約（3章の表）をArchUnitで検査</td><td>→ main配下の全クラス</td></tr>
-    <tr><td class="file">DbxrayModuleTest</td><td>本番と同じ2段階でDIコンテナを組み立て、コントローラーまで解決できるか（DBには接続しない）</td><td>→ 2つのModule</td></tr>
+    <tr><td class="file">ComponentsTest</td><td>両方のDB種別で、コントローラーまで組み立てられるか（DBには接続しない）</td><td>→ <code>Components</code></td></tr>
     <tr><td class="file">ExportSchemaUsecaseTest</td><td>通常実行・<code>--check</code>の流れ全体（<code>--preview</code>の有無による関数の出力の違いを含む）。Writerは本物、ファイルはメモリ上（<code>InMemoryFileRepository</code>）、DBは呼び出しを記録するスタブ</td><td>→ 2つのUsecase</td></tr>
     <tr><td class="file">tableusageのテスト（<code>domain.service.tableusage</code>・<code>domain.model.tableusage</code>）</td><td>字句（<code>SqlLexerTest</code>・<code>SqlLexerPropertyTest</code>）、本体の切り出し（<code>FunctionBodyLocatorTest</code>。パッケージのサブプログラムの範囲）、テーブルの判定（<code>TableReferenceScannerTest</code>。<code>ScanCase</code>・<code>ExpectedNotation</code>で期待値を書く）、名前の解決（<code>FunctionTableUsageAnalyzerTest</code>）、結果の型（<code>TableUsageTest</code>）、精度（<code>TableUsageMetamorphicTest</code>・<code>GeneratedPackagesTest</code>・<code>RealisticFunctionBodiesTest</code>・<code>FunctionTableUsageAnalyzerRobustnessTest</code>。9.9節）。本番のDBを使わず、<code>src/test/resources/tableusage</code>に長い定義本体を置く</td><td>→ <code>domain.service.tableusage</code></td></tr>
     <tr><td class="file">入口のテスト</td><td><code>CliArgumentsTest</code>・<code>CliUsageTest</code>・<code>DbxrayPropertiesTest</code>・<code>OutputDirectoryValidatorTest</code>・<code>TargetSelectionTest</code></td><td>→ 入口の各クラス</td></tr>
@@ -2245,14 +2240,14 @@ erDiagram
 
 <h3>出力形式を足すとき</h3>
 <ul>
-  <li><code>ExportSink</code>を実装したクラスと、それを作る<code>…SinkFactory</code>を<code>domain.service.export</code>に作り、Factoryを<code>DbxrayModule</code>に束縛して、ユースケースが渡すリストに加える。<code>--check</code>で比較したいかどうかで、<code>CheckDocumentDiffUsecase</code>のリストに加えるかを決める。</li>
+  <li><code>ExportSink</code>を実装したクラスと、それを作る<code>…SinkFactory</code>を<code>domain.service.export</code>に作り、Factoryを<code>Components</code>で組み立てて、ユースケースが渡すリストに加える。<code>--check</code>で比較したいかどうかで、<code>CheckDocumentDiffUsecase</code>のリストに加えるかを決める。</li>
   <li>配置の規則は<code>…Locations</code>に、パスの解決は<code>OutputPathResolver</code>に足す（application層でパスの文字列を組み立てない）。</li>
 </ul>
 
 <h3>新しいドメインサービス・リポジトリを足すとき</h3>
 <ul>
-  <li>コンストラクタに<code>jakarta.inject.Inject</code>を付ける。インタフェースと実装を分けたら<code>DbxrayModule</code>に束縛を足す。DB種別で実装が変わるものだけは<code>DatabaseDependentModule</code>へ。</li>
-  <li>束縛の漏れは<code>DbxrayModuleTest</code>で分かる。ファイルを読み書きするなら<code>FileRepository</code>を受け取る（<code>Files</code>を直接使うと<code>ArchitectureTest</code>が落ちる）。日付が要るなら<code>Clock</code>を受け取る。</li>
+  <li>依存はコンストラクタの引数で受け取る（<code>@Inject</code>は付けない）。<code>Components</code>に<code>new</code>を足す。DB種別で実装が変わるものや、それに依存するものは<code>Components#controller</code>の中へ。</li>
+  <li>組み立ての漏れ・引数の不一致はコンパイルエラーになり、両方のDB種別で組み立てられることは<code>ComponentsTest</code>で分かる。ファイルを読み書きするなら<code>FileRepository</code>を受け取る（<code>Files</code>を直接使うと<code>ArchitectureTest</code>が落ちる）。日付が要るなら<code>Clock</code>を受け取る。</li>
 </ul>
 
 <h3>プレビューの機能を足す・外すとき</h3>

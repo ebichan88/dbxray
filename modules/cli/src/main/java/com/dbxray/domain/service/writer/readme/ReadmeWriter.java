@@ -5,7 +5,6 @@ import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.path.OutputRoot;
-import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -19,7 +18,6 @@ public class ReadmeWriter {
   private final FileRepository fileRepository;
   private final OutputPathResolver outputPathResolver;
 
-  @Inject
   public ReadmeWriter(FileRepository fileRepository, OutputPathResolver outputPathResolver) {
     this.fileRepository = fileRepository;
     this.outputPathResolver = outputPathResolver;
