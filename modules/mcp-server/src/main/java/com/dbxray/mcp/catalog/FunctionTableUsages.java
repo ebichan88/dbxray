@@ -25,8 +25,36 @@ public final class FunctionTableUsages {
    * @return 参考情報が無い場合（cliで{@code --preview}を付けずに出力した場合等）・定義本体が変わった後の古い参考情報の場合は空
    */
   public Optional<FunctionTableUsageEntry> find(FunctionEntry function) {
-    return Optional.ofNullable(byFunction.get(new Identity(function.key(), function.arguments())))
+    return Optional.ofNullable(byFunction.get(identityOf(function)))
         .filter(usage -> usage.definitionHash().equals(function.definitionHash()));
+  }
+
+  /**
+   * 関数の参考情報が、スナップショットと対応付けられるか判定するメソッド<br>
+   * {@link #find}が空を返す理由を区別する。利用者がすべきことが違うため（無ければ{@code --preview}を付けて出力し、古ければ出力し直す）
+   */
+  public Freshness freshnessOf(FunctionEntry function) {
+    final FunctionTableUsageEntry usage = byFunction.get(identityOf(function));
+    if (usage == null) {
+      return Freshness.ABSENT;
+    }
+    return usage.definitionHash().equals(function.definitionHash())
+        ? Freshness.CURRENT
+        : Freshness.STALE;
+  }
+
+  /** 関数の参考情報と、スナップショットの関数との対応 */
+  public enum Freshness {
+    /** 参考情報があり、抽出元の定義本体がスナップショットと一致する */
+    CURRENT,
+    /** 参考情報はあるが、抽出元の定義本体がスナップショットと異なる（参考情報の出力後に定義が変わった） */
+    STALE,
+    /** 参考情報が無い（{@code --preview}を付けずに出力した場合等） */
+    ABSENT
+  }
+
+  private static Identity identityOf(FunctionEntry function) {
+    return new Identity(function.key(), function.arguments());
   }
 
   /** 関数を識別する組（オーバーロードは引数で区別する） */

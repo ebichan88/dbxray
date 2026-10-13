@@ -52,6 +52,24 @@ class FunctionTableUsagesTest {
         Optional.of(usage), new FunctionTableUsages(List.of(usage)).find(function("", "")));
   }
 
+  @Test
+  @DisplayName("freshnessOf: 参考情報が無ければABSENT、定義本体のハッシュが一致すればCURRENT、異なればSTALEを返す")
+  void distinguishesFreshness() {
+    final FunctionTableUsages usages = new FunctionTableUsages(List.of(usage("p integer", "h1")));
+
+    assertEquals(
+        FunctionTableUsages.Freshness.CURRENT, usages.freshnessOf(function("p integer", "h1")));
+    assertEquals(
+        FunctionTableUsages.Freshness.STALE, usages.freshnessOf(function("p integer", "h2")));
+    assertEquals(
+        FunctionTableUsages.Freshness.ABSENT,
+        usages.freshnessOf(function("p text", "h1")),
+        "引数の違うオーバーロードの参考情報は無いものとして扱う");
+    assertEquals(
+        FunctionTableUsages.Freshness.ABSENT,
+        new FunctionTableUsages(List.of()).freshnessOf(function("", "")));
+  }
+
   private static FunctionTableUsageEntry usage(String arguments, String definitionHash) {
     return new FunctionTableUsageEntry(
         KEY,

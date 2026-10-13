@@ -179,6 +179,15 @@ public final class SchemaCatalog {
   }
 
   /**
+   * テーブルを変更・削除したときの影響範囲と、テーブルが依存するものを求めるメソッド<br>
+   * 関連・ビュー・トリガー・関数・シーケンス・型の窓口にまたがる。集め方は{@link ImpactAnalyzer}を参照
+   */
+  public TableImpact impactOf(TableEntry table) {
+    return new ImpactAnalyzer(tables, relations, functions, functionTableUsages, types)
+        .analyze(table);
+  }
+
+  /**
    * 関連のつながりから、テーブルのまとまりを推測するメソッド<br>
    * 範囲外のテーブルとの関連は無いものとみなす。求め方は{@link ClusterDetector}を参照
    *

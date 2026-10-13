@@ -4,10 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.dbxray.mcp.catalog.FunctionCoverage;
 import com.dbxray.mcp.catalog.FunctionEntry;
 import com.dbxray.mcp.catalog.FunctionTableUsageEntry;
 import com.dbxray.mcp.catalog.FunctionTableUsageEntry.UsedTable;
+import com.dbxray.mcp.catalog.FunctionUse;
+import com.dbxray.mcp.catalog.ObjectKey;
 import com.dbxray.mcp.catalog.SchemaCatalog;
+import com.dbxray.mcp.catalog.TableEntry;
+import com.dbxray.mcp.catalog.TableImpact;
+import com.dbxray.mcp.catalog.TableImpact.IndirectReference;
+import com.dbxray.mcp.catalog.TriggerEntry;
 import com.dbxray.mcp.snapshot.SnapshotDirectoryReader;
 import java.nio.file.Path;
 import java.util.List;
@@ -71,6 +78,103 @@ class SampleFunctionTableUsagesContractTest {
         countRows.tables());
     assertEquals(List.of("EXECUTE"), countRows.dynamicSql());
     assertEquals("analyzed", countRows.status());
+  }
+
+  @Test
+  @DisplayName("employeeの影響範囲として、自己参照を含む参照元・ビューのビュー・トリガー・employeeを使う関数を求められる")
+  void impactOfEmployee() {
+    final TableEntry employee = table("employee");
+
+    final TableImpact impact = catalog.impactOf(employee);
+
+    assertEquals(
+        List.of(
+            "attendance",
+            "audit_log",
+            "employee",
+            "employee_history",
+            "employee_profile",
+            "project_assignment"),
+        impact.directReferences().stream().map(relation -> relation.from().name()).toList(),
+        "自己参照（manager_id）も段1の関連に含む");
+    assertEquals(
+        List.of(
+            new IndirectReference(
+                new ObjectKey("testdb", "sample", "attendance_note"),
+                2,
+                new ObjectKey("testdb", "sample", "attendance"))),
+        impact.indirectReferences());
+    assertEquals(
+        catalog.relations().counts(employee).impact(),
+        impact.directReferences().stream()
+                .map(relation -> relation.from())
+                .filter(from -> !from.equals(employee.key()))
+                .distinct()
+                .count()
+            + impact.indirectReferences().size(),
+        "list_tablesのimpactと一致する");
+    assertEquals(
+        List.of("employee_directory_view", "attendance_monthly_view@employee_directory_view"),
+        impact.views().stream()
+            .map(
+                view ->
+                    view.view().key().name() + (view.via() == null ? "" : "@" + view.via().name()))
+            .toList());
+    assertEquals(
+        List.of("trg_employee_audit", "trg_employee_set_updated_at"),
+        impact.triggers().stream().map(TriggerEntry::name).toList());
+    assertEquals(
+        List.of(
+            "close_project:U",
+            "count_rows:R?",
+            "department_headcount:R",
+            "employee_directory_insert:C",
+            "raise_salary:U"),
+        impact.functions().usages().stream()
+            .map(
+                use ->
+                    use.function().name()
+                        + ":"
+                        + String.join("", use.operations())
+                        + (use.possible() ? "?" : ""))
+            .toList());
+    final FunctionUse countRows =
+        impact.functions().usages().stream()
+            .filter(use -> use.function().name().equals("count_rows"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("search_path", countRows.schemaResolution());
+    assertEquals(List.of("EXECUTE"), countRows.dynamicSql());
+    assertEquals(
+        List.of("employee_directory_view.trg_employee_directory_insert"),
+        impact.functions().usages().stream()
+            .filter(use -> use.function().name().equals("employee_directory_insert"))
+            .flatMap(use -> use.calledByTriggers().stream())
+            .map(found -> found.table().key().name() + "." + found.trigger().name())
+            .toList(),
+        "ビューのINSTEAD OFトリガー経由で、employeeへ書き込む関数が実行される");
+    final int functionCount =
+        catalog.functions().all().stream().mapToInt(f -> f.overloads().size()).sum();
+    assertEquals(
+        new FunctionCoverage(functionCount, functionCount, 0, 0, 0, 1, 0, 0),
+        impact.functions().coverage(),
+        "サンプルの関数はすべて解析済みで、動的SQLを含むのはcount_rowsだけ");
+    assertTrue(
+        impact.functions().unverified().isEmpty(),
+        "動的SQLを含むcount_rowsは、employeeを使うと分かって一覧（usages）に載るため、確かめきれない関数には入らない");
+    assertEquals(
+        List.of("employee_employee_id_seq"),
+        impact.sequences().stream().map(use -> use.sequence().name()).toList());
+    assertEquals(
+        List.of("employee_status_enum"),
+        impact.types().stream().map(use -> use.type().key().name()).toList());
+  }
+
+  private static TableEntry table(String name) {
+    return catalog.tables().all().stream()
+        .filter(t -> t.key().name().equals(name))
+        .findFirst()
+        .orElseThrow();
   }
 
   private static FunctionTableUsageEntry usage(String name) {

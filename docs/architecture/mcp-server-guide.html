@@ -243,10 +243,10 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <header>
   <p class="eyebrow">dbxray / mcp-server</p>
   <h1>mcp-server 読解ガイド</h1>
-  <p class="lead">cliが出力したスキーマのスナップショット（JSON Lines）を起動時にメモリへ読み込み、AIから呼べる18個の読み取り専用ツールと、利用者が会話に添付できるテーブル定義のリソースとして、標準入出力で公開するサーバーです。DBには接続しません。このガイドは、MCPとSDKの事前知識から始めて、ソースごとの役割と繋がりまでを順に説明します。</p>
+  <p class="lead">cliが出力したスキーマのスナップショット（JSON Lines）を起動時にメモリへ読み込み、AIから呼べる19個の読み取り専用ツールと、利用者が会話に添付できるテーブル定義のリソースとして、標準入出力で公開するサーバーです。DBには接続しません。このガイドは、MCPとSDKの事前知識から始めて、ソースごとの役割と繋がりまでを順に説明します。</p>
   <ul class="facts">
-    <li><b>約7.1k 行</b>main配下のJava（空行・コメントを含む目安）</li>
-    <li><b>18 ツール</b>すべて読み取り専用。ほかに全テーブルをリソースとして公開</li>
+    <li><b>約8.0k 行</b>main配下のJava（空行・コメントを含む目安）</li>
+    <li><b>19 ツール</b>すべて読み取り専用。ほかに全テーブルをリソースとして公開</li>
     <li><b>mcp-core 2.0.1</b>MCP Java SDK。JSONはJackson 2系</li>
     <li><b>stdio</b>MCPクライアントが子プロセスとして起動</li>
   </ul>
@@ -307,7 +307,7 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 760 400" role="img" aria-label="initialize要求と応答、initialized通知、tools/listで18個のツール定義（resources/listでリソースの一覧）、tools/callで結果、最後にstdinを閉じて終了する流れのシーケンス図" style="min-width: 640px">
+    <svg viewBox="0 0 760 400" role="img" aria-label="initialize要求と応答、initialized通知、tools/listで19個のツール定義（resources/listでリソースの一覧）、tools/callで結果、最後にstdinを閉じて終了する流れのシーケンス図" style="min-width: 640px">
       <defs>
         <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
         <marker id="f2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
@@ -337,7 +337,7 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
       <line x1="122" y1="192" x2="636" y2="192" class="d-line" marker-end="url(#f2a)"/>
       <text x="380" y="184" text-anchor="middle" class="d-t">tools/list（resources/list）</text>
       <line x1="638" y1="224" x2="124" y2="224" class="d-line-acc d-dash" marker-end="url(#f2b)"/>
-      <text x="380" y="216" text-anchor="middle" class="d-t-acc">18個のツール定義（リソースならテーブルの数だけのURI・name）</text>
+      <text x="380" y="216" text-anchor="middle" class="d-t-acc">19個のツール定義（リソースならテーブルの数だけのURI・name）</text>
 
       <line x1="122" y1="270" x2="636" y2="270" class="d-line" marker-end="url(#f2a)"/>
       <text x="380" y="262" text-anchor="middle" class="d-t">tools/call {name, arguments}（resources/read {uri}）</text>
@@ -613,7 +613,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <p>上から順に読むと、外側（起動とMCP）から内側（ルール）へ進めます。</p>
 <ol class="steps">
   <li><div><code>McpServerMain</code>：何をどの順で組み立てるか。<code>INSTRUCTIONS</code>でツールの全体像もつかめます。</div></li>
-  <li><div><code>TableDefinitionTools</code>：ツールクラス11の並び＝クライアントに見える順。</div></li>
+  <li><div><code>TableDefinitionTools</code>：ツールクラス12の並び＝クライアントに見える順。</div></li>
   <li><div><code>ToolSpecifications.readOnlyTool</code>：全ツール共通の包み。引数の誤りが<code>isError</code>になる場所です。</div></li>
   <li><div><code>SchemaTools</code>：小さなツールクラスで「型」をつかみ、続けて一番大きい<code>TableTools</code>。<code>get_table</code>の結果の加工は<code>TableOutputBuilder</code>に分かれています。</div></li>
   <li><div><code>ToolArguments</code>・<code>ObjectResolver</code>・<code>Page</code>：ツールクラスが共通で使う部品。</div></li>
@@ -621,7 +621,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><div><code>TableFilter</code>・<code>SearchQuery</code>・<code>RelationGraph</code>：テーブルの絞り込み、点数づけ、幅優先探索。7章の図と合わせて読むと速いです。</div></li>
   <li><div><code>SnapshotDirectoryReader</code>：ファイルからEntryができるまで。6章参照。</div></li>
   <li><div><code>DiagramTools</code>・<code>MermaidErDiagram</code>、<code>TableDefinitionResources</code>：ツールの型から外れる2つ。結果にMermaidの記述を入れるER図（7.9節）と、AIではなく利用者が選ぶリソース（1章）です。</div></li>
-  <li><div><code>JunctionDetector</code>・<code>SimilarTableFinder</code>：スナップショットに無い値を導く、後から足された2つの推測。中間テーブルの判定（7.11節）と、構造の似たテーブルの探索（7.12節）です。</div></li>
+  <li><div><code>JunctionDetector</code>・<code>SimilarTableFinder</code>・<code>ImpactAnalyzer</code>：スナップショットに無い値を導く・既存の窓口をまとめる、後から足された3つ。中間テーブルの判定（7.11節）、構造の似たテーブルの探索（7.12節）、テーブルの影響範囲の集約（7.13節）です。</div></li>
 </ol>
 
 <!-- ============================================================ -->
@@ -1188,6 +1188,7 @@ erDiagram
   <li><strong>定義本体のハッシュ</strong>：<code>FunctionEntry.definitionHash</code>は、読み込み時に<code>SnapshotDirectoryReader</code>が求めます。求め方（UTF-8のSHA-256の小文字の16進）は、cliの<code>FunctionTableUsagesInsight</code>と同じで、<strong>片方だけを変えると、すべての関数で参考情報が返らなくなります</strong>。Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体を持つため、直前と同じ定義本体ならハッシュを使い回します。<code>definitionHash</code>を持たない参考情報を、定義本体のある関数に対応付けることはしません。</li>
   <li><strong>返す形</strong>：<code>FunctionTools.tableUsage</code>が、AIが読みやすい形に整えます。テーブルは<code>スキーマ名.テーブル名</code>、操作は<code>CRUD</code>の順に1つの文字列（<code>RD</code>等）です。解析した結果は、利用しているテーブルが無くても<code>tables</code>を空の配列で返します（参考情報が無い場合の「<code>tableUsage</code>の項目ごと無い」と区別するため）。解析しなかった場合（<code>unsupported_language</code>等）は<code>status</code>（と<code>language</code>）だけです。動的SQL・読み切れなかった・オーバーロードをまとめた場合だけ、<code>dynamicSql</code>・<code>incomplete</code>・<code>overloadsMerged</code>を足します。</li>
   <li><strong>スキーマが決まらない名前</strong>：<code>table</code>にスキーマを付けず、<code>schemaResolution</code>（<code>search_path</code>・<code>current_user</code>・<code>synonym</code>）と、同じ名前のテーブルがあるスキーマ<code>schemaCandidates</code>を返します。ツールの説明に「候補が1つでもそのスキーマに決めつけないこと」「出力対象のテーブルだけを返すため、<code>tables</code>が空でもテーブルに触れないとは限らない」と書き、参考値であることをAIに伝えます。</li>
+  <li><strong>逆引きと参考情報の状態</strong>：<code>find</code>は、参考情報が無い場合と、ハッシュが異なる古い場合の両方で空を返します。利用者がすべきことが違う（無ければcliを<code>--preview</code>付きで実行し、古ければ出力し直す）ため、<code>freshnessOf</code>が<code>CURRENT</code>・<code>STALE</code>・<code>ABSENT</code>を区別して返します（<code>find</code>と<code>get_function</code>の振る舞いは変えません）。<code>UsedTable.matches</code>は、利用しているテーブルが指定したテーブルを指すかを<code>CONFIRMED</code>（スキーマが決まった名前の一致）・<code>CANDIDATE</code>（スキーマが決まらない名前で、候補に指定したテーブルのスキーマが含まれる）・<code>NONE</code>で返します。参考情報はカタログ上の名前で出力されるため、大文字小文字は区別して比べます。これらを使った「テーブルを使う関数」の逆引きは7.13節です。</li>
 </ul>
 <p><code>get_function</code>の結果（<code>tableUsage</code>の部分）です。サンプルの<code>close_project</code>（スキーマが決まる例）と、<code>count_rows</code>（動的SQLを含み、スキーマが決まらない例）を、既定のベースラインのスナップショット（<code>docs/sample/postgres/output/snapshot</code>）に、<code>--preview</code>の差分のベースラインの参考情報（<code>docs/sample/postgres/output-preview/insights</code>）を重ねたディレクトリをビルドしたjarに読ませて採取しました。</p>
 <pre><code>{"database":"testdb","schema":"sample","name":"close_project",
@@ -1364,11 +1365,141 @@ erDiagram
 </div>
 <p class="small muted"><code>table</code>を指定した場合、引数<code>schema</code>は探す範囲の絞り込みに使い、基準の特定には使いません。そのため、同名のテーブルが複数のスキーマにあるときは<code>スキーマ名.テーブル名</code>の形で指定させます。<code>ObjectResolver.resolve</code>には、複数に当てはまる場合の案内（<code>ambiguityHint</code>）を差し替えられる形があり、<code>SimilarTableTools</code>はそれを使ってこの形を案内します。</p>
 
+<h3>7.13 テーブルの影響範囲（ImpactAnalyzer・get_impact）</h3>
+<p>テーブルを変更・削除する前に「何が壊れうるか」を調べるためのツールです。参照元のテーブル・ビュー・トリガー・関数は別々の窓口が持つため、これまでは<code>get_related_tables</code>・<code>get_table</code>・<code>get_function</code>・<code>list_triggers</code>を組み合わせて調べる必要がありました。しかも「このテーブルを使う関数」は、<code>tableUsage</code>が関数からテーブルの向きしか返さないため、引く手段がありませんでした。<code>get_impact</code>は、これらをテーブルを起点に1回で集めます。</p>
+<p>集めるだけで、スナップショットに無い値は足しません。複数の窓口にまたがるため入口は<code>SchemaCatalog.impactOf</code>で、集め方の規則は<code>ImpactAnalyzer</code>（package-private。<code>ClusterDetector</code>と同じ）が持ち、結果は<code>TableImpact</code>（record）に入ります。呼び出しのたびに求めます。</p>
+
+<figure>
+  <div class="fig-scroll">
+    <svg viewBox="0 0 900 330" role="img" aria-label="調べるテーブルから5つの集め方（関連、ビュー、トリガー、関数、依存先）へ進み、それぞれが結果のaffected.referencedBy、affected.views、affected.triggers、affected.functions、dependsOnになる。関数だけは参考情報（プレビュー）に依存し、dependsOnだけは影響を受けるものではなく依存先">
+      <defs>
+        <marker id="f9a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
+        <marker id="f9m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-muted"/></marker>
+      </defs>
+      <!-- 起点 -->
+      <rect x="10" y="110" width="150" height="100" rx="8" class="d-box-acc"/>
+      <text x="85" y="150" text-anchor="middle" class="d-t-m" font-weight="600">調べるテーブル</text>
+      <text x="85" y="176" text-anchor="middle" class="d-t-ms">employee</text>
+      <!-- 起点から5つの集め方へ -->
+      <line x1="160" y1="160" x2="228" y2="32" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="160" y1="160" x2="228" y2="96" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="160" y1="160" x2="228" y2="160" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="160" y1="160" x2="228" y2="224" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="160" y1="160" x2="228" y2="288" class="d-line-muted d-dash" marker-end="url(#f9m)"/>
+      <!-- 5つの集め方 -->
+      <rect x="230" y="10" width="400" height="44" rx="6" class="d-box"/>
+      <text x="244" y="28" class="d-t-m" font-weight="600">関連（参照元）</text>
+      <text x="244" y="46" class="d-t-ms">relatedTables(INCOMING, 3段)</text>
+      <rect x="230" y="74" width="400" height="44" rx="6" class="d-box"/>
+      <text x="244" y="92" class="d-t-m" font-weight="600">ビュー</text>
+      <text x="244" y="110" class="d-t-ms">viewsReferencing を段ごとに繰り返す</text>
+      <rect x="230" y="138" width="400" height="44" rx="6" class="d-box"/>
+      <text x="244" y="156" class="d-t-m" font-weight="600">トリガー</text>
+      <text x="244" y="174" class="d-t-ms">table.triggers()</text>
+      <rect x="230" y="202" width="400" height="44" rx="6" class="d-box-dash"/>
+      <text x="244" y="220" class="d-t-m" font-weight="600">関数（プレビューの参考情報）</text>
+      <text x="244" y="238" class="d-t-ms">全関数 × functionTableUsages.find → UsedTable.matches</text>
+      <rect x="230" y="266" width="400" height="44" rx="6" class="d-box-soft"/>
+      <text x="244" y="284" class="d-t-m" font-weight="600">依存先</text>
+      <text x="244" y="302" class="d-t-ms">SqlNames（nextval のシーケンス・カラムの型）</text>
+      <!-- 結果のキー -->
+      <line x1="630" y1="32" x2="688" y2="32" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="630" y1="96" x2="688" y2="96" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="630" y1="160" x2="688" y2="160" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="630" y1="224" x2="688" y2="224" class="d-line-acc" marker-end="url(#f9a)"/>
+      <line x1="630" y1="288" x2="688" y2="288" class="d-line-muted d-dash" marker-end="url(#f9m)"/>
+      <rect x="690" y="10" width="200" height="44" rx="6" class="d-box-acc"/>
+      <text x="790" y="37" text-anchor="middle" class="d-t-ms">affected.referencedBy</text>
+      <rect x="690" y="74" width="200" height="44" rx="6" class="d-box-acc"/>
+      <text x="790" y="101" text-anchor="middle" class="d-t-ms">affected.views</text>
+      <rect x="690" y="138" width="200" height="44" rx="6" class="d-box-acc"/>
+      <text x="790" y="165" text-anchor="middle" class="d-t-ms">affected.triggers</text>
+      <rect x="690" y="202" width="200" height="44" rx="6" class="d-box-acc"/>
+      <text x="790" y="229" text-anchor="middle" class="d-t-ms">affected.functions</text>
+      <rect x="690" y="266" width="200" height="44" rx="6" class="d-box"/>
+      <text x="790" y="293" text-anchor="middle" class="d-t-ms">dependsOn</text>
+    </svg>
+  </div>
+  <figcaption><b>図9 影響範囲の集め方。</b>実線の4つが「自テーブルを変えると影響を受けるもの」（<code>affected</code>）、破線の1つが「自テーブルが使うもの」（<code>dependsOn</code>）です。関数だけは、cliの<code>--preview</code>の参考情報に依存します（破線の枠）。</figcaption>
+</figure>
+
+<p>集め方は5つに分かれ、それぞれ結果の1つのキーになります。</p>
+<ol class="steps">
+  <li><div><strong>参照元（<code>affected.referencedBy</code>）</strong>：<code>RelationGraph.relatedTables(table, 3, INCOMING)</code>は、テーブルではなく<strong>関連</strong>を段数つきで返します。段1の関連を<code>direct</code>（自己参照を含む。参照元のテーブル・種別・関連名の順）に、段1に現れないテーブルを<code>indirect</code>（最小の段数と、その段で見つけた関連の参照先<code>via</code>。段数・テーブルの順）に分けます。同じテーブルが段1と段2の両方に現れる場合は<code>direct</code>だけに載せ、自テーブルは<code>indirect</code>に含めません。そのため、<code>direct</code>の参照元（自テーブルを除く）と<code>indirect</code>を重複なく合わせた数は、<code>list_tables</code>の<code>impact</code>と一致します。</div></li>
+  <li><div><strong>ビュー（<code>affected.views</code>）</strong>：<code>TableCatalog.viewsReferencing</code>を、ビューを参照するビューまで段ごとに繰り返します。同じビューは1度しか数えないため、循環していても止まります。経由したビューを<code>via</code>で示します。</div></li>
+  <li><div><strong>トリガー（<code>affected.triggers</code>）</strong>：自テーブルの<code>triggers()</code>です。ビューを調べた場合は、INSTEAD OFトリガーが入ります。</div></li>
+  <li><div><strong>関数（<code>affected.functions</code>）</strong>：同じDBの全関数を関数名（<code>FunctionOverloads</code>）ごとに見て、オーバーロードの参考情報（<code>FunctionTableUsages.find</code>）の<code>UsedTable</code>が、自テーブルまたは2.で集めたビューを指すかを<code>UsedTable.matches</code>で判定します。一致しなかったオーバーロードのうち、参考情報はあるが確かめきれないもの（動的SQL・読み切れなかった・解析不可）は、<code>functions.unverified</code>に理由とともに挙げます。</div></li>
+  <li><div><strong>依存先（<code>dependsOn</code>）</strong>：自テーブルのカラムについて、デフォルト値の<code>nextval</code>が使うシーケンス（<code>SqlNames.sequenceOfDefault</code>）と、型に使われているスナップショットにあるユーザー定義型（<code>SqlNames.typeOfColumn</code>）を、使うカラムとともにまとめます。</div></li>
+</ol>
+
+<div class="note key">
+  <p class="note-title">なぜ affected と dependsOn を分けるのか</p>
+  <p>参照元・ビュー・トリガー・関数は「自テーブルを変えると影響を受けるもの」、シーケンス・型は「自テーブルが使っているもの」で、向きが逆です。同じ階層に並べると、AIはどれも影響範囲の一覧として読んでしまいます。キーの名前だけで向きが分かるよう、2つに分けています。</p>
+</div>
+
+<p>関数の逆引きは、次の規則で求めます。</p>
+<ul>
+  <li><strong>完全一致</strong>：参考情報は出力対象のカタログ上の名前で出力されるため、大文字小文字を区別して比べます（PostgreSQLでは、二重引用符で囲んだ<code>"Employee"</code>と<code>employee</code>が別のテーブルになり得ます）。ビューの逆引き（<code>viewsReferencing</code>）と揃えています。</li>
+  <li><strong>確定と候補</strong>：スキーマが決まった名前は確定です。スキーマが決まらない名前（<code>search_path</code>等）は、候補のスキーマに自テーブルのスキーマが含まれる場合だけ候補とし、結果では<code>match: possible</code>と<code>schemaResolution</code>で示します。1つのオーバーロードの中で同じテーブルへの一致が確定と候補にまたがる場合は、確定を採ります。</li>
+  <li><strong>出力の単位は関数と経路</strong>：1行は関数名と経路（自テーブルか、使っているビューか）の組で、自テーブルとビューの両方を使う関数は2行になります（<code>more</code>の総数もこの行数です）。同名のオーバーロードは1行にまとめ、一致したオーバーロードの引数を<code>overloads</code>に並べ、<code>operations</code>は合算します。Oracleのパッケージで本体をまとめて抽出した場合（<code>overloadsMerged</code>）に、同じ内容が重複して並ぶのを防ぎます。候補になるのは、一致したすべてのオーバーロードが候補でしか一致しなかった場合です。確定のオーバーロードと候補のオーバーロードが混ざる場合は<code>possible</code>にならず、候補のオーバーロードの操作も<code>operations</code>に合算されるため、確定のように見えます（既知の制約で、<code>FunctionUse.possible</code>のJavadocに書いてあります）。</li>
+  <li><strong>ビュー経由</strong>：参考情報には関数が使うビューも載るため、ビューだけを読む関数も拾います。その行には、使っているビューを<code>via</code>で付けます。</li>
+  <li><strong>実行するトリガー</strong>：<code>TableCatalog.triggersCalling</code>で、関数を実行するトリガーを<code>calledByTriggers</code>に付けます。ビューのINSTEAD OFトリガー経由で書き込む関数が、ここで分かります。</li>
+</ul>
+
+<p>参考情報は、動的SQL・呼び出している関数の中・出力対象外のテーブルを含みません。載っていないことが使われていないことを意味しないため、<code>functions.coverage</code>で調べがついた範囲を数えます。同じDBの関数・プロシージャを、参考情報の状態で分けます。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>項目</th><th>意味</th><th>利用者がすべきこと</th></tr></thead>
+  <tbody>
+    <tr><td><code>noInsight</code></td><td>参考情報が無い（<code>freshnessOf</code>が<code>ABSENT</code>）</td><td>cliを<code>--preview</code>付きで実行して出力する</td></tr>
+    <tr><td><code>stale</code></td><td>参考情報はあるが定義本体のハッシュが異なる（<code>STALE</code>）</td><td>cliを<code>--preview</code>付きで出力し直す</td></tr>
+    <tr><td><code>unsupported</code></td><td>参考情報はあるが解析していない（対象外の言語・難読化等）</td><td>手で確認する</td></tr>
+    <tr><td><code>analyzed</code></td><td>解析済み。内数として<code>withDynamicSql</code>（動的SQLを含む）・<code>incomplete</code>（読み切れなかった）</td><td>動的SQLの中の参照は含まれない</td></tr>
+    <tr><td><code>triggersWithoutFunction</code></td><td>実行する関数名を持たず、本体を直接持つトリガーの数（Oracle）</td><td>本体の中の参照は参考情報の対象外のため、トリガーが触るテーブルは分からない。手で確認する</td></tr>
+  </tbody>
+</table>
+</div>
+<p><code>total</code>は、<code>analyzed</code>・<code>unsupported</code>・<code>noInsight</code>・<code>stale</code>の合計です。この区別は、結果の<code>notes</code>（参考情報が無い・古い関数がある場合と、関数名を持たないトリガーがある場合に、対応を示す固定文）にも反映されます。</p>
+<p><code>functions.unverified</code>は、<code>coverage</code>の<code>unsupported</code>と、<code>analyzed</code>の内数（<code>withDynamicSql</code>・<code>incomplete</code>）のうち、<code>usages</code>に載らなかったオーバーロードを、<code>function</code>・<code>arguments</code>・<code>reason</code>（<code>dynamicSql</code>・<code>incomplete</code>・<code>unsupported</code>。複数当てはまる場合はこの順で先のものを採る）で返します。参考情報からは、自テーブルを使うかどうかを確かめきれない関数なので、AIは<code>get_function</code>で定義本体を確かめます。テーブルとの関係は分からないため、同じDBの該当する関数をすべて挙げます。</p>
+<div class="note key">
+  <p class="note-title">なぜ noInsight・stale を unverified に挙げないのか</p>
+  <p>参考情報が無い・古い関数への対処は、関数を1つずつ読むことではなく、cliを<code>--preview</code>付きで出力し直すことです。<code>--preview</code>を付けずに出力したDBでは全関数が該当するため、挙げると概要が毎回50件で埋まり、<code>coverage</code>・<code>notes</code>と同じことを繰り返すだけになります。そのため件数（<code>coverage</code>）と<code>notes</code>の案内だけで伝え、<code>unverified</code>は「定義本体を読めば確かめられる関数」に限ります。プレビューの機能が正規版になって参考情報が常に出力されれば、この2つは出力の取り違えを示す警告に近くなります。</p>
+</div>
+
+<p>サンプルの<code>employee</code>の結果です（既定のベースラインのスナップショットに、<code>--preview</code>の差分のベースラインの参考情報を合わせたもの。<code>direct</code>・<code>triggers</code>・<code>usages</code>は一部を省略しています）。</p>
+<pre><code><span class="c">← get_impact(table: employee) の text</span>
+{"table":"sample.employee","database":"testdb","type":"table",
+ "affected":{
+  "referencedBy":{
+   "direct":[{"table":"sample.attendance","kind":"foreignKey","columns":["employee_id"],"referencedColumns":["employee_id"],"cardinality":"ONE_TO_MANY"},
+             {"table":"sample.employee","kind":"foreignKey","columns":["manager_id"],…},  <span class="c">← 自己参照</span>
+             …],
+   "indirect":[{"table":"sample.attendance_note","depth":2,"via":"sample.attendance"}],"indirectTotal":1},
+  "views":[{"view":"sample.employee_directory_view","type":"view"},
+           {"view":"sample.attendance_monthly_view","type":"view","via":"sample.employee_directory_view"}],
+  "triggers":[{"name":"trg_employee_audit","timing":"AFTER","events":["INSERT","DELETE","UPDATE"],"function":"sample.log_employee_change"},…],
+  "functions":{"preview":true,
+   "coverage":{"total":11,"analyzed":11,"unsupported":0,"noInsight":0,"stale":0,"withDynamicSql":1,"incomplete":0,"triggersWithoutFunction":0},
+   "usages":[{"function":"sample.close_project","kind":"PROCEDURE","overloads":["IN p_project_id integer"],"operations":"U"},
+             {"function":"sample.count_rows",…,"operations":"R","match":"possible","schemaResolution":"search_path","dynamicSql":["EXECUTE"]},
+             {"function":"sample.employee_directory_insert",…,"operations":"C",
+              "calledByTriggers":["sample.employee_directory_view.trg_employee_directory_insert"]},…]}},
+ "dependsOn":{"sequences":[{"sequence":"sample.employee_employee_id_seq","columns":["employee_id"]}],
+              "types":[{"type":"sample.employee_status_enum","category":"ENUM","columns":["status"]}]},
+ "notes":[…]}</code></pre>
+<p><code>count_rows</code>は、動的SQL（<code>EXECUTE</code>）を含み、スキーマが決まらない名前（<code>search_path</code>）でしか<code>employee</code>に一致しないため、候補（<code>possible</code>）として示されます。Oracleのサンプルでは、<code>EMPLOYEE_DIRECTORY_VIEW</code>のINSTEAD OFトリガーが<code>EMPLOYEE</code>へINSERTしますが、トリガーの本体の中の参照は参考情報の対象外のため、<code>functions</code>には現れません（<code>SampleOracleImpactContractTest</code>が確かめています）。PostgreSQLのサンプルの<code>employee</code>では、確かめきれない関数が無いため<code>unverified</code>は出力されません。Oracleのサンプルでは、動的SQLを含む<code>PROJECT_OPS.PURGE_AUDIT_LOG</code>が<code>reason: dynamicSql</code>として挙がります。</p>
+<p><code>section</code>を指定しない概要では、各リスト（<code>direct</code>・<code>indirect</code>・<code>views</code>・<code>triggers</code>・<code>usages</code>・<code>unverified</code>）を<code>ImpactTools.MAX_LISTED</code>（50）件までを決まった順で返します。超えたリストは、総数と続きの取り方を<code>more</code>（<code>section</code>・<code>total</code>・<code>nextOffset</code>）だけで示します。共通のマスタ等では参照元がすぐに50件を超えるため、間接参照の総数<code>indirectTotal</code>は常に返します。</p>
+<p>続きは、同じツールに<code>section</code>（概要でそのリストを持つキーの名前。<code>direct</code>・<code>indirect</code>・<code>views</code>・<code>triggers</code>・<code>usages</code>・<code>unverified</code>）と<code>offset</code>・<code>limit</code>（既定100、最大500）を指定して読みます。結果は<code>section</code>・<code>total</code>・<code>nextOffset</code>・<code>items</code>で、<code>items</code>の形は概要の各リストと同じです。<code>offset</code>・<code>limit</code>だけを指定した場合は、無視せずエラーにします（<code>section</code>の指定漏れで、先頭のページを返してしまわないため）。</p>
+<div class="note key">
+  <p class="note-title">なぜツールを分けず、section の引数で続きを取るのか</p>
+  <p>リストごとにツール（<code>get_impact_views</code>等）を分けると、AIに見せるツールの数と説明の量が増え、影響範囲の調べ方が6つの入口に散らばります。<code>section</code>の引数なら、最初に概要を1回呼び、<code>more</code>に示された<code>section</code>と<code>nextOffset</code>をそのまま次の呼び出しに渡せます。ほかの一覧のツールの<code>offset</code>・<code>nextOffset</code>と同じ作法です。</p>
+</div>
+
 <!-- ============================================================ -->
 <h2 id="tools"><span class="n">8</span>ツールとソースの対応</h2>
 
 <h3>ツールクラスの型</h3>
-<p>11のツールクラスはすべて同じ形をしています。1つ読めば残りは差分を見るだけです。</p>
+<p>12のツールクラスはすべて同じ形をしています。1つ読めば残りは差分を見るだけです。</p>
 <pre><code><span class="k">final class</span> XxxTools {
   <span class="k">static final</span> String GET_XXX = <span class="k">"get_xxx"</span>;      <span class="c">// ツール名。他クラスの案内文からも参照される</span>
   <span class="k">private final</span> SchemaCatalog catalog;
@@ -1388,7 +1519,7 @@ erDiagram
   <span class="k">record</span> GetXxxOutput(…) {}  <span class="c">// コンポーネント名がそのまま結果のJSONのキー</span>
 }</code></pre>
 
-<h3>18ツールの対応表</h3>
+<h3>19ツールの対応表</h3>
 <div class="table-wrap">
 <table>
   <thead><tr><th>ツール</th><th>ハンドラ</th><th>catalogへの問い合わせ</th><th>結果</th></tr></thead>
@@ -1403,6 +1534,7 @@ erDiagram
     <tr><td><code>find_similar_tables</code></td><td><code>SimilarTableTools#findSimilarTables</code></td><td><code>SimilarTableQuery.ofTable</code>（<code>tables().lookup</code>）か<code>ofColumns</code>・<code>TableFilter</code> → <code>tables().findSimilar</code></td><td><code>FindSimilarTablesOutput</code></td></tr>
     <tr><td><code>get_related_tables</code></td><td><code>RelationTools#getRelatedTables</code></td><td><code>tables().lookup</code> → <code>relations().relatedTables</code></td><td><code>RelatedTablesOutput</code></td></tr>
     <tr><td><code>find_join_path</code></td><td><code>RelationTools#findJoinPath</code></td><td><code>tables().lookup</code>×2 → <code>relations().joinPaths</code></td><td><code>JoinPathOutput</code></td></tr>
+    <tr><td><code>get_impact</code></td><td><code>ImpactTools#getImpact</code></td><td><code>tables().lookup</code> → <code>impactOf</code>（<code>ImpactAnalyzer</code>: <code>relations().relatedTables</code>・<code>tables().viewsReferencing</code>・<code>functionTableUsages().find</code>・<code>tables().triggersCalling</code>・<code>SqlNames</code>）</td><td><code>GetImpactOutput</code>（<code>affected</code>・<code>dependsOn</code>・<code>more</code>・<code>notes</code>）。<code>section</code>指定時は<code>SectionOutput</code>（<code>Section.items</code>の1ページ）</td></tr>
     <tr><td><code>get_er_diagram</code></td><td><code>DiagramTools#getErDiagram</code></td><td><code>tables().lookup</code> → <code>relations().relatedTables</code>（<code>table</code>）か、<code>viewpoints().find</code> → <code>relations().among</code>（<code>viewpoint</code>）→ <code>MermaidErDiagram.render</code></td><td><code>ErDiagramOutput</code></td></tr>
     <tr><td><code>list_functions</code></td><td><code>FunctionTools#listFunctions</code></td><td><code>functions().list(scope, NameFilter)</code>（オーバーロードを展開）</td><td><code>ListFunctionsOutput</code></td></tr>
     <tr><td><code>get_function</code></td><td><code>FunctionTools#getFunction</code></td><td><code>functions().lookup</code> → <code>tables().triggersCalling</code>・<code>functionTableUsages().find</code></td><td><code>GetFunctionOutput</code></td></tr>
@@ -1433,6 +1565,9 @@ erDiagram
     <tr><td><code>find_similar_tables</code>の<code>columns</code>の件数</td><td class="num muted">—</td><td class="num">100</td><td><code>SimilarTableTools.MAX_COLUMNS</code></td></tr>
     <tr><td><code>find_similar_tables</code>の<code>minShared</code>・<code>minSimilarity</code></td><td class="num">3・50</td><td class="num">20・100</td><td><code>SimilarTableTools</code>（下限1・10）</td></tr>
     <tr><td><code>find_similar_tables</code>の<code>onlyInBase</code>・<code>onlyInOther</code></td><td class="num muted">—</td><td class="num">20</td><td><code>SimilarTableTools.MAX_LISTED_COLUMNS</code>（超えたら<code>…Omitted</code>）</td></tr>
+    <tr><td><code>get_impact</code>の概要の各リスト（<code>direct</code>・<code>indirect</code>・<code>views</code>・<code>triggers</code>・<code>usages</code>・<code>unverified</code>）</td><td class="num muted">—</td><td class="num">50</td><td><code>ImpactTools.MAX_LISTED</code>（超えたら<code>more</code>。<code>indirectTotal</code>は常に）</td></tr>
+    <tr><td><code>get_impact</code>の<code>section</code>指定時の1ページ</td><td class="num">100</td><td class="num">500</td><td><code>Page.DEFAULT_LIMIT</code>・<code>Page.MAX_LIMIT</code>（ほかの一覧のツールと同じ）</td></tr>
+    <tr><td><code>get_impact</code>の間接参照の段数</td><td class="num muted">—</td><td class="num">3</td><td><code>RelationCounts.IMPACT_DEPTH</code>（<code>list_tables</code>の<code>impact</code>と同じ）</td></tr>
     <tr><td><code>get_related_tables</code>の<code>depth</code></td><td class="num">1</td><td class="num">3</td><td><code>RelationTools.MAX_DEPTH</code></td></tr>
     <tr><td><code>find_join_path</code>の<code>maxLength</code></td><td class="num">4</td><td class="num">6</td><td><code>RelationTools</code></td></tr>
     <tr><td><code>find_join_path</code>の<code>limit</code></td><td class="num">5</td><td class="num">20</td><td><code>RelationTools</code></td></tr>
@@ -1471,11 +1606,11 @@ erDiagram
     <tr><td class="file">package-info ×2</td><td>各パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.catalog：中心のロジック</td></tr>
-    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>・<code>junctions()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>）だけを持つ。<code>withViewpoints</code>・<code>withFunctionTableUsages</code>で観点・関数の利用テーブルを差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>SchemaSummary.summarize</code>（組み立て時に<code>JunctionTables</code>も作る）</td></tr>
+    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>・<code>junctions()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>・<code>impactOf</code>）だけを持つ。<code>withViewpoints</code>・<code>withFunctionTableUsages</code>で観点・関数の利用テーブルを差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>ImpactAnalyzer</code>・<code>SchemaSummary.summarize</code>（組み立て時に<code>JunctionTables</code>も作る）</td></tr>
     <tr><td class="file">TableCatalog</td><td>テーブル（ビューを含む）の一覧（関連の数での並べ替えを含む）・検索・名前の解決・カラムの逆引き・構造の似たテーブルの探索（<code>findSimilar</code>）・トリガーの一覧と、テーブルを走査して求める相互参照（参照しているビュー・関数を実行するトリガー・シーケンスや型を使うカラム）</td><td>← <code>SchemaCatalog.tables()</code>／→ <code>RelationGraph</code>・<code>SearchQuery</code>・<code>ColumnQuery</code>・<code>SimilarTableFinder</code>・<code>SqlNames</code></td></tr>
     <tr><td class="file">ObjectCatalog</td><td>関数（<code>FunctionOverloads</code>）・シーケンス・型に共通の、名前の順の一覧（<code>list</code>）と名前の解決（<code>lookup</code>。見つからなければ部分一致の候補）。テーブルの解決もここの汎用メソッドを使う。種類に固有の条件（型の種別）はツール側で絞る</td><td>← <code>SchemaCatalog</code>の<code>functions()</code>等・<code>TableCatalog</code></td></tr>
     <tr><td class="file">ViewpointCatalog</td><td>観点の一覧・idでの解決と、テーブルが所属する観点の逆引き（<code>containing</code>）</td><td>← <code>SchemaCatalog.viewpoints()</code></td></tr>
-    <tr><td class="file">FunctionTableUsages</td><td>関数・プロシージャが利用しているテーブルの参考情報を、スナップショットの関数（<code>FunctionEntry</code>）から引く窓口。キー（DB名・スキーマ名・名前）と引数で識別し、定義本体のハッシュが異なる古い参考情報は返さない（7.10節）</td><td>← <code>SchemaCatalog.functionTableUsages()</code>・<code>FunctionTools</code></td></tr>
+    <tr><td class="file">FunctionTableUsages</td><td>関数・プロシージャが利用しているテーブルの参考情報を、スナップショットの関数（<code>FunctionEntry</code>）から引く窓口。キー（DB名・スキーマ名・名前）と引数で識別し、定義本体のハッシュが異なる古い参考情報は返さない（7.10節）。<code>freshnessOf</code>は、参考情報が無い／古い／有効を区別して返す</td><td>← <code>SchemaCatalog.functionTableUsages()</code>・<code>FunctionTools</code>・<code>ImpactAnalyzer</code></td></tr>
     <tr><td class="file">RelationGraph</td><td>関連のグラフ。<code>outgoing</code>・<code>incoming</code>の索引、テーブルごとの関連の数（<code>counts</code>）、向きを問わず隣り合うテーブル（<code>adjacentTables</code>）、幅優先の<code>relatedTables</code>、指定したテーブル同士の関連（<code>among</code>）、全最短経路の<code>joinPaths</code>。公開クラスで、ツールは<code>SchemaCatalog.relations()</code>から直接呼ぶ</td><td>← 関連を扱うツール・<code>TableCatalog</code>・<code>ClusterDetector</code>・<code>JunctionTables</code></td></tr>
     <tr><td class="file">JunctionTables</td><td>中間テーブルの判定結果と、中間テーブルを介した多対多の関係の窓口。組み立て時に全テーブルを1回だけ判定し、<code>find</code>・<code>roleOf</code>・<code>manyToMany</code>で引く。スナップショットに無い親は多対多の相手にしない（7.11節）</td><td>← <code>SchemaCatalog.junctions()</code>・<code>TableFilter</code>・<code>TableTools</code>・<code>TableOutputBuilder</code>／→ <code>JunctionDetector</code>・<code>RelationGraph.outgoing</code></td></tr>
     <tr><td class="file">JunctionDetector</td><td>1テーブルが中間テーブルか判定する規則だけを持つ。主キーに収まる関連を候補にし（同じ列の組は外部キーを優先して1本、1対1は除く）、主キーを過不足なく覆い、外すと覆えなくなる組み合わせのうち最も関連の多いものを総当たりで探す。候補の上限<code>MAX_CANDIDATES</code>（12）</td><td>← <code>JunctionTables</code>（パッケージプライベート）</td></tr>
@@ -1484,7 +1619,8 @@ erDiagram
     <tr><td class="file">SimilarTableQuery</td><td>探す条件（基準のカラム・基準のテーブル・<code>minShared</code>・<code>minSimilarity</code>）。<code>ofTable</code>・<code>ofColumns</code>で組み立てる。正規化した名前が重なるカラムは先のものだけを残す</td><td>← <code>SimilarTableTools</code>／→ <code>SimilarTableFinder</code></td></tr>
     <tr><td class="file">SimilarTables<br>SimilarTable</td><td>探した結果（総数と、件数の上限までのテーブル）と、1テーブル分（類似度・種別・共通のカラム数・片方にだけあるカラム・型の違い<code>TypeMismatch</code>・<code>relatedToBase</code>）。型の違いの程度は<code>TypeDifference</code>（<code>type</code>・<code>size</code>）</td><td>← <code>SimilarTableFinder</code>／→ <code>SimilarTableTools</code></td></tr>
     <tr><td class="file">SimilarityKind</td><td>基準と相手のカラム名の集合の関係（<code>identical</code>・<code>superset</code>・<code>subset</code>・<code>overlap</code>）。閾値を使わず、片方にだけあるカラムの有無で決める</td><td>← <code>SimilarTableFinder</code></td></tr>
-    <tr><td class="file">ColumnType</td><td>型の表記を、括弧の外（名前）と内（長さ・精度）に分ける。括弧の対応が崩れた表記も例外にしない</td><td>← <code>SimilarTable.TypeMismatch</code></td></tr>
+    <tr><td class="file">ImpactAnalyzer</td><td>テーブルの影響範囲を、各窓口の情報から集める規則。参照元（直接と間接の分け方）・ビュー（ビューのビュー）・関数の逆引き（完全一致・確定と候補・オーバーロードの合算・ビュー経由）・参考情報の範囲と、確かめきれない関数（<code>unverified</code>）・シーケンスと型。DB名は完全一致で比べる。package-private（7.13節）</td><td>← <code>SchemaCatalog.impactOf</code>／→ <code>TableCatalog</code>・<code>RelationGraph</code>・<code>FunctionTableUsages</code>・<code>SqlNames</code></td></tr>
+    <tr><td class="file">TableImpact<br>FunctionUse<br>FunctionCoverage</td><td>影響範囲の結果。<code>TableImpact</code>は参照元（<code>IndirectReference</code>）・ビュー（<code>ViewReference</code>）・トリガー・関数（<code>FunctionImpact</code>）・シーケンス・型を持つ。<code>FunctionUse</code>は関数名と経路（自テーブルかビューか）ごとの1行、<code>FunctionCoverage</code>は参考情報の状態の数、<code>UnverifiedFunction</code>は確かめきれないオーバーロード1つ（理由は<code>Reason</code>）</td><td>← <code>ImpactAnalyzer</code>・<code>ImpactTools</code></td></tr>
     <tr><td class="file">ClusterDetector</td><td>関連のまとまりの推測。連結成分に分け、上限を超えるまとまりは被参照の最も多いテーブル（<code>HUB_MIN_INCOMING</code>以上）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルはハブごとに寄せる</td><td>← <code>SchemaCatalog.tableClusters</code>（パッケージプライベート）／→ <code>RelationGraph</code></td></tr>
     <tr><td class="file">TableClusters<br>TableCluster</td><td>まとまりを求めた結果（まとまり・ハブ・関連の無いテーブルの数、ハブの下限<code>HUB_MIN_INCOMING</code>）と、1つのまとまり（先頭が代表のテーブル）</td><td>← <code>ClusterDetector</code>／→ <code>ClusterTools</code></td></tr>
     <tr><td class="file">DiagramScope</td><td>ER図に描くテーブル・関連・スナップショットに無いテーブル。<code>nodes()</code>で箱として描くテーブル（関連の参照先で無いものを含む）を返す。<code>of(RelatedTables)</code>で関連をたどった結果から作る（7.9節）</td><td>← <code>RelationGraph.among</code>・<code>DiagramTools</code>／→ <code>MermaidErDiagram</code></td></tr>
@@ -1511,7 +1647,7 @@ erDiagram
     <tr><td class="file">SequenceEntry</td><td><code>sequences.jsonl</code>の1行（所有カラム）</td><td>← <code>SequenceTools</code></td></tr>
     <tr><td class="file">TypeEntry</td><td><code>types.jsonl</code>の1行（種別）</td><td>← <code>TypeTools</code></td></tr>
     <tr><td class="file">ViewpointEntry</td><td>観点（id・表示名・説明・所属テーブル）。<code>SchemaObject</code>ではない。所属の判定は<code>contains</code></td><td>← <code>InsightsDirectoryReader</code>・<code>ViewpointCatalog</code>・<code>ViewpointResolver</code>・<code>ViewpointTools</code></td></tr>
-    <tr><td class="file">FunctionTableUsageEntry</td><td>関数1つ分の参考情報（キー・引数・<code>definitionHash</code>・状態・<code>UsedTable</code>の列・動的SQL・<code>incomplete</code>・<code>overloadsMerged</code>）。<code>SchemaObject</code>ではない</td><td>← <code>InsightsDirectoryReader</code>・<code>FunctionTableUsages</code>・<code>FunctionTools</code></td></tr>
+    <tr><td class="file">FunctionTableUsageEntry</td><td>関数1つ分の参考情報（キー・引数・<code>definitionHash</code>・状態・<code>UsedTable</code>の列・動的SQL・<code>incomplete</code>・<code>overloadsMerged</code>）。<code>SchemaObject</code>ではない。<code>UsedTable.matches</code>が、利用しているテーブルが指定したテーブルを指すか（確定／候補）を判定する</td><td>← <code>InsightsDirectoryReader</code>・<code>FunctionTableUsages</code>・<code>FunctionTools</code>・<code>ImpactAnalyzer</code></td></tr>
     <tr><td class="file">Relation</td><td>グラフの辺（参照元・参照先・カラム・由来・多重度・名前）。<code>otherSide</code>で反対側、<code>isOneToOne</code>で1対1か</td><td>← <code>RelationGraph</code>／→ 結果の<code>RelationOutput</code></td></tr>
     <tr><td class="file">RelationKind</td><td><code>FOREIGN_KEY</code>・<code>LOGICAL_RELATION</code></td><td>← <code>Relation</code>・<code>ColumnHit</code></td></tr>
     <tr><td class="file">Direction</td><td>たどる向き（<code>OUTGOING</code>・<code>INCOMING</code>・<code>BOTH</code>）</td><td>← <code>RelationTools</code>・<code>RelationGraph</code></td></tr>
@@ -1526,7 +1662,7 @@ erDiagram
     <tr><td class="file">package-info</td><td>パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.tool：MCPのツール</td></tr>
-    <tr><td class="file">TableDefinitionTools</td><td>11のツールクラスの<code>specifications()</code>を並べてSDKへ渡す。並び順がクライアントに見える順</td><td>← <code>McpServerMain</code>／→ 各<code>*Tools</code></td></tr>
+    <tr><td class="file">TableDefinitionTools</td><td>12のツールクラスの<code>specifications()</code>を並べてSDKへ渡す。並び順がクライアントに見える順</td><td>← <code>McpServerMain</code>／→ 各<code>*Tools</code></td></tr>
     <tr><td class="file">ToolSpecifications</td><td><code>readOnlyTool</code>（全ツールの包み・注釈・<code>isError</code>への変換）と、<code>inputSchema</code>の部品（<code>objectSchema</code>・<code>stringProperty</code>等）</td><td>← 全<code>*Tools</code></td></tr>
     <tr><td class="file">ToolArguments</td><td>引数の読み取りと、入力スキーマで表せない検証。文字列は前後の空白を除く、リストは配列を受ける（文字列も許す<code>table</code>ではカンマ区切りも）、選択肢は完全一致で照合する。型・範囲・<code>enum</code>・未知の引数はSDKに任せる</td><td>← 全<code>*Tools</code>・<code>Page</code>・<code>ObjectResolver</code></td></tr>
     <tr><td class="file">InvalidToolArgumentException</td><td>入力スキーマで表せない引数の誤り（空・件数・見つからない名前等）。メッセージはAIへの直し方の指示</td><td>→ <code>readOnlyTool</code>が<code>isError</code>に変換</td></tr>
@@ -1541,6 +1677,7 @@ erDiagram
     <tr><td class="file">TableTools</td><td><code>search_tables</code>・<code>list_tables</code>・<code>get_table</code>・<code>find_columns</code>。引数から<code>TableFilter</code>（<code>erRole</code>を含む）・<code>TableOrder</code>を組み立てる、一覧・検索の各行に<code>erRole</code>を添える、<code>get_table</code>の複数件の名前をまとめて解決する</td><td>→ 検索・一覧・解決のメソッド、<code>ViewpointResolver</code>・<code>TableOutputBuilder</code></td></tr>
     <tr><td class="file">TableOutputBuilder</td><td><code>get_table</code>の1テーブル分の結果の組み立て。元の1行に<code>sections</code>・<code>columns</code>の絞り込み、参照しているビュー、所属する観点、ER上の区分（<code>erRole</code>・<code>junctionOf</code>）と多対多の相手（<code>manyToMany</code>。上限<code>MAX_MANY_TO_MANY</code>）を反映する</td><td>← <code>TableTools</code>・<code>TableDefinitionResources</code>／→ <code>tables().viewsReferencing</code>・<code>viewpoints().containing</code>・<code>junctions()</code></td></tr>
     <tr><td class="file">SimilarTableTools</td><td><code>find_similar_tables</code>。<code>table</code>と<code>columns</code>のどちらか一方を受け、基準を解決して範囲（<code>table</code>なら基準と同じDB）を組み立てる。片方にだけあるカラムは20件までにし、該当なしのときは条件のゆるめ方を<code>message</code>で示す</td><td>→ <code>tables().lookup</code>・<code>tables().findSimilar</code>・<code>ObjectResolver</code>・<code>ViewpointResolver</code></td></tr>
+    <tr><td class="file">ImpactTools</td><td><code>get_impact</code>。<code>table</code>を解決して<code>impactOf</code>を呼び、<code>affected</code>（参照元・ビュー・トリガー・関数）と<code>dependsOn</code>（シーケンス・型）に分けて返す。概要の各リストは50件まで（<code>MAX_LISTED</code>）で、超えた分は<code>section</code>・<code>offset</code>・<code>limit</code>で読む（<code>Section</code>列挙型）。<code>functions.preview</code>・<code>coverage</code>・<code>unverified</code>と固定文の<code>notes</code>で、参考値であることと読み方を伝える</td><td>← <code>TableDefinitionTools</code>／→ <code>SchemaCatalog.impactOf</code></td></tr>
     <tr><td class="file">RelationTools</td><td><code>get_related_tables</code>・<code>find_join_path</code>。<code>kindName</code>で由来を<code>foreignKey</code>/<code>logicalRelation</code>に</td><td>→ <code>relations().relatedTables</code>・<code>relations().joinPaths</code></td></tr>
     <tr><td class="file">DiagramTools</td><td><code>get_er_diagram</code>。<code>table</code>と<code>viewpoint</code>のどちらか一方を受け、範囲を求めて<code>MermaidErDiagram</code>で書く。描くテーブルの上限<code>MAX_NODES</code>（80）</td><td>→ <code>relations().relatedTables</code>・<code>relations().among</code>・<code>ViewpointResolver</code>・<code>MermaidErDiagram</code></td></tr>
     <tr><td class="file">MermaidErDiagram</td><td><code>DiagramScope</code>からMermaidの<code>erDiagram</code>を組み立てる。表記はcliの<code>MermaidSupport</code>に揃え、DB由来の名前の識別子・表示名・型を無害化する（7.9節）</td><td>← <code>DiagramTools</code></td></tr>
@@ -1563,16 +1700,19 @@ erDiagram
     <tr><td class="file">SchemaCatalogTest</td><td>スキーマごとの数・テーブルの一覧・関連のまとまり</td><td>→ <code>SchemaCatalog</code></td></tr>
     <tr><td class="file">JunctionDetectorTest<br>JunctionTablesTest<br>JunctionFixtures</td><td>中間テーブルの判定（複合主キー・論理リレーション・同じ列の関連の統合・列を共有する関連・余分な関連・組み合わせの選び方・1対1の除外・候補数の上限）／多対多の相手（自己多対多・3つ以上の親・スナップショットに無い親）／テスト用の関連・テーブルの補助</td><td>→ <code>JunctionDetector</code>・<code>JunctionTables</code></td></tr>
     <tr><td class="file">SimilarTableFinderTest<br>ColumnTypeTest</td><td>構造の似たテーブル（種別・汎用のカラムの重みとDB全体での数え方・基準自身を数えないこと・類似度の上限・下限・<code>relatedToBase</code>・ビューの除外・範囲・正規化・型の違い・並びと件数）／型の表記の分解</td><td>→ 各クラス</td></tr>
+    <tr><td class="file">ImpactAnalyzerTest<br>FunctionTableUsageEntryTest</td><td>影響範囲の集約（直接と間接の分け方・自己参照・<code>impact</code>との整合、ビューのビューと循環、関数の逆引きの完全一致・確定と候補・ビュー経由・オーバーロードの合算・別DBの除外、参考情報の状態と範囲の数え方、確かめきれない関数の理由と並び、確定と候補が混ざるオーバーロード、シーケンスと型）／<code>UsedTable.matches</code>の確定・候補・大文字小文字</td><td>→ <code>ImpactAnalyzer</code>・<code>FunctionTableUsageEntry</code></td></tr>
     <tr><td class="file">SearchQueryTest<br>SqlNamesTest</td><td>点数・AND・正規化／名前の取り出し</td><td>→ 各クラス</td></tr>
     <tr><td class="file">TestTables<br>TestCatalogs<br>Lookups</td><td>テスト用のテーブルのビルダー／テーブルだけから<code>SchemaCatalog</code>を組み立てる補助／<code>Lookup</code>から値を取り出す補助</td><td>← catalogのテスト</td></tr>
     <tr><td class="file">SnapshotDirectoryReaderTest</td><td>読み込みと起動時の誤り（ファイル名・行番号）、関数の定義本体のハッシュ</td><td>→ <code>SnapshotDirectoryReader</code></td></tr>
     <tr><td class="file">SampleSnapshotContractTest</td><td>cliのベースライン<code>docs/sample/postgres/output/snapshot</code>を読む契約テスト。cliの形式変更への追従漏れを検知。サンプルで中間テーブルと判定されるのが<code>project_assignment</code>だけであること、<code>employee_history</code>が<code>employee</code>の<code>superset</code>（型の違いは<code>size</code>）として見つかることも確かめる</td><td>→ ベースライン</td></tr>
     <tr><td class="file">InsightsDirectoryReaderTest</td><td>観点・関数の利用テーブルの読み込みと兄弟ディレクトリの解決（DB名・スキーマ名はファイルの中の値）</td><td>→ <code>InsightsDirectoryReader</code></td></tr>
     <tr><td class="file">SampleInsightsContractTest</td><td>ベースラインの観点と、スナップショットのテーブルのキーが一致すること</td><td>→ ベースライン</td></tr>
-    <tr><td class="file">FunctionTableUsagesTest</td><td>参考情報と関数の対応付け（キー・引数・定義本体のハッシュ。ハッシュが異なる古い参考情報・ハッシュを持たない参考情報は返さない）</td><td>→ <code>FunctionTableUsages</code></td></tr>
-    <tr><td class="file">SampleFunctionTableUsagesContractTest</td><td>cliの<code>--preview</code>の差分のベースライン（<code>docs/sample/postgres/output-preview</code>）の参考情報が読めて、スナップショットの関数（既定のベースライン）と対応付くことの契約テスト。cliのハッシュの求め方・形式の変更への追従漏れを検知</td><td>→ ベースライン</td></tr>
+    <tr><td class="file">FunctionTableUsagesTest</td><td>参考情報と関数の対応付け（キー・引数・定義本体のハッシュ。ハッシュが異なる古い参考情報・ハッシュを持たない参考情報は返さない）と、参考情報の状態（有効／無い／古い）</td><td>→ <code>FunctionTableUsages</code></td></tr>
+    <tr><td class="file">SampleFunctionTableUsagesContractTest</td><td>cliの<code>--preview</code>の差分のベースライン（<code>docs/sample/postgres/output-preview</code>）の参考情報が読めて、スナップショットの関数（既定のベースライン）と対応付くことの契約テスト。cliのハッシュの求め方・形式の変更への追従漏れを検知。サンプルの<code>employee</code>の影響範囲（自己参照・ビューのビュー・関数5つ）も確かめる</td><td>→ ベースライン</td></tr>
+    <tr><td class="file">SampleOracleImpactContractTest</td><td>Oracleのサンプル（<code>docs/sample/oracle/output</code>と<code>output-preview</code>）で、<code>EMPLOYEE</code>の影響範囲を求められること。トリガーが関数名を持たず、<code>triggersWithoutFunction</code>に数が出て、トリガーが触るテーブルは含まれないことを確かめる</td><td>→ ベースライン</td></tr>
     <tr><td class="file">TableDefinitionToolsTest</td><td>全ツールの結果のJSON・エラー。<code>callHandler().apply(null, …)</code>で直接呼ぶため、SDKの入力検証は通らない</td><td>→ <code>TableDefinitionTools</code></td></tr>
     <tr><td class="file">ErRoleToolsTest<br>SimilarTableToolsTest</td><td><code>erRole</code>・<code>junctionOf</code>・<code>manyToMany</code>（上限と<code>manyToManyTotal</code>を含む）と<code>erRole</code>での絞り込み／<code>find_similar_tables</code>の結果・引数の誤り・<code>message</code></td><td>→ <code>TableDefinitionTools</code></td></tr>
+    <tr><td class="file">ImpactToolsTest</td><td><code>get_impact</code>の結果のJSON（<code>affected</code>・<code>dependsOn</code>・<code>functions.preview</code>）、上限と総数・<code>more</code>、<code>section</code>・<code>offset</code>・<code>limit</code>のページング、<code>section</code>なしの<code>offset</code>のエラー、値の無い項目の省略、<code>notes</code>の出し分け、存在しないテーブルのエラー</td><td>→ <code>TableDefinitionTools</code></td></tr>
     <tr><td class="file">ToolArgumentsTest</td><td>引数の読み取り（空白・型・カンマ区切り・列挙）</td><td>→ <code>ToolArguments</code></td></tr>
     <tr><td class="file">MermaidErDiagramTest</td><td>DB由来の名前（記号・二重引用符・改行）の無害化と、識別子が重なったときの連番</td><td>→ <code>MermaidErDiagram</code></td></tr>
     <tr><td class="file">SampleErDiagramContractTest</td><td>観点のER図が、cliの観点ページ（ベースライン）のER図と同じ記述になることの契約テスト。表記のずれを検知</td><td>→ ベースライン</td></tr>
@@ -1618,6 +1758,16 @@ erDiagram
   <li>サンプルでの判定・結果は<code>SampleSnapshotContractTest</code>が確かめています。サンプルのDDLにテーブルを足すと、中間テーブルの判定・多対多の相手・類似の結果が変わることがあるため、このテストとガイドの例を見直します（<code>employee_history</code>を足したときは、検索・関連の数・まとまり・ER図の例が変わった）。</li>
   <li>判定の条件・結果の項目はツールの説明（<code>TableTools</code>・<code>SimilarTableTools</code>）と<code>docs/usage/mcp-server.md</code>にも書いてあるため、合わせて直します。どちらもスナップショットに入れない導出した値なので、cliの形式は変わりません。</li>
   <li>中間テーブル以外のER上の区分を足すときは、<code>ErRole</code>に値を足します。入力スキーマの<code>enum</code>はここから作られ、<code>TableTools.tableFilter</code>の<code>switch</code>が網羅していないとコンパイルが通りません。</li>
+</ul>
+
+<h3>影響範囲の集め方を変えるとき</h3>
+<ul>
+  <li>集め方の規則は<code>catalog</code>の<code>ImpactAnalyzer</code>にあり、結果を表すrecord（<code>TableImpact</code>・<code>FunctionUse</code>・<code>FunctionCoverage</code>）は規則を持ちません。ツール側（<code>ImpactTools</code>）は、record・JSONの形と上限、固定文の<code>notes</code>だけを持ちます。</li>
+  <li><code>affected.functions</code>は、cliの<code>--preview</code>の参考情報に依存するため、互換性の約束の対象外です。ツールの説明・結果の<code>functions.preview</code>・<code>notes</code>・<code>docs/usage/mcp-server.md</code>の4か所に「参考値であり、載っていなくても使われていないとは限らない」ことを書き続けます。</li>
+  <li>サンプルでの結果は<code>SampleFunctionTableUsagesContractTest</code>（PostgreSQL）と<code>SampleOracleImpactContractTest</code>（Oracle）が確かめています。サンプルのDDLに関数・トリガー・ビューを足すと、<code>employee</code>の影響範囲が変わることがあるため、ベースラインを出し直したら、これらのテストを見直します（<code>./gradlew :mcp-server:test</code>）。</li>
+  <li><code>direct</code>・<code>indirect</code>の分け方を変えるときは、<code>list_tables</code>の<code>impact</code>（<code>RelationGraph</code>）との整合を保ちます。<code>ImpactAnalyzerTest</code>と契約テストが、自己参照を含めて確かめています。</li>
+  <li>関数の参考情報の状態を足すときは、<code>FunctionTableUsages.Freshness</code>と<code>FunctionCoverage</code>の項目、<code>ImpactTools</code>の<code>Coverage</code>・<code>notes</code>を合わせて直します。定義本体を読めば確かめられる状態なら、<code>UnverifiedFunction.Reason</code>と<code>UnverifiedRef</code>にも足します。</li>
+  <li>リストを足す・分けるときは、<code>ImpactTools.Section</code>（<code>section</code>の値と<code>items</code>）、概要の上限（<code>Affected</code>・<code>Functions</code>の<code>head</code>）、<code>more</code>の順を揃えます。<code>section</code>の値は、概要でそのリストを持つキーの名前と同じにします。<code>section</code>の値は、ツールの入力スキーマの<code>enum</code>に使われるため、変えると呼び出し側が壊れます。</li>
 </ul>
 
 <h3>ER図の表記・リソースを変えるとき</h3>

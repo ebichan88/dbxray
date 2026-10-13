@@ -73,6 +73,7 @@ class McpServerProcessTest {
               "find_similar_tables",
               "get_related_tables",
               "find_join_path",
+              "get_impact",
               "get_er_diagram",
               "list_functions",
               "get_function",
@@ -131,6 +132,45 @@ class McpServerProcessTest {
                   .build());
       assertFalse(Boolean.TRUE.equals(similar.isError()), () -> text(similar));
       assertTrue(text(similar).contains("\"name\":\"sample.attendance_note\""), text(similar));
+
+      final CallToolResult impact =
+          client.callTool(
+              CallToolRequest.builder("get_impact").arguments(Map.of("table", "employee")).build());
+      assertFalse(Boolean.TRUE.equals(impact.isError()), () -> text(impact));
+      assertTrue(
+          text(impact)
+              .contains(
+                  "\"views\":[{\"view\":\"sample.employee_directory_view\",\"type\":\"view\"}"),
+          text(impact));
+      assertTrue(text(impact).contains("\"preview\":true"), text(impact));
+      assertTrue(
+          text(impact).contains("\"analyzed\":0"),
+          "既定のベースラインにはプレビューの参考情報が無いため、解析済みの関数は無い: " + text(impact));
+      assertTrue(text(impact).contains("--preview"), "参考情報が無い場合の対応をnotesで示す: " + text(impact));
+      assertFalse(
+          text(impact).contains("\"unverified\""),
+          "参考情報が無い関数は、件数とnotesだけで伝え、unverifiedに挙げない: " + text(impact));
+
+      final CallToolResult impactViews =
+          client.callTool(
+              CallToolRequest.builder("get_impact")
+                  .arguments(Map.of("table", "employee", "section", "views", "limit", 1))
+                  .build());
+      assertFalse(Boolean.TRUE.equals(impactViews.isError()), () -> text(impactViews));
+      assertTrue(text(impactViews).contains("\"section\":\"views\""), text(impactViews));
+      assertTrue(text(impactViews).contains("\"total\":2"), text(impactViews));
+      assertTrue(text(impactViews).contains("\"nextOffset\":1"), text(impactViews));
+      assertTrue(
+          text(impactViews).contains("\"view\":\"sample.employee_directory_view\""),
+          text(impactViews));
+
+      final CallToolResult impactWithoutSection =
+          client.callTool(
+              CallToolRequest.builder("get_impact")
+                  .arguments(Map.of("table", "employee", "offset", 1))
+                  .build());
+      assertTrue(Boolean.TRUE.equals(impactWithoutSection.isError()));
+      assertTrue(text(impactWithoutSection).contains("section"), text(impactWithoutSection));
 
       final CallToolResult function =
           client.callTool(
