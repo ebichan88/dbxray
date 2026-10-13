@@ -24,7 +24,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `mcp`（直下） | `McpServerMain` | エントリーポイント。起動引数の検証とスナップショット・参考情報の読み込みの後、stdioのトランスポートでサーバーを起動する |
 | | `ServerArguments` | 起動引数（`--snapshot=<ディレクトリ>`）の解釈と検証 |
 | | `UserCorrectableException` | 利用者が起動引数・スナップショットを見直せば解消する失敗。起動時に標準エラーへ出して終了コード2で終了する |
-| `mcp.catalog` | `SchemaCatalog` | 全オブジェクトを保持し、関心ごとの窓口（`tables()`・`functions()`・`sequences()`・`types()`・`viewpoints()`・`relations()`・`junctions()`）を返す。自身が持つのは複数の窓口にまたがる処理（スキーマごとの数・テーブルのまとまり）だけ。観点（`ViewpointEntry`）は`withViewpoints`で組み立て後に合成する |
+| `mcp.catalog` | `SchemaCatalog` | 全オブジェクトを保持し、関心ごとの窓口（`tables()`・`functions()`・`sequences()`・`types()`・`viewpoints()`・`relations()`・`junctions()`）を返す。自身が持つのは複数の窓口にまたがる処理（スキーマごとの数・テーブルのまとまり・テーブルの影響範囲）だけ。観点（`ViewpointEntry`）は`withViewpoints`で組み立て後に合成する |
 | | `TableCatalog` | テーブル（ビューを含む）の検索・一覧・名前の解決、カラムの逆引き、トリガーの一覧と、テーブルを走査して求める相互参照（テーブルを参照するビュー、関数を実行するトリガー、シーケンス・型を使うカラム） |
 | | `ObjectCatalog` | 関数（`FunctionOverloads`）・シーケンス・ユーザー定義型に共通の、一覧と名前の解決（見つからない場合の候補を含む）。種類を足しても`SchemaCatalog`にメソッドは増えない。型の種別での絞り込み等、種類に固有の条件はツール側で行う |
 | | `ViewpointCatalog` | 観点の一覧・識別子での解決と、テーブルから所属する観点の逆引き（`containing`） |
@@ -39,7 +39,8 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | | `ClusterDetector`・`TableClusters`・`TableCluster` | 関連のつながりだけから推測するテーブルのまとまり（`list_table_clusters`の元）。連結成分を1つのまとまりとし、上限を超えるまとまりは被参照の最も多いテーブル（`TableClusters.HUB_MIN_INCOMING`以上から参照される共通のマスタ）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルは、被参照の最も多いハブごとにまとめる。呼び出しのたびに求める（範囲・上限が引数で変わるため） |
 | | `SqlNames`・`TableColumn` | カラムの型・デフォルト値（`nextval`）・トリガーの関数名に現れるオブジェクトの名前の判定（相互参照に使う）と、カラムとそれを持つテーブル |
 | | `TableEntry`・`ColumnEntry`・`RelationEntry`・`TriggerEntry`・`ObjectKey`・`DatabaseEntry` | スナップショットの1行のうち、検索・一覧・逆引き・関連のたどりに使う項目 |
-| | `FunctionTableUsageEntry`・`FunctionTableUsages` | 関数・プロシージャが利用しているテーブルの参考情報1件（cliの`--preview`で出力する。状態・テーブルごとの操作・スキーマが決まらない名前の決まり方と候補・動的SQL・抽出元の定義本体のハッシュ）と、スナップショットの関数（キーと引数）から引く窓口（`SchemaCatalog#functionTableUsages`。定義本体のハッシュが`FunctionEntry`と異なる古い参考情報は返さない） |
+| | `FunctionTableUsageEntry`・`FunctionTableUsages` | 関数・プロシージャが利用しているテーブルの参考情報1件（cliの`--preview`で出力する。状態・テーブルごとの操作・スキーマが決まらない名前の決まり方と候補・動的SQL・抽出元の定義本体のハッシュ）と、スナップショットの関数（キーと引数）から引く窓口（`SchemaCatalog#functionTableUsages`。定義本体のハッシュが`FunctionEntry`と異なる古い参考情報は返さない）。`FunctionTableUsages#freshnessOf`は、参考情報が無い／古い／有効を区別して返す（`find`が空を返す理由で、利用者がすべきことが違うため）。`UsedTable#matches`は、利用しているテーブルが指定したテーブルを指すか（確定／候補）を、大文字小文字を区別して判定する（参考情報はカタログ上の名前で出力されるため） |
+| | `ImpactAnalyzer`・`TableImpact`・`FunctionUse`・`FunctionCoverage` | テーブルの影響範囲の集約（`get_impact`の元。窓口は`SchemaCatalog#impactOf`）。複数の窓口にまたがるため`SchemaCatalog`に置き、集め方の規則は`ImpactAnalyzer`が持つ（`ClusterDetector`と同じ）。参照元は`RelationGraph#relatedTables`（`INCOMING`・`RelationCounts.IMPACT_DEPTH`段）の結果を、段1の関連（自己参照を含む）と、段1に現れないテーブル（最小の段数・最初に見つけた関連の参照先`via`）に分ける（`list_tables`の`impact`＝段1の参照元と間接のテーブルの、自テーブルを除く重複しない数）。ビューは`viewsReferencing`をビューのビューまで段ごとにたどり、循環しても同じビューは1度しか数えない。関数は、同じDBの関数を関数名ごとにまとめ、自テーブルと参照するビューを使うものを求める（オーバーロードは一致したものを合算し、確定を候補より優先し、候補だけで一致した場合は`possible`）。`FunctionCoverage`は、同じDBの関数の参考情報の状態を数える（解析済み・解析不可・参考情報なし・古い。動的SQLあり・読み切れなかったものは解析済みの内数）。スナップショットの値だけを組み合わせ、新しい値を足さない。呼び出しのたびに求める。参考情報（`--preview`）に依存する関数の項目だけが、互換性の約束の対象外 |
 | | `ViewpointEntry` | 観点の参考情報1件（識別子・表示名・説明・所属テーブル）。スキーマを持たないため`SchemaObject`は実装しない。テーブルから所属する観点は`ViewpointCatalog#containing`で逆引きする（読み込み済みの観点を引くだけで、索引は持たない） |
 | | `FunctionEntry`・`FunctionOverloads`・`SequenceEntry`・`TypeEntry` | 関数・シーケンス・ユーザー定義型の1行。関数は同名のもの（オーバーロード）を`FunctionOverloads`にまとめて名前の解決の単位にする。関数は参考情報と照らすため、定義本体のハッシュ（読み込み時に`SnapshotDirectoryReader`が求める）を持つ |
 | | `NameFilter` | 関数・シーケンス・型の一覧を、名前の部分一致で絞り込む条件 |
@@ -47,7 +48,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | | `SchemaSummary` | スキーマごとのオブジェクトの数（`list_schemas`の元）。集計は`SchemaSummary.summarize`が行う。数え方（オーバーロードはそれぞれ・トリガーはテーブルに属するもの）はcliのREADMEの集計（`DatabaseMetrics`）に揃える |
 | `mcp.snapshot` | `SnapshotDirectoryReader` | スナップショットのディレクトリ（`tables.jsonl`・`functions.jsonl`・`sequences.jsonl`・`types.jsonl`）を読み込み`SchemaCatalog`を組み立てる。未知の項目は無視し、無いファイルは0件とする（cliの`target.objects`で外せるため） |
 | `mcp.insight` | `InsightsDirectoryReader` | 参考情報のディレクトリ（`{DB名}/viewpoints.json`・`{DB名}/{スキーマ名}/functionTableUsages.json`）を読み込み`ViewpointEntry`・`FunctionTableUsageEntry`のリストを組み立てる。渡されたスナップショットのディレクトリの親の兄弟を自前で求めるため、起動引数は増えない。ディレクトリ・ファイルが無い場合は0件とする |
-| `mcp.tool` | `TableDefinitionTools` | MCPサーバーへ登録するツールの一覧。ツールは関心ごとのクラス（`SchemaTools`・`ViewpointTools`・`ClusterTools`・`TableTools`・`SimilarTableTools`・`RelationTools`・`DiagramTools`・`FunctionTools`・`SequenceTools`・`TypeTools`・`TriggerTools`）に分けて定義する |
+| `mcp.tool` | `TableDefinitionTools` | MCPサーバーへ登録するツールの一覧。ツールは関心ごとのクラス（`SchemaTools`・`ViewpointTools`・`ClusterTools`・`TableTools`・`SimilarTableTools`・`RelationTools`・`ImpactTools`・`DiagramTools`・`FunctionTools`・`SequenceTools`・`TypeTools`・`TriggerTools`）に分けて定義する |
 | | `ToolSpecifications`・`ToolResults`・`ObjectResolver`・`Page` | ツールの定義の組み立て、結果のJSON化、名前の解決とエラーの文言、一覧の範囲（`offset`・`limit`と、一覧の件数の既定値・上限） |
 | | `TableOutputBuilder` | `get_table`の1テーブル分の結果の組み立て（スナップショットの1行に、`sections`・`columns`の絞り込みと、参照しているビュー・所属する観点・ER上の区分と多対多を反映する） |
 | | `MermaidErDiagram` | `get_er_diagram`のMermaid記法の組み立て。表記・エスケープはcliの`MermaidSupport`に揃える（cliのコードには依存できないため、同じ規則をmcp-server側にも持つ。ずれは`SampleErDiagramContractTest`で検知する） |
@@ -69,6 +70,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `find_similar_tables` | `table`か`columns`（どちらか一方）、`schema`・`database`・`viewpoint`・`minShared`・`minSimilarity`・`limit`（任意） | 構造が似ているテーブル（類似度・種別・共通のカラム数・基準にだけある／相手にだけあるカラム・型の違い・基準との直接の関連の有無）と、総数。`schema`・`viewpoint`はどちらの指定でも探す範囲の絞り込みに使い、`table`を指定した場合は基準と同じDBから探す（基準は`スキーマ名.テーブル名`と`database`で特定し、`schema`は使わない。複数に当てはまる場合のエラーは`ObjectResolver`に渡した案内でその形を示す）。`onlyInBase`・`onlyInOther`は`FindSimilarTablesOutput`の上限（20件）まで返し、省いた数を示す。条件を満たすテーブルが無い場合は`message`で条件のゆるめ方を示す（基準のカラム数が`minShared`に満たない場合は、下げる値を示す）。`table`と`columns`の指定の誤りは`DiagramTools`の`table`・`viewpoint`と同じく、ツールのエラーで返す |
 | `get_related_tables` | `table`、`depth`（1〜3）・`direction`（outgoing/incoming/both）等（任意） | 関連（どのカラム同士か・外部キーか論理リレーションか・多重度・段数）と、関連に現れたテーブルの概要 |
 | `find_join_path` | `from`・`to`、`maxLength`（1〜6）・`limit`等（任意） | 2つのテーブルをつなぐ最短の経路（たどる順のテーブルと、各段の関連）。同じ長さの経路はすべて（`limit`まで）返す |
+| `get_impact` | `table`、`schema`・`database`（任意） | 影響を受けるもの（`affected`: 参照元`referencedBy`の`direct`・`indirect`、ビュー`views`、トリガー`triggers`、関数`functions`）と、依存するもの（`dependsOn`: シーケンス・型）。向きが逆の情報を同じ階層に並べないよう、キーで分ける。`functions`は`preview: true`・`coverage`・`usages`を持ち、参考情報の参考値であることをJSONと説明で伝える。各リストは`ImpactTools.MAX_LISTED`（50件）までで、超えた場合は`〇〇Total`（`indirectTotal`は常に）で総数を示す。並びは決定的（`direct`は参照元・種別・関連名、`indirect`・`views`は段数・`ObjectKey`、`usages`は関数のキー）。`notes`は固定文で、参考情報が無い・古い関数や、関数名を持たないトリガー（Oracle）があれば、その対応も示す |
 | `get_er_diagram` | `table`か`viewpoint`（どちらか一方）、`depth`・`direction`（`table`のときだけ）等（任意） | ER図のMermaid記法（`erDiagram`）と、図に描いたテーブル。`table`は`get_related_tables`と同じ範囲を、`viewpoint`は所属テーブルと所属テーブル同士の関連（`RelationGraph#among`）を描く。描くテーブルは`DiagramTools.MAX_NODES`（cliの`erDiagramMaxNodes`の既定値）まで |
 | `list_functions`・`get_function` | `query`等（任意）／`function`、`includeDefinition`（任意） | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）。`get_function`はオーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。参考情報がある場合はオーバーロードごとに利用しているテーブル（`tableUsage`）も返す |
 | `list_sequences`・`get_sequence` | `query`等（任意）／`sequence` | シーケンスの名前・所有カラム／スナップショットの1行と、採番に使うカラム（`usedByColumns`） |
@@ -192,13 +194,14 @@ mcp-serverはcliのスナップショットのrecordを共有せず、読み込�
 
 | テスト | 対象 |
 |---|---|
-| `catalog`配下 | 検索の順位・AND・正規化、一覧、カラムの逆引き、名前の解決、相互参照、関連のたどり（向き・段数・自己参照・スナップショットに無い参照先）、JOIN経路の探索、関連のまとまり（ハブの除去・ハブとの間にしか関連の無いテーブルの寄せ方・範囲外との関連の扱い）、観点の一覧・解決・テーブルの絞り込み・テーブルからの逆引き、中間テーブルの判定（複合主キー・論理リレーション・同じ列の関連の統合・列を共有する関連・余分な関連・組み合わせの選び方・1対1の関連の除外・1対1の拡張や複合外部キー1本の除外・候補数の上限・自己多対多・3つ以上の親・スナップショットに無い親）と多対多の相手、ER上の区分での絞り込み、構造の似たテーブルの探索（同一・包含・重なりの種別、汎用のカラムの重みとDB全体での数え方、基準自身を重みに数えないこと、類似度の上限、共通のカラム数・類似度の下限、直接関連するテーブルの印、ビューの除外、DB・スキーマ・観点の範囲、カラム名の正規化、型の違いと型の表記の分解、並びと件数の上限） |
+| `catalog`配下 | 検索の順位・AND・正規化、一覧、カラムの逆引き、名前の解決、相互参照、関連のたどり（向き・段数・自己参照・スナップショットに無い参照先）、JOIN経路の探索、関連のまとまり（ハブの除去・ハブとの間にしか関連の無いテーブルの寄せ方・範囲外との関連の扱い）、観点の一覧・解決・テーブルの絞り込み・テーブルからの逆引き、中間テーブルの判定（複合主キー・論理リレーション・同じ列の関連の統合・列を共有する関連・余分な関連・組み合わせの選び方・1対1の関連の除外・1対1の拡張や複合外部キー1本の除外・候補数の上限・自己多対多・3つ以上の親・スナップショットに無い親）と多対多の相手、ER上の区分での絞り込み、構造の似たテーブルの探索（同一・包含・重なりの種別、汎用のカラムの重みとDB全体での数え方、基準自身を重みに数えないこと、類似度の上限、共通のカラム数・類似度の下限、直接関連するテーブルの印、ビューの除外、DB・スキーマ・観点の範囲、カラム名の正規化、型の違いと型の表記の分解、並びと件数の上限）、影響範囲の集約（直接と間接の分け方・自己参照・`impact`との整合、ビューのビューと循環、関数の逆引きの完全一致・確定と候補・ビュー経由・オーバーロードの合算・別DBの除外、参考情報の状態と範囲の数え方、シーケンスと型） |
 | `SnapshotDirectoryReaderTest` | 読み込みと、起動時の誤り（ファイル名・行番号を含むメッセージ） |
 | `SampleSnapshotContractTest` | ベースラインとの契約（上記）。サンプルの中間テーブル（`project_assignment`）だけが中間テーブルと判定され、`project`と`employee`が多対多の相手になること、1対1の拡張（`employee_profile`）・複合外部キー（`shipment`）は判定されないことも確かめる。カラム名から構造の似たテーブル（`attendance_note`）を探せることと、外部キーでつながるテーブル（`attendance`）を除かずに印を付けること、`employee`を参照する履歴テーブル（`employee_history`）を`superset`として返し、桁数だけの型の違いを`size`として返すことも確かめる |
 | `SampleErDiagramContractTest` | 観点のER図が、cliの観点ページ（ベースライン）のER図と同じ記述になること（表記・エスケープのずれの検知） |
 | `InsightsDirectoryReaderTest` | 読み込み（兄弟ディレクトリの解決を含む）と、起動時の誤り |
 | `SampleInsightsContractTest` | ベースラインとの契約（観点の所属テーブルを含む。スナップショットのテーブルから所属する観点を逆引きできること＝両者のキーが一致すること） |
 | `tool`配下 | ツールの結果のJSON・エラー・引数の検証、リソースの一覧（名前・説明・URI・表示用文字列の制御文字の除去）と読み出し |
+| `SampleFunctionTableUsagesContractTest`・`SampleOracleImpactContractTest` | cliの`--preview`の差分のベースライン（`docs/sample/{postgres,oracle}/output-preview`）が、スナップショットのベースラインの関数と対応付けられ、サンプルの`employee`の影響範囲を求められること。Oracleのサンプルでは、トリガーが関数名を持たず、`coverage.triggersWithoutFunction`にその数が出て、トリガーが触るテーブル（関数）は含まれないことも確かめる |
 | `ArchitectureTest` | パッケージの依存の向き（[構成と依存の向き](#構成と依存の向き)）、`catalog`がJDK以外に依存しないこと、標準出力（`System.out`・`FileDescriptor.out`・`System.setOut`）へ書き込まないこと、cliのコードに依存しないこと |
 | `McpServerProcessTest` | 配布するjar（shadowJar）を子プロセスで起動し、MCPクライアントからstdioで呼び出すE2E。マニフェスト・依存の同梱（ServiceLoaderの登録を含む）・標準出力の汚れを確かめる。応答を待たずに続けてツールを呼び出しても止まらないこと（`immediateExecution`の回帰）、型・範囲・未知の引数がSDKの入力スキーマの検証で拒否されること（ツールのテストはハンドラを直接呼ぶため通らない）、リソースの一覧・読み出し・応答を待たずに続けて読んでも止まらないことも確かめる |
 
