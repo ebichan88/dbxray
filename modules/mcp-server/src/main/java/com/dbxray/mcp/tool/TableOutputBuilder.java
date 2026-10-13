@@ -24,6 +24,9 @@ import java.util.stream.Collectors;
  */
 final class TableOutputBuilder {
 
+  /** {@code manyToMany}に載せる相手の数の上限。ほぼすべての中間テーブルの親になる共通のテーブル（テナント等）の結果が、際限なく膨らむのを防ぐ */
+  static final int MAX_MANY_TO_MANY = 20;
+
   private final SchemaCatalog catalog;
 
   /** 残す項目。空の場合は絞り込まない。{@code columns}を指定した場合はカラムの項目も残す */
@@ -127,6 +130,8 @@ final class TableOutputBuilder {
    * ER上の区分と多対多の関係を加える<br>
    * 中間テーブルの場合は{@code erRole}と、つなぐテーブル（{@code junctionOf}）を、多対多の関係にあるテーブルがある場合は、
    * 相手のテーブルと中間テーブル（{@code manyToMany}）を加える。
+   * {@code junctionOf}はスナップショットに含まれないテーブルも含み、{@code manyToMany}はスナップショットにあるテーブルだけを相手にする。
+   * {@code manyToMany}は{@value #MAX_MANY_TO_MANY}件までとし、超える場合は全体の件数を{@code manyToManyTotal}で示す。
    * スナップショットの項目ではない（導出した値）ため{@code sections}では絞り込まず、該当すれば常に加える
    */
   private void addErRole(ObjectNode output, TableEntry table) {
@@ -144,11 +149,14 @@ final class TableOutputBuilder {
       return;
     }
     final ArrayNode entries = output.putArray("manyToMany");
-    for (final ManyToMany partner : partners) {
+    for (final ManyToMany partner : partners.stream().limit(MAX_MANY_TO_MANY).toList()) {
       entries
           .addObject()
           .put("table", partner.table().qualifiedName())
           .put("via", partner.via().qualifiedName());
+    }
+    if (partners.size() > MAX_MANY_TO_MANY) {
+      output.put("manyToManyTotal", partners.size());
     }
   }
 

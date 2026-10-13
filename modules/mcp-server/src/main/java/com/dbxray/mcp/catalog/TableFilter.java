@@ -7,7 +7,7 @@ package com.dbxray.mcp.catalog;
 public final class TableFilter {
 
   /** 絞り込まない条件 */
-  public static final TableFilter ALL = new TableFilter(SearchScope.ALL, null, null, null, null);
+  public static final TableFilter ALL = new TableFilter(SearchScope.ALL, null, null, null);
 
   private final SearchScope scope;
 
@@ -17,47 +17,39 @@ public final class TableFilter {
   /** nullの場合は観点で絞り込まない */
   private final ViewpointEntry viewpoint;
 
-  /** nullの場合はER上の区分で絞り込まない */
-  private final ErRole erRole;
-
-  /** {@link #erRole}の判定に使う。{@link #erRole}がnullの場合はnull */
-  private final JunctionTables junctions;
+  /** nullの場合は中間テーブルで絞り込まない。nullでない場合は、この窓口が中間テーブルと判定したテーブルだけを対象とする */
+  private final JunctionTables junctionsOnly;
 
   private TableFilter(
-      SearchScope scope,
-      TableType type,
-      ViewpointEntry viewpoint,
-      ErRole erRole,
-      JunctionTables junctions) {
+      SearchScope scope, TableType type, ViewpointEntry viewpoint, JunctionTables junctionsOnly) {
     this.scope = scope;
     this.type = type;
     this.viewpoint = viewpoint;
-    this.erRole = erRole;
-    this.junctions = junctions;
+    this.junctionsOnly = junctionsOnly;
   }
 
   /** DB・スキーマだけで絞り込む条件を返すメソッド */
   public static TableFilter of(SearchScope scope) {
-    return new TableFilter(scope, null, null, null, null);
+    return new TableFilter(scope, null, null, null);
   }
 
   /** 区分の条件を加えた条件を返すメソッド */
   public TableFilter withType(TableType type) {
-    return new TableFilter(scope, type, viewpoint, erRole, junctions);
+    return new TableFilter(scope, type, viewpoint, junctionsOnly);
   }
 
   /** 観点の所属テーブルだけに絞り込む条件を加えた条件を返すメソッド */
   public TableFilter withViewpoint(ViewpointEntry viewpoint) {
-    return new TableFilter(scope, type, viewpoint, erRole, junctions);
+    return new TableFilter(scope, type, viewpoint, junctionsOnly);
   }
 
   /**
-   * ER上の区分の条件を加えた条件を返すメソッド
+   * 中間テーブル（{@link ErRole#JUNCTION}）だけに絞り込む条件を加えた条件を返すメソッド
    *
-   * @param junctions テーブルのER上の区分を判定する窓口
+   * @param junctions 中間テーブルの判定結果の窓口
    */
-  public TableFilter withErRole(ErRole erRole, JunctionTables junctions) {
-    return new TableFilter(scope, type, viewpoint, erRole, junctions);
+  public TableFilter withJunctionsOnly(JunctionTables junctions) {
+    return new TableFilter(scope, type, viewpoint, junctions);
   }
 
   /** テーブルが条件に当てはまるか判定するメソッド */
@@ -65,6 +57,6 @@ public final class TableFilter {
     return scope.matches(table.key())
         && (type == null || type.value().equals(table.type()))
         && (viewpoint == null || viewpoint.contains(table.key()))
-        && (erRole == null || junctions.roleOf(table).filter(erRole::equals).isPresent());
+        && (junctionsOnly == null || junctionsOnly.of(table).isPresent());
   }
 }

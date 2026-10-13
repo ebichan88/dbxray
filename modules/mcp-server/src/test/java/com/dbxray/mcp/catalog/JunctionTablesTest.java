@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -207,23 +208,151 @@ class JunctionTablesTest {
     }
 
     @Test
-    @DisplayName("外部キーの列が互いに重なる場合は中間テーブルではない")
-    void overlappingForeignKeysAreNotJunction() {
+    @DisplayName("複数の関連が列を共有していても（テナントIDを含む複合キー）、それぞれに固有の列があれば中間テーブルとする")
+    void detectsRelationsSharingColumns() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("a").primaryKey("a_id").build(),
+              table("b").primaryKey("b_id").build(),
+              table("tenant_member")
+                  .primaryKey("tenant_id")
+                  .primaryKey("a_id")
+                  .primaryKey("b_id")
+                  .foreignKey(fk("a", "ONE_TO_MANY", "tenant_id", "a_id"))
+                  .foreignKey(fk("b", "ONE_TO_MANY", "tenant_id", "b_id"))
+                  .build());
+
+      assertEquals(List.of(key("a"), key("b")), junction(catalog, "tenant_member").parents());
+      assertEquals(
+          List.of(new ManyToMany(key("b"), key("tenant_member"))),
+          catalog.junctions().manyToMany(find(catalog, "a")));
+    }
+
+    @Test
+    @DisplayName("主キーに含まれるだけの余分な関連（近道の外部キー）があっても、主キーを過不足なく覆う関連の組を取り出す")
+    void ignoresRedundantRelationInsidePrimaryKey() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("order_option")
+                  .primaryKey("order_id")
+                  .primaryKey("line_no")
+                  .primaryKey("option_id")
+                  .foreignKey(fk("order_lines", "ONE_TO_MANY", "order_id", "line_no"))
+                  .foreignKey(fk("options", "ONE_TO_MANY", "option_id"))
+                  .foreignKey(fk("orders", "ONE_TO_MANY", "order_id"))
+                  .build());
+
+      assertEquals(
+          List.of(key("order_lines"), key("options")), junction(catalog, "order_option").parents());
+    }
+
+    @Test
+    @DisplayName("主キー全体を覆う関連が、その一部を覆う関連を含む場合は、含まれる側が余分で関連が1本になるため中間テーブルではない")
+    void relationContainingAnotherIsNotJunction() {
       final SchemaCatalog catalog =
           catalogOf(
               table("overlapping")
                   .primaryKey("a")
                   .primaryKey("b")
                   .primaryKey("c")
-                  .foreignKey(
-                      new RelationEntry(
-                          "fk_ab", List.of("a", "b"), "sample", "project", List.of("x", "y"), ""))
-                  .foreignKey(
-                      new RelationEntry(
-                          "fk_bc", List.of("b", "c"), "sample", "employee", List.of("y", "z"), ""))
+                  .foreignKey(fk("x", "ONE_TO_MANY", "a", "b", "c"))
+                  .foreignKey(fk("y", "ONE_TO_MANY", "a", "b"))
                   .build());
 
       assertNotJunction(catalog, "overlapping");
+    }
+
+    @Test
+    @DisplayName("主キーを覆う組み合わせが複数あれば、関連の数が最も多いものを採る（複合外部キーより列ごとの外部キー）")
+    void prefersCoverWithMostRelations() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("wide")
+                  .primaryKey("a")
+                  .primaryKey("b")
+                  .primaryKey("c")
+                  .foreignKey(fk("ab", "ONE_TO_MANY", "a", "b"))
+                  .foreignKey(fk("pa", "ONE_TO_MANY", "a"))
+                  .foreignKey(fk("pb", "ONE_TO_MANY", "b"))
+                  .foreignKey(fk("pc", "ONE_TO_MANY", "c"))
+                  .build());
+
+      assertEquals(List.of(key("pa"), key("pb"), key("pc")), junction(catalog, "wide").parents());
+    }
+
+    @Test
+    @DisplayName("関連の数が同じ組み合わせが複数あれば、関連の並びで先のものを採る")
+    void prefersEarlierCoverOnTie() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("tie")
+                  .primaryKey("a")
+                  .primaryKey("b")
+                  .primaryKey("c")
+                  .foreignKey(fk("x", "ONE_TO_MANY", "a", "b"))
+                  .foreignKey(fk("y", "ONE_TO_MANY", "b", "c"))
+                  .foreignKey(fk("z", "ONE_TO_MANY", "a", "c"))
+                  .build());
+
+      assertEquals(List.of(key("x"), key("y")), junction(catalog, "tie").parents());
+    }
+
+    @Test
+    @DisplayName("1対1（一意）の関連は、多対多をつなぐ関連に数えない")
+    void oneToOneRelationIsNotLink() {
+      for (final String oneToOne : List.of("ONE_TO_ONE", "OPTIONAL_ONE_TO_ONE")) {
+        final SchemaCatalog catalog =
+            catalogOf(
+                table("unique_member")
+                    .primaryKey("a")
+                    .primaryKey("b")
+                    .foreignKey(fk("pa", oneToOne, "a"))
+                    .foreignKey(fk("pb", "ONE_TO_MANY", "b"))
+                    .build());
+
+        assertNotJunction(catalog, "unique_member");
+      }
+    }
+
+    @Test
+    @DisplayName("多重度が未設定の関連は、1対1とみなさず数える")
+    void relationWithoutCardinalityIsLink() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("unknown_cardinality")
+                  .primaryKey("a")
+                  .primaryKey("b")
+                  .foreignKey(fk("pa", "", "a"))
+                  .foreignKey(fk("pb", "", "b"))
+                  .build());
+
+      assertEquals(2, junction(catalog, "unknown_cardinality").links().size());
+    }
+
+    @Test
+    @DisplayName("同じ列の組の外部キーが1対1なら、同じ列の論理リレーション（既定の1対多）があっても数えない")
+    void oneToOneForeignKeyWinsOverLogicalRelationOnSameColumns() {
+      final SchemaCatalog catalog =
+          catalogOf(
+              table("unique_member")
+                  .primaryKey("a")
+                  .primaryKey("b")
+                  .foreignKey(fk("pa", "ONE_TO_ONE", "a"))
+                  .logicalRelation("a", "pa", "a")
+                  .foreignKey(fk("pb", "ONE_TO_MANY", "b"))
+                  .build());
+
+      assertNotJunction(catalog, "unique_member");
+    }
+
+    @Test
+    @DisplayName("主キーに収まる関連が上限（MAX_CANDIDATES本）ならば判定し、上限を超えるテーブルは判定しない")
+    void skipsTablesWithTooManyCandidates() {
+      final TableEntry atLimit = tableWithCandidates(JunctionTable.MAX_CANDIDATES);
+      final TableEntry overLimit = tableWithCandidates(JunctionTable.MAX_CANDIDATES + 1);
+
+      assertTrue(catalogOf(atLimit).junctions().of(atLimit).isPresent());
+      assertTrue(catalogOf(overLimit).junctions().of(overLimit).isEmpty());
     }
 
     @Test
@@ -392,8 +521,7 @@ class JunctionTablesTest {
     @Test
     @DisplayName("ER上の区分で絞り込むと、中間テーブルだけを一覧にする")
     void filtersByErRole() {
-      final TableFilter junctions =
-          TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
+      final TableFilter junctions = TableFilter.ALL.withJunctionsOnly(catalog.junctions());
 
       assertEquals(
           List.of("project_assignment"),
@@ -407,8 +535,7 @@ class JunctionTablesTest {
     @Test
     @DisplayName("ER上の区分での絞り込みは、検索にも効く")
     void filtersSearchByErRole() {
-      final TableFilter junctions =
-          TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
+      final TableFilter junctions = TableFilter.ALL.withJunctionsOnly(catalog.junctions());
 
       assertEquals(1, catalog.tables().search(SearchQuery.of("project"), junctions, 10).total());
     }
@@ -436,6 +563,37 @@ class JunctionTablesTest {
         .primaryKey("employee_id")
         .foreignKey("project_id", "project", "project_id")
         .foreignKey("employee_id", "employee", "employee_id");
+  }
+
+  /** 参照先の列名を参照元と同じにした外部キー（列の組を参照元とする関連） */
+  private static RelationEntry fk(String referenceTable, String cardinality, String... columns) {
+    return new RelationEntry(
+        "fk_" + referenceTable,
+        List.of(columns),
+        "sample",
+        referenceTable,
+        List.of(columns),
+        cardinality);
+  }
+
+  /**
+   * 主キー(a, b, c, d)の列の部分集合を参照元とする外部キーを、単独の列、複数列の順に{@code count}本持つテーブル<br>
+   * 単独の列(a)(b)(c)(d)の4本が主キーを過不足なく覆うため、判定されれば中間テーブルになる
+   */
+  private static TableEntry tableWithCandidates(int count) {
+    final List<String> names = List.of("a", "b", "c", "d");
+    final List<Integer> masks = List.of(1, 2, 4, 8, 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15);
+    final TestTables table =
+        table("many").primaryKey("a").primaryKey("b").primaryKey("c").primaryKey("d");
+    for (final int mask : masks.subList(0, count)) {
+      final String[] columns =
+          IntStream.range(0, names.size())
+              .filter(bit -> (mask & (1 << bit)) != 0)
+              .mapToObj(names::get)
+              .toArray(String[]::new);
+      table.foreignKey(fk("parent_" + mask, "ONE_TO_MANY", columns));
+    }
+    return table.build();
   }
 
   private static SchemaCatalog catalogOf(TableEntry... tables) {

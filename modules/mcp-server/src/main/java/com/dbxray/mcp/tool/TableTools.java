@@ -55,6 +55,13 @@ final class TableTools {
   private static final Map<String, Object> VIEWPOINT_PROPERTY =
       stringProperty("指定した観点（list_viewpointsのid）の所属テーブルだけに絞り込む場合に指定する");
 
+  /** {@code list_tables}・{@code search_tables}でER上の区分に絞り込む引数のプロパティ */
+  private static final Map<String, Object> ER_ROLE_PROPERTY =
+      enumProperty(
+          "ER上の区分で絞り込む場合に指定する。junction: 多対多をつなぐ中間テーブル"
+              + "（主キーの列を、外すと覆えなくなる2本以上の外部キー・論理リレーションで過不足なく覆えるテーブル）",
+          ErRole.allValues());
+
   private static final int DEFAULT_SEARCH_LIMIT = 20;
   private static final int MAX_SEARCH_LIMIT = 100;
   private static final int DEFAULT_COLUMN_LIMIT = 50;
@@ -76,7 +83,8 @@ final class TableTools {
             SEARCH_TABLES,
             "テーブル検索",
             "テーブルをキーワードで検索する。テーブル名・論理名・説明・カラム名・カラムの論理名を部分一致で探し、"
-                + "一致の強い順に返す（空白区切りの複数語はすべてを含むものだけ）。テーブル名が分からないときに最初に使う",
+                + "一致の強い順に返す（空白区切りの複数語はすべてを含むものだけ）。テーブル名が分からないときに最初に使う。"
+                + "多対多をつなぐ中間テーブルは、erRoleにjunctionが付き、erRole引数で絞り込める",
             objectSchema(
                 Map.of(
                     "query",
@@ -88,7 +96,9 @@ final class TableTools {
                     "limit",
                     integerProperty("返す件数の上限（既定" + DEFAULT_SEARCH_LIMIT + "）", 1, MAX_SEARCH_LIMIT),
                     "viewpoint",
-                    VIEWPOINT_PROPERTY),
+                    VIEWPOINT_PROPERTY,
+                    "erRole",
+                    ER_ROLE_PROPERTY),
                 List.of("query")),
             this::searchTables),
         readOnlyTool(
@@ -122,10 +132,7 @@ final class TableTools {
                                 + "その数の多い順（同数は名前の順）",
                             ToolArguments.lowerNames(TableOrder.class)),
                         "erRole",
-                        enumProperty(
-                            "ER上の区分で絞り込む場合に指定する。junction: 多対多をつなぐ中間テーブル"
-                                + "（主キーが、2つ以上の外部キー・論理リレーションの列だけで構成されるテーブル）",
-                            ErRole.allValues())),
+                        ER_ROLE_PROPERTY),
                     Page.DEFAULT_LIMIT,
                     Page.MAX_LIMIT),
                 List.of()),
@@ -137,8 +144,12 @@ final class TableTools {
                 + "インデックス、制約、外部キー、論理リレーション、トリガー、説明・備考を含む。"
                 + "ビューの場合は参照するテーブル（referencedTables）、テーブルを参照しているビューがある場合はそのビュー（referencedByViews）も返す。"
                 + "テーブルが観点（list_viewpoints）に所属する場合は、所属する観点（viewpoints。id・表示名）も返す。"
-                + "多対多をつなぐ中間テーブルの場合は、erRole（junction）とつなぐテーブル（junctionOf）を、"
-                + "中間テーブルを介して多対多の関係にあるテーブルがある場合は、その相手と中間テーブル（manyToMany）も返す"
+                + "多対多をつなぐ中間テーブルの場合は、erRole（junction）とつなぐテーブル（junctionOf。"
+                + "スナップショットに含まれないテーブルも含む）を、"
+                + "中間テーブルを介して多対多の関係にあるテーブルがある場合は、その相手と中間テーブル"
+                + "（manyToMany。スナップショットにあるテーブルだけ。"
+                + TableOutputBuilder.MAX_MANY_TO_MANY
+                + "件まで。超える場合は全体の件数をmanyToManyTotalで示す）も返す"
                 + "（JOINの条件はfind_join_pathで調べる）。"
                 + "必要な項目だけをsections・columnsで指定すると結果が小さくなる。"
                 + "複数のテーブルをまとめて取得する場合はtableに配列を指定する（最大"
@@ -190,19 +201,18 @@ final class TableTools {
     final SearchResult result = catalog.tables().search(query, tableFilter(arguments), limit);
     return ToolResults.json(
         new SearchTablesOutput(
-            result.total(), result.hits().stream().map(SearchTablesOutput.Hit::of).toList()));
+            result.total(),
+            result.hits().stream()
+                .map(hit -> SearchTablesOutput.Hit.of(hit, erRoleOf(hit.table())))
+                .toList()));
   }
 
   private CallToolResult listTables(ToolArguments arguments) {
     final TableFilter scoped = tableFilter(arguments);
-    final TableFilter typed =
+    final TableFilter filter =
         TableType.of(arguments.optionalChoice("type", TableType.allValues()))
             .map(scoped::withType)
             .orElse(scoped);
-    final TableFilter filter =
-        ErRole.of(arguments.optionalChoice("erRole", ErRole.allValues()))
-            .map(role -> typed.withErRole(role, catalog.junctions()))
-            .orElse(typed);
     final boolean includeDescription = arguments.optionalBoolean("includeDescription", false);
     final TableOrder order = arguments.optionalEnum("orderBy", TableOrder.class, TableOrder.NAME);
     final Page page = Page.read(arguments, Page.DEFAULT_LIMIT);
@@ -217,19 +227,32 @@ final class TableTools {
                         ListTablesOutput.Table.of(
                             table,
                             catalog.relations().counts(table),
-                            catalog.junctions().roleOf(table).map(ErRole::value).orElse(null),
+                            erRoleOf(table),
                             includeDescription))
                 .toList()));
   }
 
   /**
-   * 引数{@code database}・{@code schema}・{@code viewpoint}から、テーブルの絞り込みを組み立てるメソッド
+   * 引数{@code database}・{@code schema}・{@code viewpoint}・{@code erRole}から、テーブルの絞り込みを組み立てるメソッド
    *
    * @throws InvalidToolArgumentException 指定した観点が見つからない場合
    */
   private TableFilter tableFilter(ToolArguments arguments) {
     final TableFilter filter = TableFilter.of(arguments.scope());
-    return ViewpointResolver.resolve(catalog, arguments).map(filter::withViewpoint).orElse(filter);
+    final TableFilter viewpointFiltered =
+        ViewpointResolver.resolve(catalog, arguments).map(filter::withViewpoint).orElse(filter);
+    return ErRole.of(arguments.optionalChoice("erRole", ErRole.allValues()))
+        .map(
+            role ->
+                switch (role) {
+                  case JUNCTION -> viewpointFiltered.withJunctionsOnly(catalog.junctions());
+                })
+        .orElse(viewpointFiltered);
+  }
+
+  /** ER上の区分の値（{@code junction}）。区分を持たない（通常の）テーブルはnull */
+  private String erRoleOf(TableEntry table) {
+    return catalog.junctions().roleOf(table).map(ErRole::value).orElse(null);
   }
 
   private CallToolResult getTable(ToolArguments arguments) {
@@ -310,10 +333,11 @@ final class TableTools {
         String name,
         String logicalName,
         String type,
+        String erRole,
         String description,
         List<String> matchedIn) {
 
-      static Hit of(TableHit hit) {
+      static Hit of(TableHit hit, String erRole) {
         final TableEntry table = hit.table();
         return new Hit(
             table.key().database(),
@@ -321,6 +345,7 @@ final class TableTools {
             table.key().name(),
             table.logicalName(),
             table.type(),
+            erRole,
             table.description(),
             hit.matchedIn());
       }

@@ -1,6 +1,7 @@
 package com.dbxray.mcp.catalog;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * テーブル間の1つの関連（参照元 → 参照先）
@@ -18,6 +19,18 @@ public record Relation(
     RelationKind kind,
     String cardinality,
     String name) {
+
+  private static final Set<String> ONE_TO_ONE_CARDINALITIES =
+      Set.of("ONE_TO_ONE", "OPTIONAL_ONE_TO_ONE");
+
+  /**
+   * 参照先1行に対して参照元が高々1行の関連か判定するメソッド
+   *
+   * @return 多重度が{@code ONE_TO_ONE}・{@code OPTIONAL_ONE_TO_ONE}の場合はtrue。未設定の場合はfalse
+   */
+  public boolean isOneToOne() {
+    return ONE_TO_ONE_CARDINALITIES.contains(cardinality);
+  }
 
   /**
    * 関連の、指定したテーブルとは反対側のテーブルを返すメソッド

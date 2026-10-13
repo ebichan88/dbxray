@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.mcp.catalog.SchemaCatalog;
+import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.TestCatalogs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +17,7 @@ import io.modelcontextprotocol.spec.McpSchema.ReadResourceRequest;
 import io.modelcontextprotocol.spec.McpSchema.ReadResourceResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.TextResourceContents;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -174,24 +176,112 @@ class ErRoleToolsTest {
   }
 
   @Test
-  @DisplayName("list_tablesの入力スキーマは、erRoleをjunctionだけを許す列挙にする")
-  void listTablesInputSchemaRestrictsErRole() {
-    @SuppressWarnings("unchecked")
-    final Map<String, Object> properties =
-        (Map<String, Object>)
-            tools.specifications().stream()
-                .filter(specification -> specification.tool().name().equals("list_tables"))
-                .findFirst()
-                .orElseThrow()
-                .tool()
-                .inputSchema()
-                .get("properties");
+  @DisplayName("get_tableは、manyToManyが上限以内ならmanyToManyTotalを返さない")
+  void getTableWithoutTotalWithinLimit() throws Exception {
+    assertFalse(json(call("get_table", Map.of("table", "project"))).has("manyToManyTotal"));
+  }
 
-    assertEquals(List.of("junction"), ((Map<?, ?>) properties.get("erRole")).get("enum"));
+  @Test
+  @DisplayName("get_tableは、manyToManyを上限まで返し、超える場合は全体の件数をmanyToManyTotalで示す")
+  void getTableTruncatesManyToMany() throws Exception {
+    final int partners = TableOutputBuilder.MAX_MANY_TO_MANY + 1;
+    final List<TableEntry> tables =
+        new ArrayList<>(List.of(table("tenant").primaryKey("tenant_id").build()));
+    for (int i = 0; i < partners; i++) {
+      tables.add(table("x" + i).primaryKey("x_id").build());
+      tables.add(
+          table("tenant_x" + i)
+              .primaryKey("tenant_id")
+              .primaryKey("x_id")
+              .foreignKey("tenant_id", "tenant", "tenant_id")
+              .foreignKey("x_id", "x" + i, "x_id")
+              .build());
+    }
+
+    final JsonNode result =
+        json(
+            call(
+                new TableDefinitionTools(TestCatalogs.of(tables)),
+                "get_table",
+                Map.of("table", "tenant")));
+
+    assertEquals(TableOutputBuilder.MAX_MANY_TO_MANY, result.get("manyToMany").size());
+    assertEquals(partners, result.get("manyToManyTotal").asInt());
+    assertEquals("sample.x0", result.get("manyToMany").get(0).get("table").asText());
+  }
+
+  @Test
+  @DisplayName("get_tableのjunctionOfはスナップショットに無い親テーブルも含み、manyToManyは含まない")
+  void junctionOfIncludesParentsMissingFromSnapshot() throws Exception {
+    final TableDefinitionTools partial =
+        new TableDefinitionTools(
+            TestCatalogs.of(
+                List.of(
+                    table("project").primaryKey("project_id").build(),
+                    table("project_customer")
+                        .primaryKey("project_id")
+                        .primaryKey("customer_id")
+                        .foreignKey("project_id", "project", "project_id")
+                        .foreignKey("customer_id", "customer", "customer_id")
+                        .build())));
+
+    assertEquals(
+        objectMapper.readTree("[\"sample.project\",\"sample.customer\"]"),
+        json(call(partial, "get_table", Map.of("table", "project_customer"))).get("junctionOf"));
+    assertFalse(json(call(partial, "get_table", Map.of("table", "project"))).has("manyToMany"));
+  }
+
+  @Test
+  @DisplayName("search_tablesは、中間テーブルの行にだけerRoleを返し、erRoleで中間テーブルだけに絞り込める")
+  void searchTablesByErRole() throws Exception {
+    final JsonNode all = json(call("search_tables", Map.of("query", "project")));
+    assertEquals(2, all.get("total").asInt());
+    for (final JsonNode hit : all.get("tables")) {
+      assertEquals(
+          hit.get("name").asText().equals("project_assignment"), hit.has("erRole"), hit.toString());
+    }
+
+    final JsonNode junctions =
+        json(call("search_tables", Map.of("query", "project", "erRole", "junction")));
+    assertEquals(List.of("project_assignment"), junctions.get("tables").findValuesAsText("name"));
+    assertEquals("junction", junctions.get("tables").get(0).get("erRole").asText());
+  }
+
+  @Test
+  @DisplayName("search_tablesは、未知のerRoleをエラーにする")
+  void searchTablesRejectsUnknownErRole() {
+    final CallToolResult invalid = call("search_tables", Map.of("query", "project", "erRole", "x"));
+
+    assertTrue(invalid.isError());
+    assertEquals("引数erRoleにはjunctionのいずれかを指定してください。 [value=x]", text(invalid));
+  }
+
+  @Test
+  @DisplayName("list_tables・search_tablesの入力スキーマは、erRoleをjunctionだけを許す列挙にする")
+  void inputSchemasRestrictErRole() {
+    for (final String name : List.of("list_tables", "search_tables")) {
+      @SuppressWarnings("unchecked")
+      final Map<String, Object> properties =
+          (Map<String, Object>)
+              tools.specifications().stream()
+                  .filter(specification -> specification.tool().name().equals(name))
+                  .findFirst()
+                  .orElseThrow()
+                  .tool()
+                  .inputSchema()
+                  .get("properties");
+
+      assertEquals(List.of("junction"), ((Map<?, ?>) properties.get("erRole")).get("enum"), name);
+    }
   }
 
   private CallToolResult call(String name, Map<String, Object> arguments) {
-    return tools.specifications().stream()
+    return call(tools, name, arguments);
+  }
+
+  private static CallToolResult call(
+      TableDefinitionTools target, String name, Map<String, Object> arguments) {
+    return target.specifications().stream()
         .filter(specification -> specification.tool().name().equals(name))
         .findFirst()
         .orElseThrow()

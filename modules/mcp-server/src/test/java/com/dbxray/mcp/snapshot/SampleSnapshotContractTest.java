@@ -7,7 +7,6 @@ import com.dbxray.mcp.catalog.ColumnEntry;
 import com.dbxray.mcp.catalog.ColumnHit;
 import com.dbxray.mcp.catalog.ColumnQuery;
 import com.dbxray.mcp.catalog.Direction;
-import com.dbxray.mcp.catalog.ErRole;
 import com.dbxray.mcp.catalog.FunctionEntry;
 import com.dbxray.mcp.catalog.FunctionOverloads;
 import com.dbxray.mcp.catalog.JoinPaths;
@@ -264,7 +263,7 @@ class SampleSnapshotContractTest {
         List.of("project_assignment"),
         catalog
             .tables()
-            .list(TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions()), TableOrder.NAME)
+            .list(TableFilter.ALL.withJunctionsOnly(catalog.junctions()), TableOrder.NAME)
             .stream()
             .map(table -> table.key().name())
             .toList(),
