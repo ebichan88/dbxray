@@ -70,6 +70,7 @@ class McpServerProcessTest {
               "list_tables",
               "get_table",
               "find_columns",
+              "find_similar_tables",
               "get_related_tables",
               "find_join_path",
               "get_er_diagram",
@@ -122,6 +123,14 @@ class McpServerProcessTest {
       assertFalse(Boolean.TRUE.equals(junctions.isError()), () -> text(junctions));
       assertTrue(text(junctions).contains("\"name\":\"project_assignment\""), text(junctions));
       assertTrue(text(junctions).contains("\"erRole\":\"junction\""), text(junctions));
+
+      final CallToolResult similar =
+          client.callTool(
+              CallToolRequest.builder("find_similar_tables")
+                  .arguments(Map.of("columns", List.of("attendance_id", "work_date", "note")))
+                  .build());
+      assertFalse(Boolean.TRUE.equals(similar.isError()), () -> text(similar));
+      assertTrue(text(similar).contains("\"name\":\"sample.attendance_note\""), text(similar));
 
       final CallToolResult function =
           client.callTool(

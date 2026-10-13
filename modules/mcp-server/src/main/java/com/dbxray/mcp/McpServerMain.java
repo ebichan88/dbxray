@@ -39,6 +39,8 @@ public final class McpServerMain {
           + "get_tableで定義を取得する（必要な項目だけをsections・columnsで指定すると結果が小さくなる）。"
           + "カラム名からテーブルを探すときはfind_columns、JOINの条件はget_related_tables"
           + "（外部キーと、DBに制約の無い論理リレーション）、直接つながらないテーブル同士はfind_join_pathを使う。"
+          + "新しいテーブルを作る前に、同じ目的の既存テーブルや履歴・複製のテーブルが無いかは、"
+          + "find_similar_tablesでカラム名の構造が似たテーブルを探す。"
           + "関数・シーケンス・ユーザー定義型・トリガーは、list_*で探してget_*で取得する。"
           + "業務ドメインの単位（観点）で絞り込みたい場合は、list_viewpointsで一覧を確認し、"
           + "list_tables・search_tablesのviewpoint引数を指定する。"

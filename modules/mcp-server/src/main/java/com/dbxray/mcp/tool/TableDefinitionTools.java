@@ -31,6 +31,7 @@ public final class TableDefinitionTools {
             new ViewpointTools(catalog).specifications(),
             new ClusterTools(catalog).specifications(),
             new TableTools(catalog).specifications(),
+            new SimilarTableTools(catalog).specifications(),
             new RelationTools(catalog).specifications(),
             new DiagramTools(catalog).specifications(),
             new FunctionTools(catalog).specifications(),
