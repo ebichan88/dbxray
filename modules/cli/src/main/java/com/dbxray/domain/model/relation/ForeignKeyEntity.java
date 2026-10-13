@@ -6,8 +6,9 @@ import java.util.List;
 
 /**
  * 外部キー情報に関するrecordクラス<br>
- * DBに実在する外部キー制約（{@link RelationType#PHYSICAL}）と、サイドカーYAMLで宣言された 論理リレーション（{@link
- * RelationType#LOGICAL}）の双方を表す。 両者はER図では同じグラフ上に描画されるが、掲載セクションと線種によって区別される
+ * DBに実在する外部キー制約（{@link RelationType#PHYSICAL}）と、
+ * サイドカーYAMLで宣言された論理リレーション（{@link RelationType#LOGICAL}）の双方を表す。
+ * 両者はER図では同じグラフ上に描画されるが、掲載セクションと線種によって区別される
  *
  * @param schemaName 参照元（子）スキーマ名
  * @param tableName 参照元（子）テーブル名
@@ -38,7 +39,8 @@ public record ForeignKeyEntity(
 
   /**
    * サイドカーYAML由来の論理リレーションを生成する静的ファクトリメソッド<br>
-   * DBに外部キー制約が存在しないため、多重度は機械的に判定できない。 呼び出し側でYAMLの明示指定を解決した上で渡すこと
+   * DBに外部キー制約が存在しないため、多重度は機械的に判定できない。
+   * 呼び出し側でYAMLの明示指定を解決した上で渡すこと
    *
    * @param table 参照元（子）テーブル
    * @param columnNames 参照元（子）の列名のリスト
@@ -76,11 +78,9 @@ public record ForeignKeyEntity(
   }
 
   /**
-   * 参照先の スキーマ.テーブル 形式の名称を取得するメソッド
-   *
-   * @return 参照先の スキーマ.テーブル 形式の名称
+   * 参照先（親）テーブルの{@code スキーマ.テーブル}形式の名称を取得するメソッド
    */
-  public String getReferenceSchemaTableName() {
+  public String referenceQualifiedName() {
     return referenceTableKey().qualifiedName();
   }
 

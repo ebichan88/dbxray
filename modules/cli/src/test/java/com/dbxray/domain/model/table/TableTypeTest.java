@@ -9,35 +9,35 @@ import org.junit.jupiter.api.Test;
 public class TableTypeTest {
 
   @Test
-  @DisplayName("findByName: 'table' はTABLEに解決される")
+  @DisplayName("fromId: 'table' はTABLEに解決される")
   void testFindByNameTable() {
-    assertEquals(TableType.TABLE, TableType.findByName("table"));
+    assertEquals(TableType.TABLE, TableType.fromId("table"));
   }
 
   @Test
-  @DisplayName("findByName: 'view' はVIEWに解決される")
+  @DisplayName("fromId: 'view' はVIEWに解決される")
   void testFindByNameView() {
-    assertEquals(TableType.VIEW, TableType.findByName("view"));
+    assertEquals(TableType.VIEW, TableType.fromId("view"));
   }
 
   @Test
-  @DisplayName("findByName: 'materialized_view' はMATERIALIZED_VIEWに解決される")
+  @DisplayName("fromId: 'materialized_view' はMATERIALIZED_VIEWに解決される")
   void testFindByNameMaterializedView() {
-    assertEquals(TableType.MATERIALIZED_VIEW, TableType.findByName("materialized_view"));
+    assertEquals(TableType.MATERIALIZED_VIEW, TableType.fromId("materialized_view"));
   }
 
   @Test
-  @DisplayName("findByName: 未知の値の場合はIllegalArgumentExceptionをスローする")
+  @DisplayName("fromId: 未知の値の場合はIllegalArgumentExceptionをスローする")
   void testFindByNameUnknownThrows() {
     IllegalArgumentException e =
-        assertThrows(IllegalArgumentException.class, () -> TableType.findByName("unknown"));
+        assertThrows(IllegalArgumentException.class, () -> TableType.fromId("unknown"));
     assertTrue(e.getMessage().contains("unknown"));
   }
 
   @Test
-  @DisplayName("findByName: nullの場合はIllegalArgumentExceptionをスローする")
+  @DisplayName("fromId: nullの場合はIllegalArgumentExceptionをスローする")
   void testFindByNameNullThrows() {
-    assertThrows(IllegalArgumentException.class, () -> TableType.findByName(null));
+    assertThrows(IllegalArgumentException.class, () -> TableType.fromId(null));
   }
 
   @Test
@@ -61,8 +61,8 @@ public class TableTypeTest {
   @Test
   @DisplayName("getName: 各Enum値に対応するテーブル種類名を返す")
   void testGetName() {
-    assertEquals("table", TableType.TABLE.getName());
-    assertEquals("view", TableType.VIEW.getName());
-    assertEquals("materialized_view", TableType.MATERIALIZED_VIEW.getName());
+    assertEquals("table", TableType.TABLE.id());
+    assertEquals("view", TableType.VIEW.id());
+    assertEquals("materialized_view", TableType.MATERIALIZED_VIEW.id());
   }
 }

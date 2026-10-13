@@ -69,7 +69,8 @@ public class ViewpointWriter {
 
   /**
    * 観点1つ分のページを書き込むメソッド<br>
-   * 所属テーブル同士の関連をER図に描き、所属テーブルと、観点外のテーブルとの関連を一覧で掲載する。 ER図の描画を省略した場合は、代替として所属テーブル同士の関連を一覧で掲載する。<br>
+   * 所属テーブル同士の関連をER図に描き、所属テーブルと、観点外のテーブルとの関連を一覧で掲載する。
+   * ER図の描画を省略した場合は、代替として所属テーブル同士の関連を一覧で掲載する。<br>
    * 行数の多い表の分割は所属テーブルの一覧のみで行う（分割ページのファイル名は本体ページから決まるため、1ページで分割できる表は1つに限られる）。
    * 関連の一覧は、人が選んだテーブルのまとまりに関わるものに限られ、分割が必要になる規模にはならない想定とする
    *
@@ -96,8 +97,8 @@ public class ViewpointWriter {
     final RenderingPlan plan = content.relations().planRendering(limit);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ViewpointTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ViewpointTemplates.baseInfo(outputRoot.baseInfo()),
             ViewpointTemplates.description(content.viewpoint()), // 説明
             ViewpointTemplates.erDiagram(plan, boxes), // ER図（描画結果または省略メッセージ）
             plan instanceof RenderingPlan.Omit
@@ -105,10 +106,9 @@ public class ViewpointWriter {
                 : "", // ER図の代替の関連一覧
             tableSection, // 所属テーブル
             ViewpointTemplates.outsideRelations(content.outsideRelations()), // 観点外のテーブルとの関連
-            ViewpointTemplates.footer(outputRoot.baseInfo()) // フッター
-            );
+            ViewpointTemplates.footer(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
-    logger.debug("exportViewpoint complete. [filePath={}]", layout.file());
+    logger.debug("Wrote a viewpoint document. [filePath={}]", layout.file());
   }
 
   /**
@@ -122,7 +122,7 @@ public class ViewpointWriter {
         new PageLayout(
             ViewpointTemplates.indexFileHeader(outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, ListDocumentType.VIEWPOINT),
-            ListDocumentType.VIEWPOINT.getBackLinkLabel());
+            ListDocumentType.VIEWPOINT.backLinkLabel());
     final String indexSection =
         pagedSectionWriter.writePagedSection(
             new PagedSection<>(
@@ -133,11 +133,10 @@ public class ViewpointWriter {
             layout);
     final List<String> fileContents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ViewpointTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ViewpointTemplates.baseInfo(outputRoot.baseInfo()),
             indexSection, // 観点一覧
-            ViewpointTemplates.indexFooter(outputRoot.baseInfo()) // フッター
-            );
+            ViewpointTemplates.indexFooter(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), fileContents);
   }
 }

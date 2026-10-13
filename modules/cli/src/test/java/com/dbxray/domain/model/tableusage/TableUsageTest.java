@@ -16,10 +16,10 @@ import org.junit.jupiter.api.Test;
 class TableUsageTest {
 
   private static final TableEntity SAMPLE_EMPLOYEE =
-      new TableEntity("db", "sample", "", "employee", TableType.TABLE, "");
+      new TableEntity("db", "sample", "", "employee", TableType.TABLE, "", "");
 
   private static final TableEntity OTHER_EMPLOYEE =
-      new TableEntity("db", "other", "", "employee", TableType.VIEW, "");
+      new TableEntity("db", "other", "", "employee", TableType.VIEW, "", "");
 
   @Test
   @DisplayName("TableUsage: 操作はC・R・U・Dの順に並べ、渡したコレクションを後から変えても影響を受けない")
@@ -56,7 +56,7 @@ class TableUsageTest {
   @DisplayName("TableUsage: スキーマが決まったのに複数のテーブルを持つ・候補の物理テーブル名が揃っていないと例外にする")
   void testRejectsInconsistentTables() {
     final TableEntity department =
-        new TableEntity("db", "sample", "", "department", TableType.TABLE, "");
+        new TableEntity("db", "sample", "", "department", TableType.TABLE, "", "");
 
     assertThrows(
         IllegalArgumentException.class,
@@ -159,7 +159,7 @@ class TableUsageTest {
   @DisplayName("FunctionTableUsage.schemaUndeterminedTables: スキーマが決まらない行だけを、決まり方の宣言順に、行は元の並びでまとめる")
   void testSchemaUndeterminedTables() {
     final TableEntity department =
-        new TableEntity("db", "sample", "", "department", TableType.TABLE, "");
+        new TableEntity("db", "sample", "", "department", TableType.TABLE, "", "");
     final TableUsage determined =
         new TableUsage(
             List.of(SAMPLE_EMPLOYEE), SchemaResolution.DETERMINED, Set.of(CrudOperation.READ));

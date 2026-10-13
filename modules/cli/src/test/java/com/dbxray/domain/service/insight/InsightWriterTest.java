@@ -118,7 +118,7 @@ class InsightWriterTest {
       String id, String name, String description, String... tables) {
     final List<TableEntity> members =
         List.of(tables).stream()
-            .map(name2 -> new TableEntity("testdb", "public", "", name2, TableType.TABLE, ""))
+            .map(name2 -> new TableEntity("testdb", "public", "", name2, TableType.TABLE, "", ""))
             .toList();
     return new ViewpointContent(
         Viewpoint.of(id, name, description, List.of("public.*")),
@@ -167,9 +167,9 @@ class InsightWriterTest {
       "writeFunctionTableUsages: スキーマごとのファイルへ、関数の識別（名前・引数）・定義本体のSHA-256（空白だけの本体は除く）と抽出結果を、値の無い項目を除いて出力する")
   void testWriteFunctionTableUsages() {
     final TableEntity employee =
-        new TableEntity("testdb", "sample", "", "employee", TableType.TABLE, "");
+        new TableEntity("testdb", "sample", "", "employee", TableType.TABLE, "", "");
     final TableEntity otherEmployee =
-        new TableEntity("testdb", "other", "", "employee", TableType.TABLE, "");
+        new TableEntity("testdb", "other", "", "employee", TableType.TABLE, "", "");
     writer.writeFunctionTableUsages(
         "sample",
         List.of(

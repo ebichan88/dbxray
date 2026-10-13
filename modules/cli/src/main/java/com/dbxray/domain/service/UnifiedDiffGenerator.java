@@ -7,7 +7,8 @@ import java.util.List;
 
 /**
  * 2つの行リストから、unified diff形式（{@code diff -u}やgitと同じ表記）の差分を生成するクラス<br>
- * Myers法（最短の編集手順を求めるアルゴリズム）で編集距離を求め、前後{@value #CONTEXT_LINES}行の文脈を付けたhunkを組み立てる。 外部ライブラリに依存しない
+ * Myers法（最短の編集手順を求めるアルゴリズム）で編集距離を求め、前後{@value #CONTEXT_LINES}行の文脈を付けたhunkを組み立てる。
+ * 外部ライブラリに依存しない
  */
 public class UnifiedDiffGenerator {
 
@@ -16,7 +17,8 @@ public class UnifiedDiffGenerator {
 
   /**
    * Myers法で編集距離を求める際の上限<br>
-   * 超えた場合は全行削除+全行追加のhunkにフォールバックする（出力は正しいままだが、最小の差分ではなくなる）。 比較対象は1オブジェクト分（数十〜数百行）のため、通常はこの上限に達しない
+   * 超えた場合は全行削除+全行追加のhunkにフォールバックする（出力は正しいままだが、最小の差分ではなくなる）。
+   * 比較対象は1オブジェクト分（数十〜数百行）のため、通常はこの上限に達しない
    */
   static final int MAX_EDIT_DISTANCE = 1000;
 
@@ -99,13 +101,8 @@ public class UnifiedDiffGenerator {
     for (int d = 0; d <= cutoff; d++) {
       trace.add(v.clone());
       for (int k = -d; k <= d; k += 2) {
-        final int x;
-        if (k == -d || (k != d && v[offset + k - 1] < v[offset + k + 1])) {
-          x = v[offset + k + 1];
-        } else {
-          x = v[offset + k - 1] + 1;
-        }
-        int y = x - k;
+        final int x = movesDown(v, offset, k, d) ? v[offset + k + 1] : v[offset + k - 1] + 1;
+        final int y = x - k;
         int nx = x;
         int ny = y;
         while (nx < n && ny < m && a.get(nx).equals(b.get(ny))) {
@@ -144,12 +141,7 @@ public class UnifiedDiffGenerator {
     for (int d = distance; d >= 0; d--) {
       final int[] v = trace.get(d);
       final int k = x - y;
-      final int prevK;
-      if (k == -d || (k != d && v[offset + k - 1] < v[offset + k + 1])) {
-        prevK = k + 1;
-      } else {
-        prevK = k - 1;
-      }
+      final int prevK = movesDown(v, offset, k, d) ? k + 1 : k - 1;
       final int prevX = v[offset + prevK];
       final int prevY = prevX - prevK;
       while (x > prevX && y > prevY) {
@@ -172,31 +164,41 @@ public class UnifiedDiffGenerator {
   }
 
   /**
+   * Myers法で、対角線{@code k}へ上の対角線{@code k+1}から下へ進む（行の挿入）か、
+   * 下の対角線{@code k-1}から右へ進む（行の削除）かを判定するメソッド<br>
+   * 探索と、探索の過程からの復元（{@link #backtrack}）の双方で同じ判定を使う
+   *
+   * @param v 各対角線で到達した最も遠い{@code x}（{@code v[offset + k]}が対角線{@code k}）
+   * @param d 編集距離
+   * @return 上の対角線から進む場合はtrue
+   */
+  private static boolean movesDown(int[] v, int offset, int k, int d) {
+    return k == -d || (k != d && v[offset + k - 1] < v[offset + k + 1]);
+  }
+
+  /**
    * 変更箇所（連続する非EQUAL区間）の間が{@code 2 * CONTEXT_LINES}行以内の場合は1つのhunkへ結合する<br>
    * {@code ops}は変更箇所を1つ以上含むこと（内容が異なる行リスト同士の編集手順は必ず含む）
    */
   private List<Hunk> buildHunks(List<Op> ops) {
-    final List<int[]> clusters = findClusters(ops);
+    final List<Range> changes = findChanges(ops);
     final List<Hunk> hunks = new ArrayList<>();
-    int groupStart = clusters.get(0)[0];
-    int groupEnd = clusters.get(0)[1];
-    for (int i = 1; i < clusters.size(); i++) {
-      final int[] cluster = clusters.get(i);
-      if (cluster[0] - groupEnd <= 2 * CONTEXT_LINES) {
-        groupEnd = cluster[1];
+    Range merged = changes.get(0);
+    for (final Range change : changes.subList(1, changes.size())) {
+      if (change.start() - merged.end() <= 2 * CONTEXT_LINES) {
+        merged = new Range(merged.start(), change.end());
       } else {
-        hunks.add(toHunk(ops, groupStart, groupEnd));
-        groupStart = cluster[0];
-        groupEnd = cluster[1];
+        hunks.add(toHunk(ops, merged));
+        merged = change;
       }
     }
-    hunks.add(toHunk(ops, groupStart, groupEnd));
+    hunks.add(toHunk(ops, merged));
     return hunks;
   }
 
-  /** 編集手順のうち、非EQUAL（変更箇所）が連続する区間（{@code [開始, 終了)}）のリストを求める */
-  private List<int[]> findClusters(List<Op> ops) {
-    final List<int[]> clusters = new ArrayList<>();
+  /** 編集手順のうち、非EQUAL（変更箇所）が連続する区間のリストを求める */
+  private List<Range> findChanges(List<Op> ops) {
+    final List<Range> changes = new ArrayList<>();
     int i = 0;
     while (i < ops.size()) {
       if (ops.get(i).type() == OpType.EQUAL) {
@@ -207,17 +209,17 @@ public class UnifiedDiffGenerator {
       while (i < ops.size() && ops.get(i).type() != OpType.EQUAL) {
         i++;
       }
-      clusters.add(new int[] {start, i});
+      changes.add(new Range(start, i));
     }
-    return clusters;
+    return changes;
   }
 
   /**
-   * @param groupStart 変更箇所の開始位置（{@code ops}内のインデックス）
+   * @param change 変更箇所の区間（前後の文脈行を含まない）
    */
-  private Hunk toHunk(List<Op> ops, int groupStart, int groupEnd) {
-    final int start = Math.max(0, groupStart - CONTEXT_LINES);
-    final int end = Math.min(ops.size(), groupEnd + CONTEXT_LINES);
+  private Hunk toHunk(List<Op> ops, Range change) {
+    final int start = Math.max(0, change.start() - CONTEXT_LINES);
+    final int end = Math.min(ops.size(), change.end() + CONTEXT_LINES);
     final List<Op> hunkOps = ops.subList(start, end);
 
     int aBefore = 0;
@@ -255,6 +257,14 @@ public class UnifiedDiffGenerator {
     /** 変更後にのみ存在する行 */
     INSERT
   }
+
+  /**
+   * 編集手順の区間
+   *
+   * @param start 開始位置（{@code ops}内のインデックス。含む）
+   * @param end 終了位置（含まない）
+   */
+  private record Range(int start, int end) {}
 
   /** 差分の1行（行の種別と内容） */
   private record Op(OpType type, String line) {

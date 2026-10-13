@@ -31,7 +31,7 @@ public class ErDiagramTemplatesTest {
   }
 
   private TableEntity newTable(String schema, String physical, String logical) {
-    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "", "");
   }
 
   private ForeignKeyEntity newFk(
@@ -238,7 +238,7 @@ public class ErDiagramTemplatesTest {
   void testDiagramTableLine() {
     var table = newTable("public", "orders", "受注");
     assertMarkdownEquals(
-        "| 1 | public | orders | 受注 | table | [■](./public/table/orders.md) |\n",
+        "|1|public|orders|受注|table|[■](./public/table/orders.md)|\n",
         ErDiagramTemplates.diagramTableLine(1, TableKey.of(table), table));
   }
 
@@ -246,7 +246,7 @@ public class ErDiagramTemplatesTest {
   @DisplayName("diagramTableLine: 出力対象範囲外のテーブルはリンクを張らない")
   void testDiagramTableLineWithoutDefinition() {
     assertMarkdownEquals(
-        "| 1 | external | master_data |  |  | - |\n",
+        "|1|external|master_data|||-|\n",
         ErDiagramTemplates.diagramTableLine(1, TableKey.of("external", "master_data"), null));
   }
 
@@ -255,7 +255,7 @@ public class ErDiagramTemplatesTest {
   void testForeignKeyTableLine() {
     var fk = newFk("sales", "orders", "fk_cross", "master", "customers");
     assertMarkdownEquals(
-        "| 1 | sales.orders | fk_cross | master.customers |\n",
+        "|1|sales.orders|fk_cross|master.customers|\n",
         ErDiagramTemplates.foreignKeyTableLine(1, fk));
   }
 
@@ -288,7 +288,7 @@ public class ErDiagramTemplatesTest {
   @DisplayName("groupIndexLine: グループの規模と主なテーブルを出力する")
   void testGroupIndexLine() {
     assertMarkdownEquals(
-        "| 1 | 12 | 15 | public.orders | [■](./erDiagram_TEST_DB_public_group1.md) |\n",
+        "|1|12|15|public.orders|[■](./erDiagram_TEST_DB_public_group1.md)|\n",
         ErDiagramTemplates.groupIndexLine(
             1, 12, 15, TableKey.of("public", "orders"), "./erDiagram_TEST_DB_public_group1.md"));
   }
@@ -318,8 +318,8 @@ public class ErDiagramTemplatesTest {
 
         | No. | スキーマ名 | テーブル数 | Link |
         |:---|:---|:---|:---|
-        | 1 | public | 2 | [■](./erDiagram_TEST_DB_public.md) |
-        | 2 | master | 1 | [■](./erDiagram_TEST_DB_master.md) |
+        |1|public|2|[■](./erDiagram_TEST_DB_public.md)|
+        |2|master|1|[■](./erDiagram_TEST_DB_master.md)|
 
         """,
         ErDiagramTemplates.schemaIndex(baseInfo(), tablesBySchema));

@@ -42,6 +42,6 @@ class ViewReferencesTest {
   }
 
   private static TableEntity table(String schema, String name) {
-    return new TableEntity("TEST_DB", schema, "", name, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", schema, "", name, TableType.TABLE, "", "");
   }
 }

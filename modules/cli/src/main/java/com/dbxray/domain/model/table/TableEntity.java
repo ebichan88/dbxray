@@ -17,32 +17,19 @@ public record TableEntity(
     String definition,
     String partitionKey) {
 
-  public TableEntity(
-      String dbName,
-      String schemaName,
-      String logicalTableName,
-      String physicalTableName,
-      TableType tableType,
-      String definition) {
-    this(dbName, schemaName, logicalTableName, physicalTableName, tableType, definition, "");
-  }
-
   /**
-   * スキーマ.テーブル 形式の名称を取得するメソッド
-   *
-   * @return スキーマ.テーブル 形式の名称
+   * {@code スキーマ.テーブル}形式の名称を取得するメソッド
    */
-  public String getSchemaTableName() {
+  public String qualifiedName() {
     return TableKey.of(this).qualifiedName();
   }
 
   /**
-   * 論理テーブル名（物理テーブル名） 形式の名称を取得するメソッド
+   * テーブル定義書の見出しに使う名称を取得するメソッド
    *
-   * @return 物理テーブル名（論理テーブル名） 形式の名称を返却。<br>
-   *     論理テーブル名が存在しない場合は 物理テーブル名 形式の名称を返却
+   * @return {@code 物理テーブル名（論理テーブル名）}。論理テーブル名が無い場合は物理テーブル名だけ
    */
-  public String getHeaderTableName() {
+  public String headerName() {
     if (logicalTableName == null || logicalTableName.isBlank()) {
       return physicalTableName;
     }

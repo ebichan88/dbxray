@@ -195,7 +195,7 @@ infrastructure  … MyBatis／ファイルI/Oなど、ドメインのインタ�
 `infrastructure.db.type.DatabaseType` （enum）がDB種別名と対応する
 `infrastructure.db.repository.*CatalogRepository` 実装クラスを紐づけている。
 エントリーポイントが（入力の検証に成功した後に）`DatabaseTypeDetector.detect()` で接続先のDB種別を判定して
-`DatabaseDependentModule` のコンストラクタへ（`SqlSessionFactory`とともに）渡し、`configure()` が `DatabaseType.getRepositoryClass()` を通じて
+`DatabaseDependentModule` のコンストラクタへ（`SqlSessionFactory`とともに）渡し、`configure()` が `DatabaseType.repositoryClass()` を通じて
 `CatalogRepository` の実装クラスをDBごとに動的に束縛する（束縛定義の中ではDBへ接続しない）。DB固有のSQLは
 [modules/cli/src/main/resources/mapper/oracle/catalogMapper.xml](../../modules/cli/src/main/resources/mapper/oracle/catalogMapper.xml) と
 [modules/cli/src/main/resources/mapper/postgresql/catalogMapper.xml](../../modules/cli/src/main/resources/mapper/postgresql/catalogMapper.xml) に分離されている。
@@ -418,7 +418,7 @@ DBのメタ情報だけでは表現できない情報を、サイドカーYAML�
   （`ForeignKeys.crossSchema()`）、被参照側の解決（`referencingTo`）にも**追加実装なしで反映される**
 - 読み手が「DBに制約がある」と誤読しないよう、2箇所で区別する
   - テーブル定義書：`ForeignKeys.physicalBelongingTo()` / `logicalBelongingTo()` で由来ごとに取り出し、別セクションへ掲載
-  - ER図：`RelationType` が持つ線種を `Cardinality.getNotation(RelationType)` が組み立て、
+  - ER図：`RelationType` が持つ線種を `Cardinality.notation(RelationType)` が組み立て、
     物理は実線（`||--o{`）、論理は破線（`||..o{`）で描画する
 
 ### 観点

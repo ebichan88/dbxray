@@ -180,7 +180,7 @@ class FunctionTableUsageAnalyzerRobustnessTest {
   @DisplayName("analyze: キーワードに偏らせたランダムな定義でも例外を投げず、出力対象のテーブルだけを返す")
   void testRandomDefinitions(Dbms dbms) {
     final Random random = new Random(1340L + dbms.ordinal());
-    final FunctionTableUsageAnalyzer analyzer = FunctionTableUsageAnalyzer.of(TABLES, dbms);
+    final FunctionTableUsageAnalyzer analyzer = AnalyzerFixtures.analyzerOf(TABLES, dbms);
     int analyzed = 0;
     int withRows = 0;
     int determined = 0;
@@ -303,7 +303,7 @@ class FunctionTableUsageAnalyzerRobustnessTest {
   /** 解析にかかった、このスレッドのCPU時間（他のスレッドのGC・JITや、機械の負荷の影響を除くため） */
   private static long cpuNanos(Dbms dbms, FunctionEntity function) {
     // パッケージの解析結果をインスタンスが覚えているため、測るたびに作り直す
-    final FunctionTableUsageAnalyzer analyzer = FunctionTableUsageAnalyzer.of(TABLES, dbms);
+    final FunctionTableUsageAnalyzer analyzer = AnalyzerFixtures.analyzerOf(TABLES, dbms);
     final ThreadMXBean threads = ManagementFactory.getThreadMXBean();
     final long start = threads.getCurrentThreadCpuTime();
     analyzer.analyze(function);

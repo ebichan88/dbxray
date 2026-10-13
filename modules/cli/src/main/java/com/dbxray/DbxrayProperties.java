@@ -18,17 +18,17 @@ import java.util.stream.Stream;
 
 /**
  * 設定ファイル（{@code conf/config.yml}）のうち、DB接続情報（{@code database}）以外の設定項目の仕様を持ち、設定値を検証・変換するクラス<br>
- * 設定項目の仕様（キー・既定値・値の形式。docs/usage/cli.mdの「config.ymlの記載内容」）をこのクラスに集める。 ファイルの読み込みは{@link
- * ConfigFile}に委ね、このクラスは読み込んだ値を、CLI引数による上書き値 （{@link CliArguments}が解決する）で上書きしたうえで仕様に照らして検証し、型へ変換する。
+ * 設定項目の仕様（キー・既定値・値の形式。docs/usage/cli.mdの「config.ymlの記載内容」）をこのクラスに集める。
+ * ファイルの読み込みは{@link ConfigFile}に委ね、このクラスは読み込んだ値を、CLI引数による上書き値（{@link CliArguments}が解決する）で上書きしたうえで仕様に照らして検証し、型へ変換する。
  *
  * <ul>
  *   <li>キーの省略と値が空は、同じ「未指定」として扱い既定値を用いる
  *   <li>CLI引数で上書きした値も、設定ファイルに書いた値と同じ仕様で検証する
- *   <li>未知のキー（キー名の書き誤り等）・形式の合わない値（リストを書く項目に1つの値を書いた等）・整数として解釈できない値・ 出力対象の条件として解釈できない値は誤りとする
+ *   <li>未知のキー（キー名の書き誤り等）・形式の合わない値（リストを書く項目に1つの値を書いた等）・整数として解釈できない値・出力対象の条件として解釈できない値は誤りとする
  *   <li>見つかった誤りは、1件ずつではなくまとめて{@link InvalidConfigurationException}で報告する
  * </ul>
  *
- * 設定値は生の値のまま後続へ渡さず、ここで前後の空白を除去し、型へ変換・検証する （出力対象の条件の変換・検証は{@link TargetSelection#of}に委ねる）
+ * 設定値は生の値のまま後続へ渡さず、ここで前後の空白を除去し、型へ変換・検証する（出力対象の条件の変換・検証は{@link TargetSelection#of}に委ねる）
  */
 final class DbxrayProperties {
 
@@ -100,15 +100,6 @@ final class DbxrayProperties {
     this.chunkSize = chunkSize;
     this.erDiagramMaxNodes = erDiagramMaxNodes;
     this.erDiagramDistance = erDiagramDistance;
-  }
-
-  /**
-   * CLI引数による上書きをせず、設定ファイルの値だけから組み立てる
-   *
-   * @throws InvalidConfigurationException 設定に誤りがある場合（見つかった誤りをすべて示す）
-   */
-  static DbxrayProperties of(ConfigFile configFile) {
-    return of(configFile, Map.of());
   }
 
   /**
@@ -279,7 +270,8 @@ final class DbxrayProperties {
 
   /**
    * {@code schemas: public, sample}のように1つの値として書くと、カンマを含む1つの名前として扱われ、
-   * 対象から黙って外れてしまうため、リストで書かれていない場合は誤りとする。 各要素は前後の空白を除去する
+   * 対象から黙って外れてしまうため、リストで書かれていない場合は誤りとする。
+   * 各要素は前後の空白を除去する
    *
    * @return 空要素を除いたリスト。未指定の場合と、リストでない場合（誤りを記録済み）は空リスト
    */

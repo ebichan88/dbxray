@@ -175,8 +175,8 @@ final class MermaidErDiagram {
   }
 
   /**
-   * 二重引用符で囲む表示名は、二重引用符を含められないため単一引用符に置き換える。 改行は、図の次の行（Mermaidの構文や、コードブロックを閉じる{@code
-   * ```}）として解釈されないよう空白に置き換える
+   * 二重引用符で囲む表示名は、二重引用符を含められないため単一引用符に置き換える。
+   * 改行は、図の次の行（Mermaidの構文や、コードブロックを閉じる{@code ```}）として解釈されないよう空白に置き換える
    */
   static String quotable(String value) {
     return value.replace('"', '\'').replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ');
@@ -194,7 +194,7 @@ final class MermaidErDiagram {
    */
   static String sanitizeType(String type) {
     final String sanitized =
-        type.replaceAll("\\(.*\\)", "").trim().replaceAll("[^A-Za-z0-9_]+", "_");
+        type.replaceAll("\\(.*\\)", "").strip().replaceAll("[^A-Za-z0-9_]+", "_");
     return sanitized.isEmpty() ? "unknown" : sanitized;
   }
 }

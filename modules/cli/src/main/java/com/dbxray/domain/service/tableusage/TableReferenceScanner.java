@@ -17,8 +17,8 @@ import java.util.Set;
 /**
  * 定義本体の字句から、テーブルを指す位置の名前と操作（C・R・U・D）、動的SQLを拾うクラス<br>
  * 完全な構文解析はせず、「この位置の名前はテーブルを指す」というきっかけのキーワード（{@code INSERT INTO}・{@code FROM}等）と、
- * その直前・直後の字句だけで判定する。{@code ;}と最上位の{@code LOOP}（{@code FOR r IN 問い合わせ LOOP}）で文の状態（{@link
- * StatementState}）を作り直すため、 括弧の数が合わない文があっても次の文から読み直せる。字句を先頭から1回なめるだけで終える
+ * その直前・直後の字句だけで判定する。{@code ;}と最上位の{@code LOOP}（{@code FOR r IN 問い合わせ LOOP}）で文の状態
+ * （{@link StatementState}）を作り直すため、括弧の数が合わない文があっても次の文から読み直せる。字句を先頭から1回なめるだけで終える
  */
 final class TableReferenceScanner {
 
@@ -28,8 +28,8 @@ final class TableReferenceScanner {
 
   /**
    * 直前にあると、次の語が式・列名・別名・テーブル名の位置にある（DMLの文の始まりでも、句の始まりでもない）語<br>
-   * 非予約語（PostgreSQLの{@code update}・{@code delete}・{@code execute}等）を列名に使った{@code SELECT update FROM
-   * t}や、 句の語と同じ綴りの列名（{@code ON a.x = start}）を、キーワードと取り違えないために使う
+   * 非予約語（PostgreSQLの{@code update}・{@code delete}・{@code execute}等）を列名に使った
+   * {@code SELECT update FROM t}や、句の語と同じ綴りの列名（{@code ON a.x = start}）を、キーワードと取り違えないために使う
    */
   private static final Set<String> OPERAND_PREDECESSORS =
       Set.of(
@@ -60,8 +60,8 @@ final class TableReferenceScanner {
   /**
    * 同じ括弧の深さで現れると、FROM等のカンマ区切りのテーブルの並びを終える語。{@code ON}は含めない（JOINの条件の後にカンマで続くため）<br>
    * 並びの後ろに続く句・演算子・分岐やループの区切り・{@code TRUNCATE}の指定の語を挙げている。{@code ;}を欠いた本体や制御構文の途中でも、
-   * その後ろのカンマ区切りをテーブルの並びとして読まないための歯止め。名前・別名・条件の中の列名・{@code CASE}の分岐としての使い方は、 {@link
-   * #terminatesList}で除く
+   * その後ろのカンマ区切りをテーブルの並びとして読まないための歯止め。名前・別名・条件の中の列名・{@code CASE}の分岐としての使い方は、
+   * {@link #terminatesList}で除く
    */
   static final Set<String> LIST_TERMINATORS =
       Set.of(
@@ -130,8 +130,8 @@ final class TableReferenceScanner {
   private static final Set<String> NTH_VALUE_SUCCESSORS = Set.of("OVER", "IGNORE", "RESPECT");
 
   /**
-   * {@code INSERT INTO}・{@code DELETE FROM}・{@code MERGE INTO}・{@code TRUNCATE
-   * TABLE}の、先頭のキーワード2語の長さ
+   * {@code INSERT INTO}・{@code DELETE FROM}・{@code MERGE INTO}・
+   * {@code TRUNCATE TABLE}の、先頭のキーワード2語の長さ
    */
   private static final int STATEMENT_HEAD_WORDS = 2;
 
@@ -252,8 +252,8 @@ final class TableReferenceScanner {
   }
 
   /**
-   * {@code INSERT ALL/FIRST}（Oracle）の各{@code INTO}。それ以外の{@code INTO}は、{@code INSERT INTO}なら{@link
-   * #onInsert}が対象の名前まで読み済みで、{@code SELECT … INTO 変数}等はテーブルを指さないため、ここでは読まない
+   * {@code INSERT ALL/FIRST}（Oracle）の各{@code INTO}。それ以外の{@code INTO}は、
+   * {@code INSERT INTO}なら{@link #onInsert}が対象の名前まで読み済みで、{@code SELECT … INTO 変数}等はテーブルを指さないため、ここでは読まない
    */
   private void onInto(int i) {
     if (state.isMultiInsertLevel()) {
@@ -277,8 +277,8 @@ final class TableReferenceScanner {
   }
 
   /**
-   * {@code DELETE FROM t}・{@code DELETE t}（Oracle）・MERGEの{@code THEN DELETE}・{@code DELETE
-   * WHERE}（Oracle）
+   * {@code DELETE FROM t}・{@code DELETE t}（Oracle）・MERGEの{@code THEN DELETE}・
+   * {@code DELETE WHERE}（Oracle）
    */
   private void onDelete(int i, SqlToken next) {
     if (isNonDmlUse(i)) {
@@ -307,8 +307,8 @@ final class TableReferenceScanner {
   }
 
   /**
-   * MERGEの{@code USING}（1つ）とPostgreSQLのDELETEの{@code USING}（カンマ区切りの並び）。JOINの{@code USING
-   * (列)}は、次が括弧のため読まない
+   * MERGEの{@code USING}（1つ）とPostgreSQLのDELETEの{@code USING}（カンマ区切りの並び）。
+   * JOINの{@code USING (列)}は、次が括弧のため読まない
    */
   private void onUsing(int i) {
     if (tokens.isSymbolAt(i + 1, "(") && !isSubqueryAt(i + 1)) {
@@ -332,9 +332,9 @@ final class TableReferenceScanner {
   }
 
   /**
-   * {@code IS [NOT] DISTINCT FROM}・{@code EXTRACT(… FROM …)}等・{@code FETCH … FROM カーソル}・{@code
-   * REVOKE … FROM ロール}・Oracleの{@code NTH_VALUE(…) FROM FIRST}の{@code FROM}はテーブルを指さない。{@code DELETE
-   * FROM t}の{@code FROM}は、{@link #onDelete}が対象の名前まで読み済み
+   * {@code IS [NOT] DISTINCT FROM}・{@code EXTRACT(… FROM …)}等・{@code FETCH … FROM カーソル}・
+   * {@code REVOKE … FROM ロール}・Oracleの{@code NTH_VALUE(…) FROM FIRST}の{@code FROM}はテーブルを指さない。
+   * {@code DELETE FROM t}の{@code FROM}は、{@link #onDelete}が対象の名前まで読み済み
    */
   private void onFrom(int i) {
     if (state.isDeleteFrom(i)
@@ -351,8 +351,8 @@ final class TableReferenceScanner {
   }
 
   /**
-   * Oracleの分析関数{@code NTH_VALUE(式, n) FROM FIRST|LAST [IGNORE|RESPECT NULLS] OVER (…)}の{@code
-   * FROM}か
+   * Oracleの分析関数{@code NTH_VALUE(式, n) FROM FIRST|LAST [IGNORE|RESPECT NULLS] OVER (…)}の
+   * {@code FROM}か
    */
   private boolean isFromFirstOrLast(int i) {
     final int firstOrLast = i + 1;
@@ -454,8 +454,8 @@ final class TableReferenceScanner {
 
   /**
    * PostgreSQLの{@code EXECUTE}が動的SQLか判定する<br>
-   * {@code EXECUTE FUNCTION/PROCEDURE}はトリガーの定義の構文、{@code GRANT EXECUTE}・{@code GRANT SELECT,
-   * EXECUTE}・{@code REVOKE GRANT OPTION FOR EXECUTE}は権限の名前、{@code SELECT execute FROM t}は列名のため除く
+   * {@code EXECUTE FUNCTION/PROCEDURE}はトリガーの定義の構文、
+   * {@code GRANT EXECUTE}・{@code GRANT SELECT, EXECUTE}・{@code REVOKE GRANT OPTION FOR EXECUTE}は権限の名前、{@code SELECT execute FROM t}は列名のため除く
    */
   private boolean isDynamicExecute(int i) {
     final int previous = i - 1;
@@ -498,8 +498,8 @@ final class TableReferenceScanner {
   /**
    * 読み取りの位置（FROM・JOIN・USING・FROMの並びのカンマの後）から名前の部品を読むメソッド<br>
    * 括弧で囲んだJOIN（{@code FROM (a JOIN b ON …)}・{@code JOIN (b JOIN c ON …)}）は、括弧の中の先頭のテーブルを読む。
-   * 括弧の後が{@code SELECT}等なら副問い合わせのため空（中の{@code FROM}で拾う）。直後の括弧は関数呼び出し（{@code FROM
-   * generate_series(…)}）を表すためテーブルとしない
+   * 括弧の後が{@code SELECT}等なら副問い合わせのため空（中の{@code FROM}で拾う）。
+   * 直後の括弧は関数呼び出し（{@code FROM generate_series(…)}）を表すためテーブルとしない
    *
    * @return 名前の部品。位置の先頭が副問い合わせ・名前でない・関数呼び出し・DBリンク（{@code t@link}）の場合は空
    */
@@ -584,9 +584,9 @@ final class TableReferenceScanner {
 
   /**
    * 位置の語が、カンマ区切りのテーブルの並びを終えるか判定するメソッド<br>
-   * 次の使い方の{@link #LIST_TERMINATORS}の語は、並びを終えない。テーブルの名前・別名・条件の中の列名（{@code FROM a, start}・{@code AS
-   * limit}・{@code ON x = start}）、条件の中の{@code CASE}の分岐（{@code CASE WHEN … THEN … END}）、Oracleの{@code
-   * PARTITION FOR (値)}
+   * 次の使い方の{@link #LIST_TERMINATORS}の語は、並びを終えない。テーブルの名前・別名・条件の中の列名（{@code FROM a, start}・
+   * {@code AS limit}・{@code ON x = start}）、条件の中の{@code CASE}の分岐（{@code CASE WHEN … THEN … END}）、
+   * Oracleの{@code PARTITION FOR (値)}
    */
   private boolean terminatesList(int i, String word) {
     if (isOperandPosition(i)) {
@@ -608,8 +608,10 @@ final class TableReferenceScanner {
 
   /**
    * 文1つの中で覚えておく状態<br>
-   * 文の終わり（{@code ;}・最上位の{@code LOOP}）で新しく作ることで、前の文の状態を持ち越さない。深さを覚える項目は、 括弧の深さを{@link
-   * #NONE}（その文には無い）で初期化し、現在の深さと同じかどうかを{@code isXxxLevel}で問い合わせる。括弧の深さには{@code []}も数える
+   * 文の終わり（{@code ;}・最上位の{@code LOOP}）で新しく作ることで、前の文の状態を持ち越さない。
+   * 値を覚えるだけの項目（{@link #mergeTarget}等）は、走査する側がフィールドを直接読み書きする。
+   * 括弧の深さと組み合わせて判定する項目はprivateにし、{@code enterXxx}で覚えて{@code isXxxLevel}で問い合わせる。
+   * 深さは{@link #NONE}（その文には無い）で初期化する。括弧の深さには{@code []}も数える
    */
   private static final class StatementState {
 
@@ -639,8 +641,8 @@ final class TableReferenceScanner {
     private int consumedDeleteFrom = NONE;
 
     /**
-     * 対象が副問い合わせのDML（Oracleの{@code UPDATE (SELECT … FROM t) SET …}等）の操作。その副問い合わせの最初の{@code
-     * FROM}のテーブルに付ける
+     * 対象が副問い合わせのDML（Oracleの{@code UPDATE (SELECT … FROM t) SET …}等）の操作。
+     * その副問い合わせの最初の{@code FROM}のテーブルに付ける
      */
     private CrudOperation subqueryTargetOperation;
 
@@ -687,24 +689,25 @@ final class TableReferenceScanner {
     /** 名前が、いま見えるCTEの名前か（CTEは、定義した括弧の中とその内側でだけ見える） */
     boolean isCommonTableExpression(String name) {
       for (final Frame frame : frames) {
-        if (frame.commonTableExpressions.contains(name)) {
+        if (frame.definesCommonTableExpression(name)) {
           return true;
         }
       }
       return false;
     }
 
-    /** MERGE文の中の、MERGEと同じ括弧の深さにいるか（{@code MERGE INTO}を読んだ後の{@code USING}を判定する） */
+    /** {@code MERGE INTO}を読んだ括弧の深さを覚える（その後の{@code USING}を{@link #isMergeLevel}で判定する） */
     void enterMerge() {
       mergeDepth = depth();
     }
 
+    /** MERGE文の中の、MERGEと同じ括弧の深さにいるか */
     boolean isMergeLevel() {
       return depth() == mergeDepth;
     }
 
     /**
-     * DELETE文の中の、DELETEと同じ括弧の深さにいるか（{@code DELETE … USING}を判定する）
+     * DELETEを読んだ括弧の深さを覚える（{@code DELETE … USING}を{@link #isDeleteLevel}で判定する）
      *
      * @param consumedFrom 対象の名前まで読み済みの{@code FROM}の位置。{@code FROM}が無ければ{@link #NONE}
      */
@@ -713,6 +716,7 @@ final class TableReferenceScanner {
       consumedDeleteFrom = consumedFrom;
     }
 
+    /** DELETE文の中の、DELETEと同じ括弧の深さにいるか */
     boolean isDeleteLevel() {
       return depth() == deleteDepth;
     }
@@ -722,11 +726,12 @@ final class TableReferenceScanner {
       return index == consumedDeleteFrom;
     }
 
-    /** {@code INSERT ALL/FIRST}の各{@code INTO}を判定する */
+    /** {@code INSERT ALL/FIRST}を読んだ括弧の深さを覚える（各{@code INTO}を{@link #isMultiInsertLevel}で判定する） */
     void enterMultiInsert() {
       multiInsertDepth = depth();
     }
 
+    /** {@code INSERT ALL/FIRST}と同じ括弧の深さにいるか */
     boolean isMultiInsertLevel() {
       return depth() == multiInsertDepth;
     }
@@ -752,39 +757,47 @@ final class TableReferenceScanner {
     }
   }
 
-  /** 括弧1段分の状態 */
+  /**
+   * 括弧1段分の状態<br>
+   * {@link StatementState}と同じく、値を覚えるだけの項目は走査する側がフィールドを直接読み書きする
+   */
   private static final class Frame {
 
     /**
      * 括弧の直前の語が、{@code FROM}をテーブルの指定以外の意味で使う関数（{@link TableReferenceScanner#FROM_SYNTAX_FUNCTIONS}）か
      */
-    private final boolean fromIsFunctionSyntax;
+    final boolean fromIsFunctionSyntax;
 
     /** この括弧がCTEの本体なら、そのCTEの名前。そうでなければnull */
-    private final String commonTableExpressionName;
+    final String commonTableExpressionName;
+
+    /** カンマの直後をテーブルの位置とするカンマ区切りの並びの中にいる場合の操作（FROM・USINGはR、TRUNCATEはD）。並びの中にいなければnull */
+    CrudOperation listOperation;
+
+    /** 開いたままの{@code CASE}の数 */
+    int caseDepth;
+
+    /** この括弧の中の{@code WITH}が{@code RECURSIVE}か */
+    boolean recursiveWith;
 
     /** この括弧の中で定義したCTEの名前（カタログでの名前）。この括弧を閉じると見えなくなる */
     private Set<String> commonTableExpressions = Set.of();
-
-    /** カンマの直後をテーブルの位置とするカンマ区切りの並びの中にいる場合の操作（FROM・USINGはR、TRUNCATEはD）。並びの中にいなければnull */
-    private CrudOperation listOperation;
-
-    /** 開いたままの{@code CASE}の数 */
-    private int caseDepth;
-
-    /** この括弧の中の{@code WITH}が{@code RECURSIVE}か */
-    private boolean recursiveWith;
 
     private Frame(boolean fromIsFunctionSyntax, String commonTableExpressionName) {
       this.fromIsFunctionSyntax = fromIsFunctionSyntax;
       this.commonTableExpressionName = commonTableExpressionName;
     }
 
-    private void addCommonTableExpression(String name) {
+    void addCommonTableExpression(String name) {
       if (commonTableExpressions.isEmpty()) {
         commonTableExpressions = new HashSet<>();
       }
       commonTableExpressions.add(name);
+    }
+
+    /** この括弧の中で定義したCTEの名前か */
+    boolean definesCommonTableExpression(String name) {
+      return commonTableExpressions.contains(name);
     }
   }
 }

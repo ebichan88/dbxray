@@ -3,6 +3,7 @@ package com.dbxray;
 import com.dbxray.DbxrayProperties.SettingOverride;
 import com.dbxray.application.PreviewFeature;
 import com.dbxray.config.ConfigFile;
+import com.dbxray.infrastructure.db.ConnectionSettings;
 import com.dbxray.shared.exception.UserCorrectableException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -12,16 +13,18 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * コマンドライン引数の解析を行うクラス<br>
- * {@code --check}・{@code --rm-dist}・{@code --preview}フラグの判定と、設定ファイルのパス（{@code
- * --config}）、DB接続情報・実行時設定 （{@code conf/config.yml}の設定値）の上書き値の解決を担う。
+ * {@code --check}・{@code --rm-dist}・{@code --preview}フラグの判定と、
+ * 設定ファイルのパス（{@code --config}）、DB接続情報・実行時設定（{@code conf/config.yml}の設定値）の上書き値の解決を担う。
  * 設定ファイルの読み込みと、上書きした値の検証は含まない（{@link DbxrayProperties}・{@code ConnectionSettings}が行う）。
  * 解釈できない引数（書き誤り等）は、意図しないモード・設定で実行されないよう誤りとする（{@link #requireKnownArguments()}）
  */
@@ -51,17 +54,19 @@ final class CliArguments {
 
   /** DB接続情報の上書きに対応するプロパティキーと、対応するCLI引数名（docs/usage/cli.mdの記載順） */
   private static final List<OverrideArg> CONNECTION_ARGS =
-      List.of(
-          new OverrideArg("driver", "--db-driver"),
-          new OverrideArg("url", "--db-url"),
-          new OverrideArg("username", "--db-username"),
-          new OverrideArg("password", "--db-password"));
+      ConnectionSettings.CONNECTION_KEYS.stream()
+          .map(key -> new OverrideArg(key, ConnectionSettings.cliArgumentName(key)))
+          .toList();
 
   /** 実行時設定の上書きに対応する項目のパスと、対応するCLI引数名（docs/usage/cli.mdの記載順） */
   private static final List<OverrideArg> SETTING_ARGS =
       DbxrayProperties.SETTINGS.stream()
           .map(setting -> new OverrideArg(setting.path(), setting.cliName()))
           .toList();
+
+  /** {@code --キー=値}形式で上書きできるすべての引数（DB接続情報・実行時設定の順） */
+  private static final List<OverrideArg> OVERRIDE_ARGS =
+      Stream.concat(CONNECTION_ARGS.stream(), SETTING_ARGS.stream()).toList();
 
   /** {@code --キー=値}形式の引数のキーと値の区切り文字 */
   private static final char KEY_VALUE_SEPARATOR = '=';
@@ -101,11 +106,11 @@ final class CliArguments {
   }
 
   /**
-   * 解釈できない引数があっても例外は投げない（実行モードの判定に使えるよう解析は最後まで行い、誤りは {@link #requireKnownArguments()}で報告する）
+   * 解釈できない引数があっても例外は投げない（実行モードの判定に使えるよう解析は最後まで行い、誤りは{@link #requireKnownArguments()}で報告する）
    *
    * @param args コマンドライン引数（{@code --db-url=...}・{@code --output-path=...}のような{@code --キー=値}形式で
-   *     DB接続情報・実行時設定を上書き可能。未指定の場合は設定ファイル（{@code --config}で指定したファイル、未指定なら{@code
-   *     conf/config.yml}）の値が使用される）
+   *     DB接続情報・実行時設定を上書き可能。未指定の場合は設定ファイル（{@code --config}で指定したファイル、
+   *     未指定なら{@code conf/config.yml}）の値が使用される）
    */
   static CliArguments parse(String[] args) {
     final List<String> argList = Arrays.asList(args);
@@ -162,9 +167,7 @@ final class CliArguments {
    * @return DB接続情報・実行時設定の上書きに使える引数名（docs/usage/cli.mdの記載順。{@code --config}は含まない）
    */
   static List<String> overrideArgumentNames() {
-    return Stream.concat(CONNECTION_ARGS.stream(), SETTING_ARGS.stream())
-        .map(OverrideArg::cliName)
-        .toList();
+    return OVERRIDE_ARGS.stream().map(OverrideArg::cliName).toList();
   }
 
   /**
@@ -222,8 +225,7 @@ final class CliArguments {
             + Stream.of(
                     FLAGS.stream(),
                     Stream.of(CONFIG_ARG + "=<path>"),
-                    Stream.concat(CONNECTION_ARGS.stream(), SETTING_ARGS.stream())
-                        .map(arg -> arg.cliName() + "=<value>"))
+                    OVERRIDE_ARGS.stream().map(arg -> arg.cliName() + "=<value>"))
                 .flatMap(Function.identity())
                 .collect(Collectors.joining(", "))
             + ")");
@@ -252,34 +254,33 @@ final class CliArguments {
     }
     final String name = arg.substring(0, separatorIndex);
     return name.equals(CONFIG_ARG)
-        || Stream.concat(CONNECTION_ARGS.stream(), SETTING_ARGS.stream())
-            .anyMatch(overrideArg -> overrideArg.cliName().equals(name));
+        || OVERRIDE_ARGS.stream().anyMatch(overrideArg -> overrideArg.cliName().equals(name));
   }
 
-  /** 値が空（空白のみを含む）の場合は、指定しなかったものとして設定ファイルの{@code database}の値をそのまま使用する */
   private static Properties resolveConnectionOverrides(Map<String, String> cliArgs) {
     final Properties overrides = new Properties();
     CONNECTION_ARGS.forEach(
-        connectionArg -> {
-          final String value = cliArgs.get(connectionArg.cliName());
-          if (value != null && !value.isBlank()) {
-            overrides.setProperty(connectionArg.key(), value);
-          }
-        });
+        connectionArg ->
+            specifiedValue(cliArgs, connectionArg)
+                .ifPresent(value -> overrides.setProperty(connectionArg.key(), value)));
     return overrides;
   }
 
-  /** 値が空（空白のみを含む）の場合は、指定しなかったものとして設定ファイルの値をそのまま使用する */
   private static Map<String, SettingOverride> resolveSettingOverrides(Map<String, String> cliArgs) {
     final Map<String, SettingOverride> overrides = new LinkedHashMap<>();
     SETTING_ARGS.forEach(
-        settingArg -> {
-          final String value = cliArgs.get(settingArg.cliName());
-          if (value != null && !value.isBlank()) {
-            overrides.put(settingArg.key(), new SettingOverride(value, settingArg.cliName()));
-          }
-        });
+        settingArg ->
+            specifiedValue(cliArgs, settingArg)
+                .ifPresent(
+                    value ->
+                        overrides.put(
+                            settingArg.key(), new SettingOverride(value, settingArg.cliName()))));
     return overrides;
+  }
+
+  /** 値が空（空白のみを含む）の場合は、指定しなかったものとして扱う（設定ファイルの値をそのまま使用する） */
+  private static Optional<String> specifiedValue(Map<String, String> cliArgs, OverrideArg arg) {
+    return Optional.ofNullable(cliArgs.get(arg.cliName())).filter(Predicate.not(String::isBlank));
   }
 
   private static Map<String, String> parseArgs(String[] args) {

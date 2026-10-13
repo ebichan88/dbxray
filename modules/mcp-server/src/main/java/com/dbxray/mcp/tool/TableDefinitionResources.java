@@ -45,8 +45,8 @@ public final class TableDefinitionResources {
 
   /**
    * リソースの表示名<br>
-   * MCPクライアントの絞り込み検索は、Claude Codeが{@code name}・{@code description}・URI、VS Codeが{@code
-   * name}・URIを対象にする （{@code title}は対象外）。論理名・物理名のどちらでも探せるよう、両方を含める
+   * MCPクライアントの絞り込み検索は、Claude Codeが{@code name}・{@code description}・URI、
+   * VS Codeが{@code name}・URIを対象にする（{@code title}は対象外）。論理名・物理名のどちらでも探せるよう、両方を含める
    */
   static String displayName(TableEntry table) {
     final String qualified = singleLine(table.key().qualifiedName());

@@ -48,7 +48,7 @@ public class CheckDocumentDiffUsecase {
    * @param request DB vs ドキュメントの差分検知の入力
    */
   public DiffResult checkDocumentDiff(CheckDocumentDiffRequest request) {
-    final Path committedDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+    final Path committedDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
     final Path generatedDir = fileRepository.createTempDirectory(CHECK_TEMP_DIR_PREFIX);
     try {
       final ExportTargets targets =

@@ -22,7 +22,8 @@ import org.junit.jupiter.api.Test;
 /**
  * DbxrayModule・DatabaseDependentModule の束縛定義に関するテスト<br>
  * エントリーポイントと同じ手順（DB種別に依存しない部品のコンテナを組み立て、DB種別が決まった後に子のコンテナを足す）で
- * 実際のDIコンテナを組み立て、コントローラーまでの依存関係が解決できることを確認する。 束縛の追加漏れや、{@code @Inject}の付け忘れを実行前に検知するため（DBへの接続は行わない）
+ * 実際のDIコンテナを組み立て、コントローラーまでの依存関係が解決できることを確認する。
+ * 束縛の追加漏れや、{@code @Inject}の付け忘れを実行前に検知するため（DBへの接続は行わない）
  */
 public class DbxrayModuleTest {
 

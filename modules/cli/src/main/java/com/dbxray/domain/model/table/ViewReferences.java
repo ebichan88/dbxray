@@ -5,8 +5,8 @@ import java.util.Map;
 
 /**
  * ビューが参照するテーブルの集合を扱うクラス<br>
- * ビューから参照先（{@link #belongingTo(TableEntity)}）と、テーブルから参照しているビュー（{@link
- * #referencingTo(TableEntity)}）の両方向で引ける
+ * ビューから参照先（{@link #belongingTo(TableEntity)}）と、
+ * テーブルから参照しているビュー（{@link #referencingTo(TableEntity)}）の両方向で引ける
  */
 public final class ViewReferences extends AbstractEntities<ViewReferenceEntity> {
 

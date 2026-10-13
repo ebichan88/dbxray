@@ -26,7 +26,7 @@ public record TableDto(
         schemaName,
         DtoValues.text(logicalTableName),
         physicalTableName,
-        TableType.findByName(tableType),
+        TableType.fromId(tableType),
         DtoValues.text(definition),
         DtoValues.text(partitionKey));
   }

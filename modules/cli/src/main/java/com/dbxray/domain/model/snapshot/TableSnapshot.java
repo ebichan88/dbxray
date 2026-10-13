@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * スキーマのスナップショットのうち、1テーブル分の情報を表すrecordクラス<br>
- * テーブル定義書1ファイル分と同じ情報（カラム・インデックス・制約・外部キー・論理リレーション・トリガー・ 手動付帯情報）を、Markdownの表示形式ではなく個別の項目として保持する。
+ * テーブル定義書1ファイル分と同じ情報（カラム・インデックス・制約・外部キー・論理リレーション・トリガー・手動付帯情報）を、Markdownの表示形式ではなく個別の項目として保持する。
  * 被参照側の外部キーと、テーブルを参照しているビューは、参照元の{@code foreignKeys}・{@code referencedTables}から導出できるため保持しない
  *
  * @param type 区分（table/view/materialized_view）
@@ -54,7 +54,7 @@ public record TableSnapshot(
         table.schemaName(),
         table.physicalTableName(),
         text(table.logicalTableName()),
-        table.tableType().getName(),
+        table.tableType().id(),
         text(annotation.description()),
         text(annotation.remarks()),
         text(table.definition()),
@@ -80,7 +80,7 @@ public record TableSnapshot(
       return new ViewReference(
           reference.referenceSchemaName(),
           reference.referenceTableName(),
-          reference.referenceTableType().getName());
+          reference.referenceTableType().id());
     }
   }
 

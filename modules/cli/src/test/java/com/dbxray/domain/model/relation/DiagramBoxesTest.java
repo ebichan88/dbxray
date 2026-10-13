@@ -47,7 +47,7 @@ public class DiagramBoxesTest {
   }
 
   private static TableEntity table(String physical, String logical) {
-    return new TableEntity("TEST_DB", "public", logical, physical, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", "public", logical, physical, TableType.TABLE, "", "");
   }
 
   private DiagramBoxes.Builder builder(List<ForeignKeyEntity> foreignKeys) {

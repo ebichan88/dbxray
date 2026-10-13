@@ -16,8 +16,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * 参考情報（{@code insights}。スナップショットの事実とは別にAIへ渡す情報）を書き込むクラス<br>
- * {@code --check}の比較対象ではないため、スナップショットとは別の出力先（{@link
- * com.dbxray.domain.service.path.InsightLocations}）へ書き出す
+ * {@code --check}の比較対象ではないため、
+ * スナップショットとは別の出力先（{@link com.dbxray.domain.service.path.InsightLocations}）へ書き出す
  */
 public class InsightWriter {
 
@@ -45,31 +45,36 @@ public class InsightWriter {
    *
    * @param contents 出力対象の観点ごとの出力内容（{@code Viewpoint.resolve}で求めたもの）
    */
-  public void writeViewpoints(List<ViewpointContent> contents, OutputRoot root) {
+  public void writeViewpoints(List<ViewpointContent> contents, OutputRoot outputRoot) {
     if (contents.isEmpty()) {
       return;
     }
-    write(outputPathResolver.resolveViewpointsInsightFile(root), ViewpointsInsight.of(contents));
+    write(
+        outputPathResolver.resolveViewpointsInsightFile(outputRoot),
+        ViewpointsInsight.of(contents));
   }
 
   /**
    * 1スキーマ分の関数・プロシージャの利用しているテーブルの参考情報を書き込むメソッド<br>
    * 抽出を行っていない実行（プレビューの機能を有効にしていない実行）では、ファイルを出力せず、以前のプレビューの実行が出力したファイルを削除する。
-   * 残すと、定義本体やテーブルが変わった後の抽出結果を、MCPサーバーがスナップショットの最新の内容に対するものとして返してしまうため。 抽出を行った関数・プロシージャだけを出力する
+   * 残すと、定義本体やテーブルが変わった後の抽出結果を、MCPサーバーがスナップショットの最新の内容に対するものとして返してしまうため。
+   * 抽出を行った関数・プロシージャだけを出力する
    *
    * @param contents 当該スキーマの関数・プロシージャの出力内容
    */
   public void writeFunctionTableUsages(
-      String schemaName, List<FunctionDefinitionContent> contents, OutputRoot root) {
+      String schemaName, List<FunctionDefinitionContent> contents, OutputRoot outputRoot) {
     final Path filePath =
-        outputPathResolver.resolveFunctionTableUsagesInsightFile(root, schemaName);
+        outputPathResolver.resolveFunctionTableUsagesInsightFile(outputRoot, schemaName);
     final List<FunctionDefinitionContent> analyzed =
         contents.stream().filter(content -> content.tableUsage().isAttempted()).toList();
     if (analyzed.isEmpty()) {
       deletePrevious(filePath);
       return;
     }
-    write(filePath, FunctionTableUsagesInsight.of(root.baseInfo().dbName(), schemaName, analyzed));
+    write(
+        filePath,
+        FunctionTableUsagesInsight.of(outputRoot.baseInfo().dbName(), schemaName, analyzed));
   }
 
   private void deletePrevious(Path filePath) {
@@ -82,6 +87,6 @@ public class InsightWriter {
   private void write(Path filePath, Object insight) {
     fileRepository.createDirectory(filePath.getParent());
     fileRepository.writeFile(filePath, List.of(serializer.serialize(insight) + LINE_SEPARATOR));
-    logger.debug("exportInsight complete. [filePath={}]", filePath);
+    logger.debug("Wrote an insight. [filePath={}]", filePath);
   }
 }

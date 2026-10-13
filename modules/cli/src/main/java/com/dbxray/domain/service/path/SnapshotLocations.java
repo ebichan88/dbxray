@@ -6,10 +6,10 @@ import java.util.Optional;
 
 /**
  * スキーマのスナップショットの配置（ディレクトリ名・ファイル名と、出力ベースディレクトリからの相対パス）を一元的に定めるクラス<br>
- * Markdownドキュメントの配置を定める{@link DocumentLocations}と対になり、出力先の絶対パスの解決（{@link
- * OutputPathResolver}）はこのクラスの規則を参照する。<br>
- * 配置は次のとおり。DB全体の情報は{@code snapshot/{DB名}/database.json}、 スキーマ配下のオブジェクトは種別ごとに{@code
- * snapshot/{DB名}/{スキーマ名}/{種別のファイル名}.jsonl}に置く（DB名・スキーマ名は{@link PathSegments}で置き換える）
+ * Markdownドキュメントの配置を定める{@link DocumentLocations}と対になり、
+ * 出力先の絶対パスの解決（{@link OutputPathResolver}）はこのクラスの規則を参照する。<br>
+ * 配置は次のとおり。DB全体の情報は{@code snapshot/{DB名}/database.json}、
+ * スキーマ配下のオブジェクトは種別ごとに{@code snapshot/{DB名}/{スキーマ名}/{種別のファイル名}.jsonl}に置く（DB名・スキーマ名は{@link PathSegments}で置き換える）
  */
 public final class SnapshotLocations {
 
@@ -75,6 +75,6 @@ public final class SnapshotLocations {
    * @return {@code {種別のファイル名}.jsonl}
    */
   private static String objectFileName(SnapshotKind kind) {
-    return kind.getFileName() + OBJECT_FILE_EXTENSION;
+    return kind.fileName() + OBJECT_FILE_EXTENSION;
   }
 }

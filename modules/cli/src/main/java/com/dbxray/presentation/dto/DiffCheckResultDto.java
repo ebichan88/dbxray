@@ -18,7 +18,7 @@ public record DiffCheckResultDto(String message, boolean hasDifference) {
    *
    * @return 処理結果の種別（成功）を先頭に付けた処理結果のメッセージ
    */
-  public String getResultMessage() {
+  public String resultMessage() {
     return ProcessResult.SUCCESS.formatMessage(message);
   }
 

@@ -16,10 +16,13 @@ import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
 
 /**
  * トリガー・関数/プロシージャ・シーケンス・ユーザー定義型の一覧書き込みに利用する Markdownのテンプレートを扱うクラス<br>
- * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、 テーブル一覧（{@link
- * TableDefinitionListTemplates}）と同じ方針である
+ * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。
+ * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
+ * テーブル一覧（{@link TableDefinitionListTemplates}）と同じ方針である
  */
-public class ObjectListTemplates {
+public final class ObjectListTemplates {
+
+  private ObjectListTemplates() {}
 
   /** 一覧ファイルヘッダー */
   public static String fileHeader(String title, BaseInfoEntity baseInfo) {
@@ -149,11 +152,10 @@ public class ObjectListTemplates {
             DocumentLocations.schemaObjectFile(schemaName, kind, fileName)));
   }
 
-  /** 個別定義書から一覧へ戻る導線（{@link ObjectDefinitionTemplates}）と対になるよう、 一覧からテーブル一覧へ戻る導線を設ける */
+  /** 個別定義書から一覧へ戻る導線（{@link ObjectDefinitionTemplates}）と対になるよう、一覧からテーブル一覧へ戻る導線を設ける */
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        DocumentLocations.linkFromDatabaseRoot(
-            DocumentLocations.listFile(ListDocumentType.TABLE, baseInfo.dbName())),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.backLinkLabel());
   }
 }

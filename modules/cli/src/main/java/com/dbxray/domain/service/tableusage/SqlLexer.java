@@ -7,8 +7,8 @@ import java.util.Optional;
 
 /**
  * 関数・プロシージャの定義本体を字句（トークン）に分けるクラス<br>
- * 先頭から1文字ずつ読み、今いる場所が文字列・コメント・識別子のどれかを状態として持つ。コメントと文字列は互いの中で効かない （文字列の中の{@code
- * --}はコメントにせず、コメントの中の{@code '}で文字列を始めない）ため、同時に左から読まないと区別できない。
+ * 先頭から1文字ずつ読み、今いる場所が文字列・コメント・識別子のどれかを状態として持つ。
+ * コメントと文字列は互いの中で効かない（文字列の中の{@code --}はコメントにせず、コメントの中の{@code '}で文字列を始めない）ため、同時に左から読まないと区別できない。
  * 規則はDBごとに異なる（PostgreSQLはブロックコメントを入れ子にでき、ドル引用符を持つ。Oracleは入れ子にできず、{@code q'[...]'}を持つ）。
  * 閉じていない文字列・コメント等は範囲の終わりまでをその要素とし、例外にはしない（コンパイルに失敗した本体もDBに残りうるため）<br>
  * 読んでいる位置は可変の{@code pos}1つで持つ<br>
@@ -19,6 +19,18 @@ final class SqlLexer {
 
   /** ドル引用符のタグの長さの上限。超えるものはドル引用符とみなさない（閉じの区切りを探す手間が「本体の長さ×タグの長さ」になるため） */
   static final int MAX_DOLLAR_TAG_LENGTH = 64;
+
+  /** 引用符の中で、{@code \}とその直後の1文字（{@code E'...'}のエスケープ）の長さ */
+  private static final int BACKSLASH_ESCAPE_LENGTH = "\\'".length();
+
+  /** 重ねて中身の1文字を表す引用符（{@code ''}・{@code ""}）の長さ */
+  private static final int DOUBLED_QUOTE_LENGTH = "''".length();
+
+  /** 代替引用符の閉じ（閉じの区切り文字と{@code '}。{@code ]'}等）の長さ */
+  private static final int ALTERNATIVE_QUOTE_CLOSE_LENGTH = "]'".length();
+
+  /** 1つの字句として扱う2文字の演算子・区切り記号（{@code ::}等）の長さ */
+  private static final int TWO_CHAR_SYMBOL_LENGTH = "::".length();
 
   private static final String LINE_COMMENT_START = "--";
   private static final String BLOCK_COMMENT_START = "/*";
@@ -286,10 +298,10 @@ final class SqlLexer {
       final char c = source.charAt(pos);
       if (backslashEscapes && c == '\\') {
         // 「\」とその直後の1文字は中身（末尾の「\」で範囲を越えない）
-        pos = Math.min(pos + 2, end);
+        pos = Math.min(pos + BACKSLASH_ESCAPE_LENGTH, end);
       } else if (c == quote && peek(1) == quote) {
         // 重ねた引用符は、閉じではなく中身の引用符1つ
-        pos += 2;
+        pos += DOUBLED_QUOTE_LENGTH;
       } else if (c == quote) {
         pos++;
         return;
@@ -315,8 +327,7 @@ final class SqlLexer {
     pos = delimiterPos + 1;
     while (pos < end) {
       if (source.charAt(pos) == close && peek(1) == '\'') {
-        // 閉じは、閉じの区切り文字と、それに続く'
-        pos += 2;
+        pos += ALTERNATIVE_QUOTE_CLOSE_LENGTH;
         return;
       }
       pos++;
@@ -416,7 +427,7 @@ final class SqlLexer {
   }
 
   private SqlTokenKind scanSymbol(char c) {
-    pos += isTwoCharSymbol(c, peek(1)) ? 2 : 1;
+    pos += isTwoCharSymbol(c, peek(1)) ? TWO_CHAR_SYMBOL_LENGTH : 1;
     return SqlTokenKind.SYMBOL;
   }
 

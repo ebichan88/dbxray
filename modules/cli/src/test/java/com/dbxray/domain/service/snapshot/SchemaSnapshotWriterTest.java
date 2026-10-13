@@ -107,7 +107,7 @@ public class SchemaSnapshotWriterTest {
   private TableDefinitionContent tableContent(String schema, String table, String column) {
     return new TableDefinitionContent(
         BASE_INFO,
-        new TableEntity("testdb", schema, "", table, TableType.TABLE, ""),
+        new TableEntity("testdb", schema, "", table, TableType.TABLE, "", ""),
         List.of(EntityFixtures.column(schema, table, column, "integer", true)),
         List.of(),
         List.of(),
@@ -138,8 +138,8 @@ public class SchemaSnapshotWriterTest {
   @DisplayName("initTableFile + appendTable: スキーマ単位のファイルへ1テーブル1行で追記する")
   void testAppendTableWritesOneLinePerTable() {
     writer.initTableFile("public", ROOT);
-    writer.appendTable(tableContent("public", "t1", "id"), OUT);
-    writer.appendTable(tableContent("public", "t2", "code"), OUT);
+    writer.appendTable(tableContent("public", "t1", "id"), ROOT);
+    writer.appendTable(tableContent("public", "t2", "code"), ROOT);
 
     Path file = SNAPSHOT_DIR.resolve("public").resolve("tables.jsonl");
     List<String> lines = fileRepository.files.get(file).lines().toList();
@@ -158,7 +158,7 @@ public class SchemaSnapshotWriterTest {
     fileRepository.files.put(file, "{\"stale\":true}\n");
 
     writer.initTableFile("public", ROOT);
-    writer.appendTable(tableContent("public", "t1", "id"), OUT);
+    writer.appendTable(tableContent("public", "t1", "id"), ROOT);
 
     assertFalse(fileRepository.files.get(file).contains("stale"));
     assertEquals(1, fileRepository.files.get(file).lines().count());

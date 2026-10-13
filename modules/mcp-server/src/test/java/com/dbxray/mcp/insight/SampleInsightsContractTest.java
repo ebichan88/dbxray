@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * cliが出力したサンプルの参考情報（ベースライン）を読み込めることを確かめる契約テスト<br>
- * cliの出力形式を変えるとベースラインも出力し直すため、このテストで読み込み側の追従漏れを検知する。 ベースラインは{@code
- * sampleSnapshotDir}（スナップショットのディレクトリ）の親の兄弟（{@code insights}）に 置かれているため、スナップショットの契約テスト（{@code
- * SampleSnapshotContractTest}）と同じシステムプロパティをそのまま使う
+ * cliの出力形式を変えるとベースラインも出力し直すため、このテストで読み込み側の追従漏れを検知する。
+ * ベースラインは{@code sampleSnapshotDir}（スナップショットのディレクトリ）の親の兄弟（{@code insights}）に置かれているため、
+ * スナップショットの契約テスト（{@code SampleSnapshotContractTest}）と同じシステムプロパティをそのまま使う
  */
 class SampleInsightsContractTest {
 

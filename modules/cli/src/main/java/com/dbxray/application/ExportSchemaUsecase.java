@@ -19,8 +19,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * DBドキュメント出力（通常実行）のユースケースクラス<br>
- * DBから取得したスキーマ情報を、Markdownのドキュメントとスキーマのスナップショットとして出力先へ書き出す。 取得・書き出しの段取りは{@link
- * SchemaExportPipeline}に委ねる
+ * DBから取得したスキーマ情報を、Markdownのドキュメントとスキーマのスナップショットとして出力先へ書き出す。
+ * 取得・書き出しの段取りは{@link SchemaExportPipeline}に委ねる
  */
 public class ExportSchemaUsecase {
 
@@ -50,7 +50,7 @@ public class ExportSchemaUsecase {
 
   /** DBから取得したスキーマ情報を、Markdownのドキュメントとスキーマのスナップショットとして出力するメソッド */
   public void exportSchema(ExportSchemaRequest request) {
-    final Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+    final Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
     final ExportTargets targets =
         schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());
     final DiagramBoxes diagramBoxes =
@@ -106,7 +106,7 @@ public class ExportSchemaUsecase {
   /**
    * {@code --rm-dist}指定時に、出力先ベースディレクトリを書き込み前に削除するメソッド<br>
    * 削除されたテーブル等の残骸ファイルを残さないため、書き込み前にディレクトリごと削除する。
-   * 削除してよいディレクトリか（既存のファイルを指していないか、ルート・ホームディレクトリ等でないか）は、 ユースケースを呼ぶ前に入口で検証済みであること
+   * 削除してよいディレクトリか（既存のファイルを指していないか、ルート・ホームディレクトリ等でないか）は、ユースケースを呼ぶ前に入口で検証済みであること
    */
   private void removeOutputBaseDir(Path outputBaseDir) {
     logger.info(

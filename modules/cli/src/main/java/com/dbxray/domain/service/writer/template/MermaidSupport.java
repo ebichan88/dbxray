@@ -1,6 +1,7 @@
 package com.dbxray.domain.service.writer.template;
 
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
 import com.dbxray.domain.model.relation.DiagramBoxes;
 import com.dbxray.domain.model.relation.DiagramColumn;
@@ -16,20 +17,48 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Mermaid記法の出力に必要な文字列変換を扱う共通ユーティリティクラス<br>
- * テーブル単位のER図（{@link TableDefinitionTemplates}）とスキーマ単位のER図（{@link ErDiagramTemplates}）の 両方から利用する
+ * テーブル単位のER図（{@link TableDefinitionTemplates}）とスキーマ単位のER図（{@link ErDiagramTemplates}）の両方から利用する
  */
 public final class MermaidSupport {
 
   private MermaidSupport() {}
 
   /**
+   * ER図のコードブロック（末尾の空行を含む）を組み立てるメソッド<br>
+   * 各ノードのエンティティ別名を宣言し、関係線を参照先（親）→ 参照元（子）の向きで描いた後、ノードごとにテーブルの箱を描く
+   *
+   * @param nodes 図に描画するノード（重複無し。この順に別名を宣言し、箱を描く）
+   * @param relations 図に描画する関連（この順に関係線を描く）
+   * @param columnsOf ノードの箱に表示するカラムを求める関数（表示するカラムが無いノードは空のリストを返す）
+   */
+  public static String erDiagramCodeBlock(
+      Collection<TableKey> nodes,
+      Collection<ForeignKeyEntity> relations,
+      DiagramBoxes boxes,
+      Function<TableKey, List<DiagramColumn>> columnsOf) {
+    final Map<TableKey, String> ids = assignNodeIds(nodes);
+    final Map<TableKey, String> labels = assignLabels(nodes, boxes);
+    final StringBuilder sb =
+        new StringBuilder("```mermaid")
+            .append(LINE_SEPARATOR)
+            .append("erDiagram")
+            .append(LINE_SEPARATOR);
+    nodes.forEach(key -> sb.append(aliasLine(ids.get(key), labels.get(key))));
+    relations.forEach(
+        fk -> sb.append(relationLine(ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
+    nodes.forEach(key -> sb.append(attributeBlock(ids.get(key), columnsOf.apply(key))));
+    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+  }
+
+  /**
    * 図に描画するノードごとに、一意なMermaidのエンティティ識別子を採番するメソッド<br>
-   * 識別子のサニタイズでは英数字以外がすべてアンダースコアに潰れるため、別のテーブルが同じ識別子になり1つの箱に融合することがある （例: {@code a_b.c}と{@code
-   * a.b_c}、同じ文字数の日本語のテーブル名）。衝突した場合は連番を付けて区別する
+   * 識別子のサニタイズでは英数字以外がすべてアンダースコアに潰れるため、別のテーブルが同じ識別子になり1つの箱に融合することがある（例: {@code a_b.c}と
+   * {@code a.b_c}、同じ文字数の日本語のテーブル名）。衝突した場合は連番を付けて区別する
    *
    * @param nodes 図に描画するノードのテーブルキー（重複無し。この順に採番するため、衝突した場合は後のものに連番が付く）
    * @return テーブルキーごとの識別子
@@ -56,8 +85,10 @@ public final class MermaidSupport {
 
   /**
    * 図に描画するノードの表示ラベルを決めるメソッド<br>
-   * 識別子（スキーマ名込み）とは別に、Mermaidのエンティティ別名構文で表示名を差し替える。 通常はテーブル名のみを表示するが、同じ図内に同名テーブルが複数スキーマにまたがって存在する
-   * 場合は見分けが付かなくなるため、その場合だけ「スキーマ名.テーブル名」の完全修飾名にする。 論理テーブル名がある場合は「テーブル名（論理テーブル名）」とする
+   * 識別子（スキーマ名込み）とは別に、Mermaidのエンティティ別名構文で表示名を差し替える。
+   * 通常はテーブル名のみを表示するが、同じ図内に同名テーブルが複数スキーマにまたがって存在する
+   * 場合は見分けが付かなくなるため、その場合だけ「スキーマ名.テーブル名」の完全修飾名にする。
+   * 論理テーブル名がある場合は「テーブル名（論理テーブル名）」とする
    *
    * @param nodes 図に描画するノードのテーブルキー（重複無し）
    * @return テーブルキーごとの表示ラベル
@@ -125,8 +156,8 @@ public final class MermaidSupport {
   }
 
   /**
-   * 二重引用符で囲む表示名・コメントは、二重引用符を含められないため単一引用符に置き換える。 改行は、図の次の行（Mermaidの構文や、コードブロックを閉じる{@code
-   * ```}）として解釈されないよう空白に置き換える
+   * 二重引用符で囲む表示名・コメントは、二重引用符を含められないため単一引用符に置き換える。
+   * 改行は、図の次の行（Mermaidの構文や、コードブロックを閉じる{@code ```}）として解釈されないよう空白に置き換える
    */
   private static String quotable(String value) {
     return value.replace('"', '\'').replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ');
@@ -145,7 +176,7 @@ public final class MermaidSupport {
     return "    "
         + parentId
         + ' '
-        + fk.cardinality().getNotation(fk.relationType())
+        + fk.cardinality().notation(fk.relationType())
         + ' '
         + childId
         + " : \""
@@ -166,6 +197,6 @@ public final class MermaidSupport {
    * @return サニタイズ済みのデータ型文字列
    */
   public static String sanitizeType(String columnType) {
-    return columnType.replaceAll("\\(.*\\)", "").trim().replaceAll("[^A-Za-z0-9_]+", "_");
+    return columnType.replaceAll("\\(.*\\)", "").strip().replaceAll("[^A-Za-z0-9_]+", "_");
   }
 }

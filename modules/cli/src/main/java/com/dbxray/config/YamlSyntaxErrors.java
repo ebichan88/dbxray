@@ -19,8 +19,8 @@ public final class YamlSyntaxErrors {
   /**
    * 解析の失敗を説明する文言を返すメソッド
    *
-   * @return 失敗の種類と位置（行・列は1始まり）。例: {@code found unexpected end of stream at line 5, column 1 (while
-   *     scanning a quoted scalar at line 3, column 13)}
+   * @return 失敗の種類と位置（行・列は1始まり）。
+   *     例: {@code found unexpected end of stream at line 5, column 1 (while scanning a quoted scalar at line 3, column 13)}
    */
   public static String describe(YAMLException e) {
     if (e instanceof MarkedYAMLException marked) {

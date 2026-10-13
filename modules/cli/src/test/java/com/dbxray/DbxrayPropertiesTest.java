@@ -25,7 +25,7 @@ public class DbxrayPropertiesTest {
   private static final Path CONFIG_PATH = Path.of("conf", "config.yml");
 
   private static TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   private static ConfigFile config(String yaml) {
@@ -33,12 +33,12 @@ public class DbxrayPropertiesTest {
   }
 
   private static ExportSchemaRequest request(String yaml) {
-    return DbxrayProperties.of(config(yaml)).toExportSchemaRequest(false, Set.of());
+    return DbxrayProperties.of(config(yaml), Map.of()).toExportSchemaRequest(false, Set.of());
   }
 
   private static InvalidConfigurationException error(String yaml) {
     return assertThrows(
-        InvalidConfigurationException.class, () -> DbxrayProperties.of(config(yaml)));
+        InvalidConfigurationException.class, () -> DbxrayProperties.of(config(yaml), Map.of()));
   }
 
   @Test
@@ -104,7 +104,8 @@ public class DbxrayPropertiesTest {
                       erDiagramMaxNodes: " 0 "
                       erDiagramDistance: 2
                     annotations: " conf/annotations.yml "
-                    """))
+                    """),
+                Map.of())
             .toExportSchemaRequest(true, Set.of());
 
     assertEquals(List.of("sample"), request.targetSelection().tableScope().schemaNames());
@@ -125,7 +126,7 @@ public class DbxrayPropertiesTest {
   @DisplayName("toExportSchemaRequest: 有効にするプレビューの機能を、--rm-distとは独立にリクエストへ載せる")
   void testToExportSchemaRequestWithPreview() {
     ExportSchemaRequest request =
-        DbxrayProperties.of(config("output:\n  path: ./docs/db\n"))
+        DbxrayProperties.of(config("output:\n  path: ./docs/db\n"), Map.of())
             .toExportSchemaRequest(false, EnumSet.allOf(PreviewFeature.class));
 
     assertEquals(EnumSet.allOf(PreviewFeature.class), request.previewFeatures());
@@ -290,7 +291,8 @@ public class DbxrayPropertiesTest {
                 output:
                   path: ./docs/db
                   chunkSize: 50
-                """));
+                """),
+            Map.of());
 
     CheckDocumentDiffRequest request = properties.toCheckDocumentDiffRequest();
 
@@ -304,7 +306,8 @@ public class DbxrayPropertiesTest {
   void testDistributedConfigFile() {
     ExportSchemaRequest request =
         DbxrayProperties.of(
-                ConfigFile.load(Path.of("src", "main", "resources", "conf", "config.yml")))
+                ConfigFile.load(Path.of("src", "main", "resources", "conf", "config.yml")),
+                Map.of())
             .toExportSchemaRequest(false, Set.of());
 
     assertEquals(3000, request.chunkSize());

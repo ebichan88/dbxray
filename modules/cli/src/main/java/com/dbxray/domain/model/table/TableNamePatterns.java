@@ -6,19 +6,18 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * テーブル名パターン（{@code table=}の記法）のリストを判定する値オブジェクト<br>
- * 出力対象の範囲（{@code table=}。{@link
- * com.dbxray.domain.model.target.TableScope}）と、観点に所属するテーブルの指定（サイドカーYAMLの{@code
- * viewpoints}）で共通に用いる。以下の記法に対応する。
+ * テーブル名パターン（設定ファイルの{@code target.tables}・CLI引数の{@code --table}の記法）のリストを判定する値オブジェクト<br>
+ * 出力対象の範囲（{@link com.dbxray.domain.model.target.TableScope}）と、
+ * 観点に所属するテーブルの指定（サイドカーYAMLの{@code viewpoints}）で共通に用いる。以下の記法に対応する。
  *
  * <ul>
- *   <li>完全一致（従来どおり）: {@code employee}
+ *   <li>完全一致: {@code employee}
  *   <li>ワイルドカード（{@code *}は0文字以上の任意文字列）: {@code *_bk}, {@code *_20240101}
  *   <li>除外（先頭に{@code !}）: {@code !flyway_schema_history}
  *   <li>スキーマ修飾（同名テーブルが複数スキーマに存在する場合に対象スキーマを限定）: {@code sample.employee}
  * </ul>
  *
- * 除外パターンは包含パターンより常に優先される。包含パターンが1件も指定されていない場合は、 除外パターンに一致しない限りすべてのテーブルが対象となる。
+ * 除外パターンは包含パターンより常に優先される。包含パターンが1件も指定されていない場合は、除外パターンに一致しない限りすべてのテーブルが対象となる。
  * テーブル名の部分が空のパターン（{@code !}のみ、{@code sample.}等）と、スキーマ名の部分が空のパターン（{@code .employee}等）は、
  * どのテーブルにも一致しない書き誤りのため、黙って受け入れずに誤りとする
  */
@@ -74,7 +73,7 @@ public final class TableNamePatterns {
     return includes.isEmpty() && excludes.isEmpty();
   }
 
-  /** 包含パターンが無い場合は除外に一致しない全テーブルが対象となるため、観点のように「どのテーブルを含めるか」を 明示させたい用途で、指定漏れを判定するために用いる */
+  /** 包含パターンが無い場合は除外に一致しない全テーブルが対象となるため、観点のように「どのテーブルを含めるか」を明示させたい用途で、指定漏れを判定するために用いる */
   public boolean hasInclusion() {
     return !includes.isEmpty();
   }
@@ -112,9 +111,9 @@ public final class TableNamePatterns {
     static Optional<Entry> parse(String pattern) {
       final int separatorIndex = pattern.indexOf(SCHEMA_TABLE_SEPARATOR);
       final String schema =
-          separatorIndex >= 0 ? pattern.substring(0, separatorIndex).trim() : null;
+          separatorIndex >= 0 ? pattern.substring(0, separatorIndex).strip() : null;
       final String tablePart =
-          (separatorIndex >= 0 ? pattern.substring(separatorIndex + 1) : pattern).trim();
+          (separatorIndex >= 0 ? pattern.substring(separatorIndex + 1) : pattern).strip();
       if (tablePart.isEmpty() || (schema != null && schema.isEmpty())) {
         return Optional.empty();
       }

@@ -12,32 +12,32 @@ public enum TableType {
   /** マテリアライズドビュー */
   MATERIALIZED_VIEW("materialized_view");
 
-  private final String name;
+  private final String id;
 
-  TableType(String name) {
-    this.name = name;
+  TableType(String id) {
+    this.id = id;
   }
 
   /**
-   * テーブル種類名を返却する。
+   * 区分を示す名前を取得するメソッド
    *
-   * @return テーブル種類名を返却する。
+   * @return カタログから取得した区分の名前。定義書の「区分」列・ディレクトリ名・スナップショットにも使う（例: {@code materialized_view}）
    */
-  public String getName() {
-    return name;
+  public String id() {
+    return id;
   }
 
   /**
-   * テーブルの種類に紐づくEnumを返却する。
+   * 名前から区分を求めるメソッド
    *
-   * @return TableTypeを返却する。
-   * @throws IllegalArgumentException 対象のEnumが存在しない場合にthrowする。
+   * @param id 区分を示す名前（{@link #id()}）
+   * @throws IllegalArgumentException 対応していない区分の場合（nullを含む）
    */
-  public static TableType findByName(String name) {
-    return Arrays.stream(TableType.values())
-        .filter(e -> Objects.equals(name, e.getName()))
+  public static TableType fromId(String id) {
+    return Arrays.stream(values())
+        .filter(type -> Objects.equals(id, type.id))
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unknown table type: " + name));
+        .orElseThrow(() -> new IllegalArgumentException("Unknown table type: " + id));
   }
 
   /**

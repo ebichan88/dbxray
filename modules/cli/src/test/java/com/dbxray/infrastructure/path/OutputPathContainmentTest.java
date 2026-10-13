@@ -27,8 +27,8 @@ import org.junit.jupiter.api.TestFactory;
 
 /**
  * DB由来の名前に出力先の外を指す文字列が入っても、{@link OutputPathResolver}が返すパスが出力先の外を指さないことのテスト<br>
- * パスを返すメソッドをリフレクションで列挙するため、メソッドを追加すると自動的に検査の対象になる。 引数の型に対応する値が無い場合は失敗するので、{@link
- * #ARGUMENTS}に危険な名前を含む値を足すこと
+ * パスを返すメソッドをリフレクションで列挙するため、メソッドを追加すると自動的に検査の対象になる。
+ * 引数の型に対応する値が無い場合は失敗するので、{@link #ARGUMENTS}に危険な名前を含む値を足すこと
  */
 public class OutputPathContainmentTest {
 
@@ -47,7 +47,7 @@ public class OutputPathContainmentTest {
           "x\n../../y");
 
   /** 利用者が指定する出力先そのものを解決するため、DB由来の名前を受け取らないメソッド */
-  private static final Set<String> NOT_TARGETS = Set.of("resolveBaseOutputDir");
+  private static final Set<String> NOT_TARGETS = Set.of("resolveOutputBaseDir");
 
   /** 利用者が指定しうる出力先（"."は正規化すると空のパスになる） */
   private static final List<Path> BASE_DIRS =
@@ -60,7 +60,7 @@ public class OutputPathContainmentTest {
           (base, name) ->
               new OutputRoot(base, new BaseInfoEntity(name, Dbms.POSTGRESQL, 16, LocalDate.EPOCH)),
           TableEntity.class,
-          (base, name) -> new TableEntity(name, name, name, name, TableType.TABLE, ""),
+          (base, name) -> new TableEntity(name, name, name, name, TableType.TABLE, "", ""),
           String.class,
           (base, name) -> name,
           ListDocumentType.class,

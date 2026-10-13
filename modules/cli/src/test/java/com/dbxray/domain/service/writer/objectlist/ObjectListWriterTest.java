@@ -27,7 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** ObjectListWriter のトリガー・関数/プロシージャ・シーケンス・型 一覧および個別定義書き込みに関するテスト */
+/** ObjectListWriter のトリガー・関数/プロシージャ・シーケンス・型一覧および個別定義書き込みに関するテスト */
 public class ObjectListWriterTest {
 
   private static final Path OUT = Path.of("output");

@@ -27,7 +27,7 @@ public class ViewpointTemplatesTest {
   }
 
   private TableEntity newTable(String schema, String physical, String logical) {
-    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", schema, logical, physical, TableType.TABLE, "", "");
   }
 
   @Test
@@ -111,7 +111,7 @@ public class ViewpointTemplatesTest {
 
         | No. | 参照元 | 外部キー名 | 参照先 |
         |:---|:---|:---|:---|
-        | 1 | public.orders | rel_orders_product | public.product |
+        |1|public.orders|rel_orders_product|public.product|
 
         """,
         ViewpointTemplates.outsideRelations(

@@ -7,11 +7,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 外部キーの繋がりからテーブルのまとまり（連結成分）を求めるクラス<br>
- * スキーマ単位のER図が1枚に収まらない場合に、外部キーで繋がったテーブルのまとまりごとに 図を分割し、1枚に収まる範囲でまとめ直すために利用する。
- * 入力がコレクション全体ではなくスキーマ単位の部分集合となるため、 {@link ForeignKeys}のメソッドではなく独立したクラスとしている
+ * スキーマ単位のER図が1枚に収まらない場合に、外部キーで繋がったテーブルのまとまりごとに図を分割し、1枚に収まる範囲でまとめ直すために利用する。
+ * 入力がコレクション全体ではなくスキーマ単位の部分集合となるため、{@link ForeignKeys}のメソッドではなく独立したクラスとしている
  */
 public final class ForeignKeyGroups {
 
@@ -42,7 +43,7 @@ public final class ForeignKeyGroups {
 
   /**
    * スキーマ全体が上限に収まる場合、または分割しても連結成分が1つ以下にしかならない場合（分割してもスキーマページと
-   * 同じ内容のグループページができるだけのため）は分割しない。それ以外は連結成分を1枚に収まる範囲でグループへ まとめ直し、複数ページへ分割する
+   * 同じ内容のグループページができるだけのため）は分割しない。それ以外は連結成分を1枚に収まる範囲でグループへまとめ直し、複数ページへ分割する
    *
    * @param relatedForeignKeys 当該スキーマのテーブルが関与する外部キー（他スキーマとの関連を含む）のリスト
    */
@@ -60,9 +61,9 @@ public final class ForeignKeyGroups {
   }
 
   /**
-   * 外部キーの両端のテーブルを同じまとまりとして併合するため、 {@code a → b}と{@code b → c}は1つの連結成分になる。
+   * 外部キーの両端のテーブルを同じまとまりとして併合するため、{@code a → b}と{@code b → c}は1つの連結成分になる。
    * 自己参照・スキーマ跨ぎの外部キーも他と同様に扱う（スキーマを跨ぐ成分は複数スキーマにまたがる）<br>
-   * 出力順は、規模の大きいまとまりから確認できるようノード数の降順とし、 同数の場合は再実行しても同じ結果になるよう先頭テーブルキーの昇順とする
+   * 出力順は、規模の大きいまとまりから確認できるようノード数の降順とし、同数の場合は再実行しても同じ結果になるよう先頭テーブルキーの昇順とする
    */
   static List<ForeignKeyGroup> connectedComponents(List<ForeignKeyEntity> foreignKeys) {
     if (foreignKeys.isEmpty()) {
@@ -85,34 +86,56 @@ public final class ForeignKeyGroups {
   }
 
   /**
-   * 成分ごとに1ファイルとすると、2テーブルだけの極小の図が大量に生成されてしまうため、 ノード数の上限に収まる限り複数の成分を同じ図にまとめる（貪欲法）。
-   * まとめられた成分同士は線で繋がっていないため、1枚に並んでも関連を誤読するおそれはない。 単独で上限を超える成分はそれ単独のグループとなり、当該グループは外部キー一覧にフォールバックする
+   * 成分ごとに1ファイルとすると、2テーブルだけの極小の図が大量に生成されてしまうため、ノード数の上限に収まる限り複数の成分を同じ図にまとめる（貪欲法）。
+   * まとめられた成分同士は線で繋がっていないため、1枚に並んでも関連を誤読するおそれはない。
+   * 単独で上限を超える成分はそれ単独のグループとなり、当該グループは外部キー一覧にフォールバックする
    *
    * @param components 連結成分ごとのまとまりのリスト（ノード数の降順）
    */
   static List<ForeignKeyGroup> pack(List<ForeignKeyGroup> components, NodeLimit limit) {
-    final List<List<ForeignKeyEntity>> groups = new ArrayList<>();
-    final List<Integer> groupNodeCounts = new ArrayList<>();
-    components.forEach(
-        component -> {
-          final int componentNodes = component.nodeCount();
-          for (int i = 0; i < groups.size(); i++) {
-            if (!limit.isExceededBy(groupNodeCounts.get(i) + componentNodes)) {
-              groups.get(i).addAll(component.foreignKeys());
-              groupNodeCounts.set(i, groupNodeCounts.get(i) + componentNodes);
-              return;
-            }
-          }
-          groups.add(new ArrayList<>(component.foreignKeys()));
-          groupNodeCounts.add(componentNodes);
-        });
-    return groups.stream().map(ForeignKeyGroup::of).toList();
+    final List<PackedGroup> groups = new ArrayList<>();
+    for (final ForeignKeyGroup component : components) {
+      final Optional<PackedGroup> fitting =
+          groups.stream().filter(group -> group.fits(component, limit)).findFirst();
+      if (fitting.isPresent()) {
+        fitting.get().add(component);
+      } else {
+        groups.add(new PackedGroup(component));
+      }
+    }
+    return groups.stream().map(PackedGroup::toGroup).toList();
+  }
+
+  /** {@link #pack}でまとめ直している途中のグループ（外部キーと、そのノード数） */
+  private static final class PackedGroup {
+
+    private final List<ForeignKeyEntity> foreignKeys;
+    private int nodeCount;
+
+    private PackedGroup(ForeignKeyGroup first) {
+      this.foreignKeys = new ArrayList<>(first.foreignKeys());
+      this.nodeCount = first.nodeCount();
+    }
+
+    /** 成分を足しても、ノード数が上限を超えないか（成分同士はテーブルを共有しないため、ノード数は足し算になる） */
+    private boolean fits(ForeignKeyGroup component, NodeLimit limit) {
+      return !limit.isExceededBy(nodeCount + component.nodeCount());
+    }
+
+    private void add(ForeignKeyGroup component) {
+      foreignKeys.addAll(component.foreignKeys());
+      nodeCount += component.nodeCount();
+    }
+
+    private ForeignKeyGroup toGroup() {
+      return ForeignKeyGroup.of(foreignKeys);
+    }
   }
 
   /**
    * ノード数が同数の場合の並び順を一意に定めるために利用する
    *
-   * @return 名称の辞書順で先頭となるテーブルの スキーマ.テーブル 形式の名称
+   * @return 名称の辞書順で先頭となるテーブルの{@code スキーマ.テーブル}形式の名称
    */
   private static String firstKeyText(ForeignKeyGroup component) {
     return component.nodes().stream()

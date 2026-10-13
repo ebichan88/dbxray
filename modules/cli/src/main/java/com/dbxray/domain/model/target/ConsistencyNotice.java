@@ -1,8 +1,9 @@
 package com.dbxray.domain.model.target;
 
 /**
- * 出力対象のテーブルと、それを参照する情報（外部キー・サイドカーの論理リレーション／付帯情報／観点）を突き合わせた結果の 通知1件分を表す値オブジェクト<br>
- * リネーム・削除によるDBとサイドカーの乖離など、利用者が気付くべき事柄を表す。 突き合わせ自体はドメインサービスが行い、通知をどこへ（ログ等）どう出力するかは呼び出し側が決める
+ * 出力対象のテーブルと、それを参照する情報（外部キー・サイドカーの論理リレーション／付帯情報／観点）を突き合わせた結果の通知1件分を表す値オブジェクト<br>
+ * リネーム・削除によるDBとサイドカーの乖離など、利用者が気付くべき事柄を表す。
+ * 突き合わせ自体はドメインサービスが行い、通知をどこへ（ログ等）どう出力するかは呼び出し側が決める
  *
  * @param message 通知の内容（利用者向けのメッセージ）
  */
@@ -40,13 +41,13 @@ public record ConsistencyNotice(Kind kind, String message) {
     }
 
     /** 通知の重要度を返却するメソッド */
-    public Severity getSeverity() {
+    public Severity severity() {
       return severity;
     }
   }
 
   /** 通知の重要度を返却するメソッド */
   public Severity severity() {
-    return kind.getSeverity();
+    return kind.severity();
   }
 }

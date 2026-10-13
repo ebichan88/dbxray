@@ -79,17 +79,17 @@ erDiagram
 
 | No. | スキーマ名 | 物理テーブル名 | 論理テーブル名 | 区分 | Link |
 |:---|:---|:---|:---|:---|:---|
-| 1 | sample | attendance | 勤怠（月次パーティション） | table | [■](./sample/table/attendance.md) |
-| 2 | sample | attendance_note |  | table | [■](./sample/table/attendance_note.md) |
-| 3 | sample | audit_log |  | table | [■](./sample/table/audit_log.md) |
-| 4 | sample | department |  | table | [■](./sample/table/department.md) |
-| 5 | sample | employee | 従業員 | table | [■](./sample/table/employee.md) |
-| 6 | sample | employee_profile |  | table | [■](./sample/table/employee_profile.md) |
-| 7 | sample | parking_spot |  | table | [■](./sample/table/parking_spot.md) |
-| 8 | sample | project | プロジェクト | table | [■](./sample/table/project.md) |
-| 9 | sample | project_assignment |  | table | [■](./sample/table/project_assignment.md) |
-| 10 | sample | shipment |  | table | [■](./sample/table/shipment.md) |
-| 11 | sample | warehouse_zone |  | table | [■](./sample/table/warehouse_zone.md) |
+|1|sample|attendance|勤怠（月次パーティション）|table|[■](./sample/table/attendance.md)|
+|2|sample|attendance_note||table|[■](./sample/table/attendance_note.md)|
+|3|sample|audit_log||table|[■](./sample/table/audit_log.md)|
+|4|sample|department||table|[■](./sample/table/department.md)|
+|5|sample|employee|従業員|table|[■](./sample/table/employee.md)|
+|6|sample|employee_profile||table|[■](./sample/table/employee_profile.md)|
+|7|sample|parking_spot||table|[■](./sample/table/parking_spot.md)|
+|8|sample|project|プロジェクト|table|[■](./sample/table/project.md)|
+|9|sample|project_assignment||table|[■](./sample/table/project_assignment.md)|
+|10|sample|shipment||table|[■](./sample/table/shipment.md)|
+|11|sample|warehouse_zone||table|[■](./sample/table/warehouse_zone.md)|
 
 ___
 

@@ -52,8 +52,8 @@ public record FunctionTableUsagesInsight(
    * @param arguments 引数（スナップショットと同じ表記）
    * @param definitionHash 抽出元の定義本体（スナップショットの{@code definition}と同じ文字列）のSHA-256（16進数の小文字）。
    *     MCPサーバーがスナップショットの定義本体と照らし、定義が変わった後の古い結果を返さないために使う。定義本体が無い場合はnull
-   * @param status 解析の状態（{@code analyzed}・{@code unsupported_language}・{@code no_definition}・{@code
-   *     wrapped}・{@code subprogram_not_found}）
+   * @param status 解析の状態（{@code analyzed}・{@code unsupported_language}・{@code no_definition}・
+   *     {@code wrapped}・{@code subprogram_not_found}）
    * @param language 解析しなかった言語の名前（{@code unsupported_language}の場合だけ）
    * @param dynamicSql 定義本体に含まれる動的SQLの種類
    * @param incomplete 字句を最後まで読めなかった場合だけtrue（それ以外はnullで、出力しない）
@@ -131,8 +131,8 @@ public record FunctionTableUsagesInsight(
    * 利用しているテーブル1件
    *
    * @param schema スキーマ名。スキーマが決まらない名前は空文字（出力しない）
-   * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code search_path}・{@code current_user}・{@code
-   *     synonym}）。スキーマが決まった場合は空文字（出力しない）
+   * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code search_path}・{@code current_user}・
+   *     {@code synonym}）。スキーマが決まった場合は空文字（出力しない）
    * @param schemaCandidates スキーマが決まらない名前の、同じ名前の出力対象のテーブルがあるスキーマ
    * @param operations 操作（{@code C}・{@code R}・{@code U}・{@code D}の順）
    */

@@ -24,8 +24,9 @@ public record TableKey(String schema, String table) {
 
   /**
    * {@code スキーマ.テーブル} 形式の文字列を解析してTableKeyを生成する静的ファクトリメソッド<br>
-   * サイドカーYAML等、外部入力の「スキーマ.テーブル」形式のキー文字列を解釈する用途に用いる。 スキーマ名・テーブル名はトリムする。区切りの{@code
-   * .}が無い場合、またはトリム後にスキーマ名・ テーブル名のいずれかが空になる場合は解析失敗として空を返す（呼び出し側で警告等の対応を行う）
+   * サイドカーYAML等、外部入力の「スキーマ.テーブル」形式のキー文字列を解釈する用途に用いる。
+   * スキーマ名・テーブル名はトリムする。
+   * 区切りの{@code .}が無い場合、またはトリム後にスキーマ名・テーブル名のいずれかが空になる場合は解析失敗として空を返す（呼び出し側で警告等の対応を行う）
    *
    * @param rawKey {@code スキーマ.テーブル} 形式の文字列（null・空白可）
    * @return 解析したTableKey。形式が不正な場合は空
@@ -38,8 +39,8 @@ public record TableKey(String schema, String table) {
     if (separatorIndex < 0) {
       return Optional.empty();
     }
-    final String schema = rawKey.substring(0, separatorIndex).trim();
-    final String table = rawKey.substring(separatorIndex + 1).trim();
+    final String schema = rawKey.substring(0, separatorIndex).strip();
+    final String table = rawKey.substring(separatorIndex + 1).strip();
     if (schema.isEmpty() || table.isEmpty()) {
       return Optional.empty();
     }

@@ -8,7 +8,7 @@ cli（`modules/cli/`）とMCPサーバー（`modules/mcp-server/`）のコード
 
 | 検査 | 対象 | 実行 |
 |---|---|---|
-| Spotless（google-java-format） | 書式・importの順序・未使用のimport | `./gradlew spotlessCheck`（直すときは`spotlessApply`） |
+| Spotless（google-java-format） | 書式（Javadocを除く）・importの順序・未使用のimport | `./gradlew spotlessCheck`（直すときは`spotlessApply`） |
 | `ArchitectureTest`（ArchUnit） | cli：レイヤーの依存方向・置き場所・命名・禁止API<br>MCPサーバー：パッケージの依存の向き・標準出力への書き込み・cliへの依存 | `./gradlew :cli:test`・`./gradlew :mcp-server:test` |
 | doclint | Javadocの書式の誤り（タグの誤り・参照先の無いリンク等） | `./gradlew javadoc` |
 | JaCoCo | cliのドメイン層・MCPサーバーの`catalog`のカバレッジ（line 95%・branch 85%） | `./gradlew build` |
@@ -162,7 +162,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
   `Path.resolve`等をそれ以外の場所で呼ぶと`ArchitectureTest`が失敗する。`OutputPathResolver`にメソッドを足すと、
   `OutputPathContainmentTest`が危険な名前（`..`・絶対パス・`\`・`C:`等）で自動的に検査する
   （引数の型が新しい場合は、テストの`ARGUMENTS`に危険な値を足す）。
-- **Markdown・Mermaid**：DB由来の文字列は、表の行なら`MarkdownTemplateSupport.row`（書式で組み立てた行は`escapeTableRow`）、
+- **Markdown・Mermaid**：DB由来の文字列は、表の行なら`MarkdownTemplateSupport.row`（表の行は書式で組み立てずこのメソッドで組み立てる）、
   見出し・リストの項目なら`escapeInline`、コードブロックは`codeFence`、コードスパンは`codeSpan`を通し、Mermaidの図は
   `MermaidSupport`のメソッドで組み立てる（生のHTMLやコードブロックを閉じる行が出力されないようにするため）。
   DB由来の文字列を受け取るテンプレートを足したら、`MarkdownInjectionTest`の`renderedDocuments`にも足す。
@@ -186,7 +186,10 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 ## Javaの書き方
 
 書式はSpotless（google-java-format。importはstatic importを第1グループ、それ以外をASCII辞書順の1グループ）に任せ、手で揃えない。
-コミットの前に`./gradlew spotlessApply`を実行する。そのうえで、既存のコードは次の書き方に揃えている。
+コミットの前に`./gradlew spotlessApply`を実行する。ただしJavadocは整形の対象から外している（整形は日本語の文を1段落に詰め直し、
+行の継ぎ目に半角空白を入れ、`{@link}`・`{@code}`を行末で割るため）。Javadocは手で折り返し、文の区切り（句点）か読点の後ろで改行する。
+`{@link …}`・`{@code …}`は途中で改行しない。`@param`等のブロックタグ・`<li>`の続きの行は4桁字下げする。
+そのうえで、既存のコードは次の書き方に揃えている。
 
 - **値はrecordで表す。** エンティティ・値オブジェクト・requestはrecordにする。コレクションを持つrecordは、コンパクトコンストラクタで
   `List.copyOf`等により防御的に複製し、外から変更できないようにする。

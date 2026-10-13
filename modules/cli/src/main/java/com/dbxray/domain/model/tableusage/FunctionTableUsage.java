@@ -25,9 +25,9 @@ public record FunctionTableUsage(
   /**
    * リストは変更不可な複製として保持する
    *
-   * @throws IllegalArgumentException 状態と合わない値を持つ場合（言語の名前は{@link
-   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}だけ、テーブル・動的SQL・不完全・オーバーロードの印は{@link
-   *     TableUsageStatus#ANALYZED}だけが持てる）
+   * @throws IllegalArgumentException 状態と合わない値を持つ場合（言語の名前は
+   *     {@link TableUsageStatus#UNSUPPORTED_LANGUAGE}だけ、
+   *     テーブル・動的SQL・不完全・オーバーロードの印は{@link TableUsageStatus#ANALYZED}だけが持てる）
    */
   public FunctionTableUsage {
     if (!language.isEmpty() && status != TableUsageStatus.UNSUPPORTED_LANGUAGE) {
@@ -51,10 +51,10 @@ public record FunctionTableUsage(
    * 解析できなかった結果を生成するメソッド
    *
    * @param status 解析できなかった理由
-   * @throws IllegalArgumentException 理由でない状態の場合（{@link
-   *     TableUsageStatus#UNSUPPORTED_LANGUAGE}は言語の名前を持てる{@link #unsupportedLanguage}を、{@link
-   *     TableUsageStatus#NOT_ANALYZED}は{@link #notAnalyzed}を、{@link
-   *     TableUsageStatus#ANALYZED}は{@link #analyzed}を使う）
+   * @throws IllegalArgumentException 理由でない状態の場合
+   *     （{@link TableUsageStatus#UNSUPPORTED_LANGUAGE}は言語の名前を持てる{@link #unsupportedLanguage}を、
+   *     {@link TableUsageStatus#NOT_ANALYZED}は{@link #notAnalyzed}を、
+   *     {@link TableUsageStatus#ANALYZED}は{@link #analyzed}を使う）
    */
   public static FunctionTableUsage notAnalyzable(TableUsageStatus status) {
     if (status == TableUsageStatus.UNSUPPORTED_LANGUAGE) {
@@ -85,8 +85,8 @@ public record FunctionTableUsage(
   /**
    * スキーマが決まらない名前の行を、決まり方ごとにまとめるメソッド
    *
-   * @return 決まり方（{@link SchemaResolution}の宣言順）をキー、その行（{@link
-   *     #tables}の並び順）を値とするマップ。スキーマが決まらない行が無ければ空
+   * @return 決まり方（{@link SchemaResolution}の宣言順）をキー、
+   *     その行（{@link #tables}の並び順）を値とするマップ。スキーマが決まらない行が無ければ空
    */
   public Map<SchemaResolution, List<TableUsage>> schemaUndeterminedTables() {
     return tables.stream()

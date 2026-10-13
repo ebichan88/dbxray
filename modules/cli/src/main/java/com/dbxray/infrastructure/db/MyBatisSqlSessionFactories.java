@@ -10,8 +10,8 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * MyBatisの{@link SqlSessionFactory}を生成するクラス<br>
- * 生成は設定XMLとmapperの解析を伴い重いため、エントリーポイントで1回だけ生成し、DIコンテナを通じて使い回す。 生成するだけでDBへは接続しない（接続はコネクションプールが{@code
- * openSession()}の時に行う）
+ * 生成は設定XMLとmapperの解析を伴い重いため、エントリーポイントで1回だけ生成し、DIコンテナを通じて使い回す。
+ * 生成するだけでDBへは接続しない（接続はコネクションプールが{@code openSession()}の時に行う）
  */
 public final class MyBatisSqlSessionFactories {
 
@@ -27,11 +27,11 @@ public final class MyBatisSqlSessionFactories {
    * @return SqlSessionFactory
    */
   public static SqlSessionFactory create(ConnectionSettings settings) {
-    logger.info("Initializing SqlSessionFactory from {}", MYBATIS_CONFIG);
+    logger.info("Initializing SqlSessionFactory. [config={}]", MYBATIS_CONFIG);
     try (final InputStream inputStream = Resources.getResourceAsStream(MYBATIS_CONFIG)) {
       final SqlSessionFactory sqlSessionFactory =
           new SqlSessionFactoryBuilder().build(inputStream, settings.toProperties());
-      logger.info("SqlSessionFactory initialization completed.");
+      logger.info("Initialized SqlSessionFactory.");
       return sqlSessionFactory;
     } catch (IOException e) {
       throw new IllegalStateException("SqlSessionFactory initialization failed.", e);

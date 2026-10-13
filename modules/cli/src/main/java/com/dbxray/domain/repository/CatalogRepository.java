@@ -21,12 +21,12 @@ public interface CatalogRepository {
   DatabaseEntity selectDatabase();
 
   /**
-   * テーブル単位の絞り込みは呼び出し側（{@link com.dbxray.domain.model.target.TableScope}）がJava側で行うため、 スキーマ単位でのみ絞り込む
+   * テーブル単位の絞り込みは呼び出し側（{@link com.dbxray.domain.model.target.TableScope}）がJava側で行うため、スキーマ単位でのみ絞り込む
    */
-  List<TableEntity> selectTableList(List<String> schemaList);
+  List<TableEntity> selectTableList(List<String> schemaNames);
 
   /**
-   * テーブル数に比例して重くなる情報のため、呼び出し側はスキーマ・チャンク単位でテーブルを渡す （同一スキーマのテーブルを渡すことを想定する）
+   * テーブル数に比例して重くなる情報のため、呼び出し側はスキーマ・チャンク単位でテーブルを渡す（同一スキーマのテーブルを渡すことを想定する）
    *
    * @return テーブルごとの詳細情報のリスト（{@code tables}と同じ順）
    */
@@ -40,40 +40,40 @@ public interface CatalogRepository {
   List<ColumnEntity> selectColumnList(List<TableKey> tables);
 
   /** テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照） */
-  List<ForeignKeyEntity> selectForeignKeyList(List<String> schemaList);
+  List<ForeignKeyEntity> selectForeignKeyList(List<String> schemaNames);
 
   /** テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照） */
-  List<TriggerEntity> selectTriggerList(List<String> schemaList);
+  List<TriggerEntity> selectTriggerList(List<String> schemaNames);
 
   /**
-   * パーティション表の下位のパーティション（多段パーティションの中間を含む）を取得する。パーティションはテーブルとして {@link
-   * #selectTableList}に含まれないため、パーティション表の定義書にまとめるために別に取得する。 テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link
-   * #selectTableList}を参照）
+   * パーティション表の下位のパーティション（多段パーティションの中間を含む）を取得する。
+   * パーティションはテーブルとして{@link #selectTableList}に含まれないため、パーティション表の定義書にまとめるために別に取得する。
+   * テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照）
    *
-   * @param schemaList パーティション表（根）のスキーマで絞り込む。パーティションは別スキーマにあってもよい
+   * @param schemaNames パーティション表（根）のスキーマで絞り込む。パーティションは別スキーマにあってもよい
    * @return パーティション表ごとに、親から子へ階層順に並べたパーティションのリスト
    */
-  List<PartitionEntity> selectPartitionList(List<String> schemaList);
+  List<PartitionEntity> selectPartitionList(List<String> schemaNames);
 
   /**
-   * ビュー（マテリアライズドビューを含む）が参照するテーブル（ビュー・マテリアライズドビューを含む）を取得する。 テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link
-   * #selectTableList}を参照）
+   * ビュー（マテリアライズドビューを含む）が参照するテーブル（ビュー・マテリアライズドビューを含む）を取得する。
+   * テーブル単位の絞り込みは行わず、スキーマ全体を取得する（{@link #selectTableList}を参照）
    *
-   * @param schemaList 参照する側のビューのスキーマで絞り込む。参照されるテーブルは別のスキーマにあってもよい
+   * @param schemaNames 参照する側のビューのスキーマで絞り込む。参照されるテーブルは別のスキーマにあってもよい
    * @return ビューごとに、参照されるテーブルのスキーマ名・テーブル名の順に並べたリスト。同じテーブルは1件にまとめる。
    *     自身への参照と、DBMSが管理するスキーマのテーブルへの参照は含まない。パーティションへの参照は、パーティション表（根）への参照とする
    */
-  List<ViewReferenceEntity> selectViewReferenceList(List<String> schemaList);
+  List<ViewReferenceEntity> selectViewReferenceList(List<String> schemaNames);
 
   /** 定義本体を含まない軽量情報 */
-  List<FunctionEntity> selectFunctionList(List<String> schemaList);
+  List<FunctionEntity> selectFunctionList(List<String> schemaNames);
 
   /** {@link #selectFunctionList}と同じ項目（種別・引数・戻り値・言語）に加え、定義本体を含む */
-  List<FunctionEntity> selectFunctionDefList(List<String> schemaList);
+  List<FunctionEntity> selectFunctionDefList(List<String> schemaNames);
 
   /** 指定したスキーマに属するシーケンスの一覧を取得する */
-  List<SequenceEntity> selectSequenceList(List<String> schemaList);
+  List<SequenceEntity> selectSequenceList(List<String> schemaNames);
 
   /** 指定したスキーマに属するユーザー定義型の一覧を取得する */
-  List<TypeEntity> selectTypeList(List<String> schemaList);
+  List<TypeEntity> selectTypeList(List<String> schemaNames);
 }

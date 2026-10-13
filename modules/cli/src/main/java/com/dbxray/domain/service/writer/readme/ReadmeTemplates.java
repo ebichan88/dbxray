@@ -8,7 +8,6 @@ import com.dbxray.domain.model.document.ListDocumentType;
 import com.dbxray.domain.model.metrics.DatabaseMetrics;
 import com.dbxray.domain.model.metrics.SchemaMetrics;
 import com.dbxray.domain.model.target.OutputObjectType;
-import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,16 +15,16 @@ import java.util.Set;
 import java.util.function.Function;
 
 /** データベース単位ディレクトリのREADME書き込みに利用するMarkdownのテンプレートを扱うクラス */
-public class ReadmeTemplates {
+public final class ReadmeTemplates {
 
   /** 全スキーマの合計の行の、スキーマ名の欄の表示（スキーマ名と区別するため括弧で囲む） */
   private static final String TOTAL_LABEL = "（合計）";
 
+  private ReadmeTemplates() {}
+
   /** READMEのファイルヘッダー */
   public static String fileHeader(BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(String.format("%s ドキュメント一覧", baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(String.format("%s ドキュメント一覧", baseInfo.dbName()));
   }
 
   /** 基本情報セクション */
@@ -35,29 +34,20 @@ public class ReadmeTemplates {
 
   /**
    * ドキュメント一覧セクション<br>
-   * 出力される一覧ドキュメント（テーブル一覧・ER図一覧・観点一覧・トリガー/関数/シーケンス/型の一覧のうち、 対象が存在するもの）へのリンクを列挙する。個別のテーブル定義書・個別定義書へは、
+   * 出力される一覧ドキュメント（テーブル一覧・ER図一覧・観点一覧・トリガー/関数/シーケンス/型の一覧のうち、対象が存在するもの）へのリンクを列挙する。個別のテーブル定義書・個別定義書へは、
    * それぞれの一覧ドキュメントを経由してたどれるため、ここには一覧のみを掲載する
    *
    * @param documents 出力する一覧ドキュメントの種別（掲載順）
    */
   public static String documentLinks(BaseInfoEntity baseInfo, Set<ListDocumentType> documents) {
-    final StringBuilder sb = new StringBuilder("## ドキュメント一覧").append(LINE_SEPARATOR_DOUBLE);
-    documents.forEach(
-        type ->
-            sb.append(
-                    String.format(
-                        "* [%s](%s)  ",
-                        type.getTitle(),
-                        DocumentLocations.linkFromDatabaseRoot(
-                            DocumentLocations.listFile(type, baseInfo.dbName()))))
-                .append(LINE_SEPARATOR));
-    return sb.append(LINE_SEPARATOR).toString();
+    return MarkdownTemplateSupport.listLinks("ドキュメント一覧", documents, baseInfo);
   }
 
   /**
    * 集計セクション<br>
-   * 出力対象のオブジェクトの数・論理名の記述状況・関連と読み解きの状況を、スキーマごとの表で示す。スキーマが2つ以上の場合は合計の行を足す。 取得しなかった種別（{@code
-   * target.objects}で外した種別）の列は、0件と区別できるよう列ごと省く。 集計の対象が1つも無い場合は空文字を返す
+   * 出力対象のオブジェクトの数・論理名の記述状況・関連と読み解きの状況を、スキーマごとの表で示す。スキーマが2つ以上の場合は合計の行を足す。
+   * 取得しなかった種別（{@code target.objects}で外した種別）の列は、0件と区別できるよう列ごと省く。
+   * 集計の対象が1つも無い場合は空文字を返す
    */
   public static String metrics(DatabaseMetrics metrics) {
     if (metrics.isEmpty()) {

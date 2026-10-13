@@ -3,17 +3,18 @@ package com.dbxray.domain.service.writer;
 import com.dbxray.domain.repository.FileRepository;
 import com.dbxray.domain.service.path.OutputPathResolver;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
+import com.dbxray.domain.service.writer.template.RowRenderer;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 
 /**
  * 行数の多い表を複数ページに分割して出力する処理を共通化したクラス<br>
- * GitHub上で表として表示できる行数には上限があるため、テーブル一覧・ER図・ オブジェクト一覧（トリガー/関数/シーケンス/型）など、行数が多くなり得る一覧系の
- * ドキュメントはすべてこのクラスを介して出力する。 行数が上限以下の場合は本体ページに直接埋め込み、超える場合は別ファイルへ分割して
- * 本体ページにはリンクのみを掲載する。行の文字列生成はページ単位で行い、 全行分を同時にメモリ保持しない
+ * GitHub上で表として表示できる行数には上限があるため、テーブル一覧・ER図・オブジェクト一覧（トリガー/関数/シーケンス/型）など、行数が多くなり得る一覧系の
+ * ドキュメントはすべてこのクラスを介して出力する。
+ * 行数が上限以下の場合は本体ページに直接埋め込み、超える場合は別ファイルへ分割して
+ * 本体ページにはリンクのみを掲載する。行の文字列生成はページ単位で行い、全行分を同時にメモリ保持しない
  */
 public class PagedSectionWriter {
 
@@ -30,13 +31,10 @@ public class PagedSectionWriter {
   /**
    * ページ分割対象となる表のセクション
    *
-   * @param lineMapper 行番号と要素から1行分の文字列を生成する関数
+   * @param rowRenderer 要素を表の1行（末尾の改行を含む）にする関数
    */
   public record PagedSection<T>(
-      String heading,
-      String tableHeader,
-      List<T> rows,
-      BiFunction<Integer, T, String> lineMapper) {}
+      String heading, String tableHeader, List<T> rows, RowRenderer<T> rowRenderer) {}
 
   /**
    * 表のセクションを掲載する本体ページと、分割ページの共通部分<br>
@@ -50,7 +48,7 @@ public class PagedSectionWriter {
 
   /**
    * 表のセクションを書き込むメソッド<br>
-   * 行数がMarkdownの表に表示できる最大件数以下の場合は本体ページに直接埋め込み、 超える場合は別ファイルへ分割して、本体ページにはリンクのみを掲載する。
+   * 行数がMarkdownの表に表示できる最大件数以下の場合は本体ページに直接埋め込み、超える場合は別ファイルへ分割して、本体ページにはリンクのみを掲載する。
    * 行の文字列生成はページ単位で行い、全行分を同時にメモリ保持しない
    *
    * @return 本体ページに掲載するセクション文字列
@@ -85,7 +83,6 @@ public class PagedSectionWriter {
     }
     return PagedSectionTemplates.pagedSectionLinks(
         section.heading(),
-        section.heading(),
         IntStream.rangeClosed(1, totalPages).mapToObj(page -> pageHref(layout, page)).toList());
   }
 
@@ -119,7 +116,7 @@ public class PagedSectionWriter {
   private <T> String buildRows(PagedSection<T> section, int from, int to) {
     final StringBuilder sb = new StringBuilder();
     IntStream.range(from, to)
-        .forEach(i -> sb.append(section.lineMapper().apply(i + 1, section.rows().get(i))));
+        .forEach(i -> sb.append(section.rowRenderer().render(i + 1, section.rows().get(i))));
     return sb.toString();
   }
 }

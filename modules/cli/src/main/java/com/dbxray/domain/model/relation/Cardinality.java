@@ -8,13 +8,13 @@ import java.util.Optional;
  * 多重度は外部キーそのものではなく、参照元（子）テーブルの外部キー列に付与された制約から機械的に決まる。
  *
  * <ul>
- *   <li>親側（1件の子に対する親の件数）：外部キー列がすべてNOT NULLなら「ちょうど1」、 NULLを許容するなら「0または1」
- *   <li>子側（1件の親に対する子の件数）：外部キー列が一意制約・一意索引で覆われているなら「0または1」、 覆われていないなら「0以上」
+ *   <li>親側（1件の子に対する親の件数）：外部キー列がすべてNOT NULLなら「ちょうど1」、NULLを許容するなら「0または1」
+ *   <li>子側（1件の親に対する子の件数）：外部キー列が一意制約・一意索引で覆われているなら「0または1」、覆われていないなら「0以上」
  * </ul>
  *
  * 「親1件につき子が1件以上存在すること」はテーブル定義では表現できないため、子側が「1以上」となることはない。<br>
- * なお論理リレーション（{@link RelationType#LOGICAL}）はDBに制約が存在しないため上記の機械的判定ができない。 この場合はサイドカーYAMLでの明示指定（{@link
- * #fromLabel(String)}）か、既定値の1対多が用いられる
+ * なお論理リレーション（{@link RelationType#LOGICAL}）はDBに制約が存在しないため上記の機械的判定ができない。
+ * この場合はサイドカーYAMLでの明示指定（{@link #fromLabel(String)}）か、既定値の1対多が用いられる
  */
 public enum Cardinality {
   /** 1対多。外部キー列はNOT NULLで一意ではない */
@@ -54,8 +54,8 @@ public enum Cardinality {
    * @param relationType 関連の由来（物理／論理）
    * @return Mermaidの関連線表記
    */
-  public String getNotation(RelationType relationType) {
-    return parentNotation + relationType.getLineNotation() + childNotation;
+  public String notation(RelationType relationType) {
+    return parentNotation + relationType.lineNotation() + childNotation;
   }
 
   /**
@@ -63,7 +63,7 @@ public enum Cardinality {
    *
    * @return 日本語のラベル
    */
-  public String getLabel() {
+  public String label() {
     return label;
   }
 
@@ -82,7 +82,8 @@ public enum Cardinality {
 
   /**
    * 日本語のラベルから多重度を逆引きするメソッド<br>
-   * サイドカーYAMLで論理リレーションの多重度が明示指定された場合の変換に用いる。 該当しない場合は空を返すため、呼び出し側で既定値の適用や警告を行う
+   * サイドカーYAMLで論理リレーションの多重度が明示指定された場合の変換に用いる。
+   * 該当しない場合は空を返すため、呼び出し側で既定値の適用や警告を行う
    *
    * @param label 日本語のラベル（例: {@code 1対多}）。null・空文字の場合は空を返す
    * @return 対応する多重度。該当しない場合は空
@@ -91,9 +92,9 @@ public enum Cardinality {
     if (label == null || label.isBlank()) {
       return Optional.empty();
     }
-    final String trimmed = label.trim();
+    final String stripped = label.strip();
     return Arrays.stream(values())
-        .filter(cardinality -> cardinality.label.equals(trimmed))
+        .filter(cardinality -> cardinality.label.equals(stripped))
         .findFirst();
   }
 }

@@ -66,7 +66,7 @@ public class SnapshotExportSinkFactory {
 
     /**
      * {@inheritDoc}<br>
-     * テーブルはスキーマ単位のファイルへ1テーブルずつ追記するため、先に追記先を空の状態で用意する （前回実行時の内容へ追記されないようにするため）
+     * テーブルはスキーマ単位のファイルへ1テーブルずつ追記するため、先に追記先を空の状態で用意する（前回実行時の内容へ追記されないようにするため）
      */
     @Override
     public void beginSchemaTables(String schemaName, BaseInfoEntity baseInfo) {
@@ -76,7 +76,7 @@ public class SnapshotExportSinkFactory {
     /** {@inheritDoc} */
     @Override
     public void writeTableDefinition(TableDefinitionContent content) {
-      snapshotWriter.appendTable(content, outputBaseDir);
+      snapshotWriter.appendTable(content, new OutputRoot(outputBaseDir, content.baseInfo()));
     }
   }
 }

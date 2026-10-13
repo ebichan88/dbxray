@@ -31,7 +31,7 @@ public class ExportTargetConsistencyTest {
   private final ExportTargetConsistency service = new ExportTargetConsistency();
 
   private TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   private List<String> names(List<ForeignKeyEntity> foreignKeys) {

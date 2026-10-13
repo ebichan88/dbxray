@@ -14,56 +14,55 @@ import org.junit.jupiter.api.Test;
 public class DatabaseTypeTest {
 
   @Test
-  @DisplayName("findByName: 'postgresql' はPOSTGRESQLに解決される")
+  @DisplayName("fromId: 'postgresql' はPOSTGRESQLに解決される")
   void testFindByNamePostgresql() {
-    assertEquals(DatabaseType.POSTGRESQL, DatabaseType.findByName("postgresql"));
+    assertEquals(DatabaseType.POSTGRESQL, DatabaseType.fromId("postgresql"));
   }
 
   @Test
-  @DisplayName("findByName: 'oracle' はORACLEに解決される")
+  @DisplayName("fromId: 'oracle' はORACLEに解決される")
   void testFindByNameOracle() {
-    assertEquals(DatabaseType.ORACLE, DatabaseType.findByName("oracle"));
+    assertEquals(DatabaseType.ORACLE, DatabaseType.fromId("oracle"));
   }
 
   @Test
-  @DisplayName("findByName: 未知の値の場合はIllegalArgumentExceptionをスローする")
+  @DisplayName("fromId: 未知の値の場合はIllegalArgumentExceptionをスローする")
   void testFindByNameUnknownThrows() {
     IllegalArgumentException e =
-        assertThrows(IllegalArgumentException.class, () -> DatabaseType.findByName("mysql"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseType.fromId("mysql"));
     assertTrue(e.getMessage().contains("mysql"));
   }
 
   @Test
-  @DisplayName("getRepositoryClass: POSTGRESQLはPostgresCatalogRepositoryを返す")
+  @DisplayName("repositoryClass: POSTGRESQLはPostgresCatalogRepositoryを返す")
   void testGetRepositoryClassPostgresql() {
-    assertEquals(PostgresCatalogRepository.class, DatabaseType.POSTGRESQL.getRepositoryClass());
+    assertEquals(PostgresCatalogRepository.class, DatabaseType.POSTGRESQL.repositoryClass());
   }
 
   @Test
-  @DisplayName("getRepositoryClass: ORACLEはOracleCatalogRepositoryを返す")
+  @DisplayName("repositoryClass: ORACLEはOracleCatalogRepositoryを返す")
   void testGetRepositoryClassOracle() {
-    assertEquals(OracleCatalogRepository.class, DatabaseType.ORACLE.getRepositoryClass());
+    assertEquals(OracleCatalogRepository.class, DatabaseType.ORACLE.repositoryClass());
   }
 
   @Test
   @DisplayName("getName: 各Enum値に対応するDB名を返す")
   void testGetName() {
-    assertEquals("postgresql", DatabaseType.POSTGRESQL.getName());
-    assertEquals("oracle", DatabaseType.ORACLE.getName());
+    assertEquals("postgresql", DatabaseType.POSTGRESQL.id());
+    assertEquals("oracle", DatabaseType.ORACLE.id());
   }
 
   @Test
-  @DisplayName("getDbms: 各Enum値に対応するドメインのDBMS種別を返す")
+  @DisplayName("dbms: 各Enum値に対応するドメインのDBMS種別を返す")
   void testGetDbms() {
-    assertEquals(Dbms.POSTGRESQL, DatabaseType.POSTGRESQL.getDbms());
-    assertEquals(Dbms.ORACLE, DatabaseType.ORACLE.getDbms());
+    assertEquals(Dbms.POSTGRESQL, DatabaseType.POSTGRESQL.dbms());
+    assertEquals(Dbms.ORACLE, DatabaseType.ORACLE.dbms());
   }
 
   @Test
-  @DisplayName("getDbms: すべてのDbmsが、ちょうど1つのDatabaseTypeに対応する")
+  @DisplayName("dbms: すべてのDbmsが、ちょうど1つのDatabaseTypeに対応する")
   void testEveryDbmsHasExactlyOneDatabaseType() {
-    final List<Dbms> mapped =
-        Arrays.stream(DatabaseType.values()).map(DatabaseType::getDbms).toList();
+    final List<Dbms> mapped = Arrays.stream(DatabaseType.values()).map(DatabaseType::dbms).toList();
 
     for (final Dbms dbms : Dbms.values()) {
       assertEquals(1, mapped.stream().filter(dbms::equals).count(), dbms.name());

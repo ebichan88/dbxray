@@ -1,6 +1,6 @@
 package com.dbxray.domain.service.writer.template;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
@@ -8,9 +8,11 @@ import java.util.List;
 
 /**
  * 行数の多い表を複数ページに分割して出力する際に共通で利用するMarkdownのテンプレートを扱うクラス<br>
- * GitHub上で表として表示できる行数には上限があるため、一覧系のドキュメントは行数が多い場合に 別ファイルへ分割して出力する。本体ページに載せるリンク一覧と、分割ページのページ送りを扱う
+ * GitHub上で表として表示できる行数には上限があるため、一覧系のドキュメントは行数が多い場合に別ファイルへ分割して出力する。本体ページに載せるリンク一覧と、分割ページのページ送りを扱う
  */
-public class PagedSectionTemplates {
+public final class PagedSectionTemplates {
+
+  private PagedSectionTemplates() {}
 
   /** セクションの見出し行 */
   public static String heading(String heading) {
@@ -19,16 +21,15 @@ public class PagedSectionTemplates {
 
   /**
    * 分割した詳細ページへのリンク一覧セクション<br>
-   * 行数が上限を超える場合、本体ページには表を載せず分割したページへのリンクのみを掲載する
+   * 行数が上限を超える場合、本体ページには表を載せず分割したページへのリンクのみを掲載する。
+   * リンクの表示名は、見出しにページ番号を付けたもの（例: {@code テーブル情報_2}）
    *
-   * @param label 各ページのリンク表示名
    * @param pageHrefs 各ページへの相対パスのリスト（1ページ目から順に並ぶこと）
    */
-  public static String pagedSectionLinks(String heading, String label, List<String> pageHrefs) {
-    StringBuilder sb = new StringBuilder(heading(heading));
+  public static String pagedSectionLinks(String heading, List<String> pageHrefs) {
+    final StringBuilder sb = new StringBuilder(heading(heading));
     for (int i = 0; i < pageHrefs.size(); i++) {
-      sb.append(String.format("* [%s_%d](%s)  ", label, i + 1, pageHrefs.get(i)))
-          .append(LINE_SEPARATOR);
+      sb.append(MarkdownTemplateSupport.linkListItem(heading + "_" + (i + 1), pageHrefs.get(i)));
     }
     return sb.append(LINE_SEPARATOR).toString();
   }
@@ -43,7 +44,7 @@ public class PagedSectionTemplates {
    */
   public static String pageFooter(
       String prevHref, String nextHref, String backHref, String backLabel) {
-    StringBuilder sb = new StringBuilder(HORIZON).append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder(HORIZONTAL_RULE).append(LINE_SEPARATOR_DOUBLE);
     if (prevHref != null) {
       sb.append(String.format("[<<前へ](%s) ", prevHref));
     }

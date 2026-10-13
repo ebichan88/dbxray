@@ -12,7 +12,7 @@ import java.util.Set;
 
 /**
  * データベース単位ディレクトリのREADMEを書き込むクラス<br>
- * 複数のデータベースを同じ出力先へ出力した場合に、GitHub等でそのディレクトリを開いた際の入り口となるよう、 出力される一覧ドキュメントへのリンクと、出力対象の集計をまとめる
+ * 複数のデータベースを同じ出力先へ出力した場合に、GitHub等でそのディレクトリを開いた際の入り口となるよう、出力される一覧ドキュメントへのリンクと、出力対象の集計をまとめる
  */
 public class ReadmeWriter {
 
@@ -38,8 +38,8 @@ public class ReadmeWriter {
     fileRepository.createDirectory(file.getParent());
     final List<String> contents =
         List.of(
-            ReadmeTemplates.fileHeader(outputRoot.baseInfo()), // ヘッダー
-            ReadmeTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            ReadmeTemplates.fileHeader(outputRoot.baseInfo()),
+            ReadmeTemplates.baseInfo(outputRoot.baseInfo()),
             ReadmeTemplates.documentLinks(outputRoot.baseInfo(), documents), // ドキュメント一覧
             ReadmeTemplates.metrics(metrics) // 集計
             );

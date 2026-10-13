@@ -1,19 +1,22 @@
 package com.dbxray.domain.service.writer.template;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
+import com.dbxray.domain.model.document.ListDocumentType;
+import com.dbxray.domain.service.path.DocumentLocations;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
  * 各テンプレートクラスで共通して利用するMarkdownの定数・部品を集約したクラス<br>
- * 改行コードや水平線、「## 基本情報」セクション、タイトル付きファイルヘッダーなど、 複数のテンプレートクラスで内容が重複していたものをここに集約する
+ * 改行コードや水平線、「## 基本情報」セクション、タイトル付きファイルヘッダーなど、複数のテンプレートクラスで内容が重複していたものをここに集約する
  */
 public final class MarkdownTemplateSupport {
 
   public static final String LINE_SEPARATOR = System.lineSeparator();
   public static final String LINE_SEPARATOR_DOUBLE = LINE_SEPARATOR + LINE_SEPARATOR;
-  public static final String HORIZON = "___";
+  public static final String HORIZONTAL_RULE = "___";
 
   /** 基本情報に掲載する作成日の書式 */
   private static final DateTimeFormatter GENERATED_DATE_FORMAT =
@@ -21,6 +24,14 @@ public final class MarkdownTemplateSupport {
 
   /** 表のセルで真偽値の「真」を表すマーカー文字列（「偽」は空文字とする） */
   private static final String MARKER = "○";
+
+  /** 生のHTMLのタグ・コメントの開始になる{@code <}のうち、表のセルの改行に使う{@code <br>}以外 */
+  private static final Pattern HTML_START = Pattern.compile("<(?!br>)");
+
+  private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
+
+  /** コードブロックの囲みの最短の長さ（CommonMarkの仕様） */
+  private static final int MIN_FENCE_LENGTH = 3;
 
   private MarkdownTemplateSupport() {}
 
@@ -42,26 +53,20 @@ public final class MarkdownTemplateSupport {
         + LINE_SEPARATOR_DOUBLE;
   }
 
-  /** 生のHTMLのタグ・コメントの開始になる{@code <}のうち、表のセルの改行に使う{@code <br>}以外 */
-  private static final Pattern HTML_START = Pattern.compile("<(?!br>)");
-
-  private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
-
-  /** コードブロックの囲みの最短の長さ（CommonMarkの仕様） */
-  private static final int MIN_FENCE_LENGTH = 3;
-
   /**
    * Markdownの表の1行を組み立てるメソッド<br>
-   * 各引数を{@code |}区切りで連結し、先頭・末尾にも{@code |}を付与する（末尾の改行は含まない）。 セルの値は{@link
-   * String#valueOf}相当で文字列化し、行全体に{@link #escapeTableRow}を適用する。 {@code |}を含みうる自由記述文字列は、呼び出し側で{@link
-   * #escapeTableCell}等を適用した上で渡すこと。 {@code \}で終わるセルの後には空白を1つ置く（表示ではセルの前後の空白は除かれる）
+   * 各引数を{@code |}区切りで連結し、先頭・末尾にも{@code |}を付与する（末尾の改行は含まない）。
+   * 表の行はすべてこのメソッドで組み立て、書式（{@code "| %s |"}等）で組み立てない。
+   * セルの値は{@link String#valueOf}相当で文字列化し、行全体に{@link #escapeTableRow}を適用する。
+   * {@code |}を含みうる自由記述文字列は、呼び出し側で{@link #escapeTableCell}等を適用した上で渡すこと。
+   * {@code \}で終わるセルの後には空白を1つ置く（表示ではセルの前後の空白は除かれる）
    *
    * @param cells セルの値（先頭から順に列として並ぶ）
    * @return {@code |cell1|cell2|...|} 形式の1行分の文字列
    */
   public static String row(Object... cells) {
     final StringBuilder sb = new StringBuilder();
-    for (Object cell : cells) {
+    for (final Object cell : cells) {
       final String value = String.valueOf(cell);
       sb.append('|').append(value);
       // GFMの表では\|がセルの区切りではなく文字の|と解釈され、値が\で終わると次のセルと1つにつながって列がずれる
@@ -75,9 +80,9 @@ public final class MarkdownTemplateSupport {
   /**
    * 表の1行分の文字列（末尾の改行を含まない）に含まれるDB由来の文字列をエスケープするメソッド<br>
    * 改行を{@code <br>}に置き換えたうえで{@link #escapeHtml}を適用する（DB由来の名前の改行で行が切れ、
-   * 次の行がMarkdownの構文として解釈されないようにするため）。{@link #row}を使わず書式で組み立てた行に適用する
+   * 次の行がMarkdownの構文として解釈されないようにするため）
    */
-  public static String escapeTableRow(String line) {
+  private static String escapeTableRow(String line) {
     return escapeHtml(LINE_BREAK.matcher(Objects.toString(line, "")).replaceAll("<br>"));
   }
 
@@ -92,13 +97,61 @@ public final class MarkdownTemplateSupport {
   }
 
   /**
+   * ファイルの先頭の見出し（{@code # 見出し}）<br>
+   * 見出しはDB由来の文字列（テーブル名・DB名等）を含みうるため、{@link #escapeInline}を通す
+   */
+  public static String fileHeader(String title) {
+    return "# " + escapeInline(title) + LINE_SEPARATOR_DOUBLE;
+  }
+
+  /**
    * タイトル付きファイルヘッダー（「# タイトル（DB名：xxx）」の形式）<br>
    * ER図一覧・オブジェクト一覧など、タイトルとDB名のみで組み立てられるヘッダーで共通利用する
    */
   public static String titledFileHeader(String title, BaseInfoEntity baseInfo) {
-    return "# "
-        + escapeInline(String.format("%s（DB名：%s）", title, baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return fileHeader(String.format("%s（DB名：%s）", title, baseInfo.dbName()));
+  }
+
+  /**
+   * リンクの箇条書きの1項目（末尾の改行を含む）
+   *
+   * @param label リンクの表示名（DB由来の文字列は呼び出し側でエスケープしたもの）
+   */
+  public static String linkListItem(String label, String href) {
+    return "* [" + label + "](" + href + ")  " + LINE_SEPARATOR;
+  }
+
+  /**
+   * 一覧ドキュメントへのリンクを並べたセクション（データベース単位ディレクトリ直下のドキュメントに置く）
+   *
+   * @param types リンクを掲載する一覧の種別（掲載順）
+   */
+  public static String listLinks(
+      String heading, Collection<ListDocumentType> types, BaseInfoEntity baseInfo) {
+    final StringBuilder sb = new StringBuilder("## ").append(heading).append(LINE_SEPARATOR_DOUBLE);
+    types.forEach(
+        type -> sb.append(linkListItem(type.title(), listLinkFromDatabaseRoot(type, baseInfo))));
+    return sb.append(LINE_SEPARATOR).toString();
+  }
+
+  /**
+   * データベース単位ディレクトリ直下のドキュメントから、一覧ドキュメントへの相対リンク
+   *
+   * @return 例: {@code ./tableList_testdb.md}
+   */
+  public static String listLinkFromDatabaseRoot(ListDocumentType type, BaseInfoEntity baseInfo) {
+    return DocumentLocations.linkFromDatabaseRoot(
+        DocumentLocations.listFile(type, baseInfo.dbName()));
+  }
+
+  /**
+   * 個別定義書（{@code {スキーマ名}/{区分}/}配下）から、一覧ドキュメントへの相対リンク
+   *
+   * @return 例: {@code ../../tableList_testdb.md}
+   */
+  public static String listLinkFromDefinition(ListDocumentType type, BaseInfoEntity baseInfo) {
+    return DocumentLocations.linkFromDefinition(
+        DocumentLocations.listFile(type, baseInfo.dbName()));
   }
 
   /**
@@ -118,7 +171,8 @@ public final class MarkdownTemplateSupport {
   /**
    * DBのカタログから取得した定義文字列（インデックス定義・制約定義等）を、Markdownの表セルへ埋め込める形へエスケープするメソッド<br>
    * セル区切りとして解釈される{@code |}のみをエスケープする。{@link #escapeTableCell(String)}と異なり改行は置換しない
-   * （カタログ由来の定義は1行で取得しているため）。 SQL側でエスケープすると構造化データ（スナップショット等）にもMarkdown記法が混入するため、表示用のエスケープはここで行う
+   * （カタログ由来の定義は1行で取得しているため）。
+   * SQL側でエスケープすると構造化データ（スナップショット等）にもMarkdown記法が混入するため、表示用のエスケープはここで行う
    *
    * @param value エスケープ対象の文字列（nullの場合は空文字として扱う）
    * @return 表セルへ埋め込み可能な文字列
@@ -161,7 +215,7 @@ public final class MarkdownTemplateSupport {
 
   /**
    * DB由来の文字列（関数・ビューの定義等）を囲むコードブロックの囲みを返すメソッド<br>
-   * 中身に{@code ```}の行があると、そこでコードブロックが閉じて以降がMarkdownとして解釈されるため、 中身に現れる最長のバッククォートの並びより長い囲みにする
+   * 中身に{@code ```}の行があると、そこでコードブロックが閉じて以降がMarkdownとして解釈されるため、中身に現れる最長のバッククォートの並びより長い囲みにする
    *
    * @return 通常は{@code ```}。中身に3個以上連続するバッククォートがある場合は、それより1個多いバッククォート
    */
@@ -171,7 +225,8 @@ public final class MarkdownTemplateSupport {
 
   /**
    * DB由来の文字列（パーティションキー等）をコードスパンにするメソッド<br>
-   * 中身のバッククォートでコードスパンが閉じないよう、中身に現れる最長のバッククォートの並びより長い区切りで囲む。 改行は、次の行がMarkdownの構文として解釈されないよう空白に置き換える
+   * 中身のバッククォートでコードスパンが閉じないよう、中身に現れる最長のバッククォートの並びより長い区切りで囲む。
+   * 改行は、次の行がMarkdownの構文として解釈されないよう空白に置き換える
    *
    * @return {@code `値`}（中身がバッククォートで始まる・終わる場合は、区切りとの間に空白を入れる）
    */
@@ -180,6 +235,15 @@ public final class MarkdownTemplateSupport {
     final String delimiter = "`".repeat(longestBacktickRun(value) + 1);
     final String padding = value.startsWith("`") || value.endsWith("`") ? " " : "";
     return delimiter + padding + value + padding + delimiter;
+  }
+
+  /**
+   * DB由来のSQL（関数・トリガーの定義等）のコードブロック（末尾の空行を含む）<br>
+   * 囲みは{@link #codeFence}で中身に合わせて伸ばす
+   */
+  public static String sqlCodeBlock(String sql) {
+    final String fence = codeFence(sql);
+    return fence + "sql" + LINE_SEPARATOR + sql + LINE_SEPARATOR + fence + LINE_SEPARATOR_DOUBLE;
   }
 
   private static int longestBacktickRun(String value) {

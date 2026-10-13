@@ -16,7 +16,7 @@ import java.util.Set;
 
 /**
  * ER図のテーブルの箱に表示する内容（論理テーブル名・関連カラム）を引くクラス<br>
- * 関連カラムは、関連の参照元・参照先として使われるカラム。カラムはテーブル数に比例して重くなるため、 取得したカラムのうち関連カラムだけを保持する（{@link Builder}）
+ * 関連カラムは、関連の参照元・参照先として使われるカラム。カラムはテーブル数に比例して重くなるため、取得したカラムのうち関連カラムだけを保持する（{@link Builder}）
  */
 public final class DiagramBoxes {
 
@@ -57,7 +57,8 @@ public final class DiagramBoxes {
    * 1枚の図のテーブルの箱に表示する関連カラムを、テーブルごとに求めるメソッド
    *
    * @param drawnRelations 図に描画する関連。これらの関連で使われるカラムだけを返す
-   * @return 関連の参照元・参照先のテーブルごとのカラム（カラムの定義順）。実在しないカラム（論理リレーションで宣言したカラムの誤り等）は含まない。 表示するカラムが無いテーブルは含まない
+   * @return 関連の参照元・参照先のテーブルごとのカラム（カラムの定義順）。実在しないカラム（論理リレーションで宣言したカラムの誤り等）は含まない。
+   *     表示するカラムが無いテーブルは含まない
    */
   public Map<TableKey, List<DiagramColumn>> relationColumnsOf(
       Collection<ForeignKeyEntity> drawnRelations) {

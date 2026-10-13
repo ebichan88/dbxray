@@ -603,7 +603,7 @@ viewpoints:
   <li><strong>列とrecordは名前で対応する</strong>。SQLの別名（<code>AS "schemaName"</code>）とDTOのコンポーネント名を、<code>mybatis-config.xml</code>の<code>argNameBasedConstructorAutoMapping</code>で対応させます。<code>resultType="TableDto"</code>は<code>typeAliases</code>で付けた短い名前です。</li>
 </ul>
 <pre><code><span class="c">// AbstractCatalogRepository（要約）</span>
-baseSqlPath = <span class="k">"com.dbxray.domain.repository."</span> + databaseType.getName() + <span class="k">".CatalogRepository."</span>;
+baseSqlPath = <span class="k">"com.dbxray.domain.repository."</span> + databaseType.id() + <span class="k">".CatalogRepository."</span>;
 
 <span class="k">try</span> (SqlSession session = sqlSessionFactory.openSession()) {     <span class="c">// 呼ぶたびにプールから接続を借りる</span>
   <span class="k">return</span> session.selectList(baseSqlPath + sqlId, Map.of(<span class="k">"schemaList"</span>, schemaList, <span class="k">"tableList"</span>, tableList));
@@ -653,7 +653,7 @@ erDiagram
   <thead><tr><th>行</th><th>意味</th><th>作るメソッド</th></tr></thead>
   <tbody>
     <tr><td><code>sample_department["department"]</code></td><td>識別子と表示名。識別子は「スキーマ_テーブル」で、記号は<code>_</code>に置き換える。表示名は「テーブル名（論理名）」</td><td><code>MermaidSupport.mermaidId</code>・<code>aliasLine</code>・<code>assignLabels</code></td></tr>
-    <tr><td><code>A ||--o{ B : "名前"</code></td><td>関連線。親→子の向き。両端の記号が多重度、<code>--</code>が実線（物理の外部キー）、<code>..</code>が破線（論理リレーション）</td><td><code>MermaidSupport.relationLine</code>・<code>Cardinality.getNotation</code></td></tr>
+    <tr><td><code>A ||--o{ B : "名前"</code></td><td>関連線。親→子の向き。両端の記号が多重度、<code>--</code>が実線（物理の外部キー）、<code>..</code>が破線（論理リレーション）</td><td><code>MermaidSupport.relationLine</code>・<code>Cardinality.notation</code></td></tr>
     <tr><td><code>B { 型 名前 PK, FK "論理名" }</code></td><td>箱に表示するカラム。型は桁数を除き、記号を<code>_</code>にする</td><td><code>MermaidSupport.attributeBlock</code>・<code>sanitizeType</code></td></tr>
   </tbody>
 </table>
@@ -679,8 +679,8 @@ erDiagram
   <li><strong>ArchUnit</strong>（<code>ArchitectureTest</code>）：レイヤーの依存方向や置き場所などの規約を、単体テストとして検査する。違反するとビルドが失敗する。規約の一覧は3章。</li>
 </ul>
 <p>サンプルDBに対して通常実行したときの、既定のレベルのログファイルの全体です（日時とスレッド名を省き、長いパスを短くしています）。</p>
-<pre><code>INFO  MyBatisSqlSessionFactories Initializing SqlSessionFactory from mybatis-config.xml
-INFO  MyBatisSqlSessionFactories SqlSessionFactory initialization completed.
+<pre><code>INFO  MyBatisSqlSessionFactories Initializing SqlSessionFactory. [config=mybatis-config.xml]
+INFO  MyBatisSqlSessionFactories Initialized SqlSessionFactory.
 INFO  DatabaseTypeDetector Connected to the database. [product=PostgreSQL 16.15 (…), driver=PostgreSQL JDBC Driver 42.7.13]
 INFO  ExportSchemaController [START] exportSchema
 INFO  SidecarYamlRepository Loaded sidecar. [annotations=…/annotations.sample.yml, tableCount=2, relationCount=1, viewpointCount=3]
@@ -969,7 +969,7 @@ cliArguments.requireKnownArguments();
 injector.getInstance(OutputDirectoryValidator.<span class="k">class</span>).validate(request);
 <span class="k">final</span> ConnectionSettings connectionSettings = connectionSettings(configFile, cliArguments);   <span class="c">// ConnectionSettings.merge</span>
 <span class="k">final</span> ResultDto resultDto = createController(injector, connectionSettings).execute(request);
-System.out.println(resultDto.getResultMessage());
+System.out.println(resultDto.resultMessage());
 <span class="k">return</span> ExitStatus.SUCCESS;</code></pre>
 
 <h3>入口で文字列を型に変える</h3>
@@ -1069,7 +1069,7 @@ Failed to output database documents.
 <h2 id="pipeline"><span class="n">6</span>取得と書き出しの段取り（SchemaExportPipeline）</h2>
 <p>通常実行のユースケースは短く、取得と書き出しの段取りを<code>SchemaExportPipeline</code>（パッケージプライベート）に任せています。<code>--check</code>のユースケースも同じパイプラインを使い、違いは渡す<code>ExportSink</code>のリストだけです。</p>
 <pre><code><span class="c">// ExportSchemaUsecase.exportSchema</span>
-<span class="k">final</span> Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+<span class="k">final</span> Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
 <span class="k">final</span> ExportTargets targets =
     schemaExportPipeline.fetchTargets(request.targetSelection(), request.sidecarPath());   <span class="c">// 一括取得</span>
 <span class="k">final</span> DiagramBoxes diagramBoxes =
@@ -1218,7 +1218,7 @@ schemaExportPipeline.export(
 <h2 id="check"><span class="n">7</span>差分検知（--check）</h2>
 <p><code>--check</code>は「DBの今の状態から作ったスナップショット」と「出力先にコミット済みのスナップショット」を比べます。取得は通常実行と同じパイプラインで、Sinkをスナップショットの1つに減らし、書き込み先を一時ディレクトリにするだけです。</p>
 <pre><code><span class="c">// CheckDocumentDiffUsecase.checkDocumentDiff</span>
-<span class="k">final</span> Path committedDir = outputPathResolver.resolveBaseOutputDir(request.outputPath());
+<span class="k">final</span> Path committedDir = outputPathResolver.resolveOutputBaseDir(request.outputPath());
 <span class="k">final</span> Path generatedDir = fileRepository.createTempDirectory(CHECK_TEMP_DIR_PREFIX);
 <span class="k">try</span> {
   <span class="k">final</span> ExportTargets targets =
@@ -1670,8 +1670,8 @@ ER図に描画するテーブル数が11件となり、上限（erDiagramMaxNode
 
 | No. | テーブル数 | 外部キー数 | 主なテーブル | Link |
 |:---|:---|:---|:---|:---|
-| 1 | 9 | 9 | sample.employee | [■](./erDiagram_testdb_sample_group1.md) |
-| 2 | 2 | 1 | sample.shipment | [■](./erDiagram_testdb_sample_group2.md) |</code></pre>
+|1|9|9|sample.employee|[■](./erDiagram_testdb_sample_group1.md)|
+|2|2|1|sample.shipment|[■](./erDiagram_testdb_sample_group2.md)|</code></pre>
 <p class="small muted">「主なテーブル」は<code>ForeignKeyGroup.mainTable</code>で、最も多くの関連が接続するテーブルです。group1の外部キー数9には、論理リレーション<code>audit_log.record_id</code>も含まれます（合流しているため）。</p>
 
 <h3>9.5 ER図の箱に何を表示するか（DiagramBoxes）</h3>
@@ -2001,7 +2001,7 @@ erDiagram
   <thead><tr><th>使い道</th><th>通す部品</th><th>防ぐこと</th><th>検査するテスト</th></tr></thead>
   <tbody>
     <tr><td>ファイル名・ディレクトリ名</td><td><code>PathSegments.encode</code>（<code>/ \ : * ? " &lt; &gt; |</code>・<code>~</code>・制御文字を<code>~</code>＋16進2桁に、<code>.</code>だけの名前と空の名前も置き換える。例：<code>a/b</code> → <code>a~2Fb</code>）と、<code>DefaultOutputPathResolver</code>の<code>within</code></td><td>出力先の外への書き込み（パストラバーサル）</td><td><code>OutputPathContainmentTest</code>（<code>OutputPathResolver</code>の全メソッドを危険な名前で呼ぶ）、<code>ArchitectureTest</code>（<code>Path.resolve</code>の呼び出し場所）</td></tr>
-    <tr><td>表の行</td><td><code>row</code>（書式で組み立てた行は<code>escapeTableRow</code>）。改行を<code>&lt;br&gt;</code>に、それ以外の<code>&lt;</code>を<code>&amp;lt;</code>に</td><td>生のHTMLの描画、行の分断</td><td rowspan="3"><code>MarkdownInjectionTest</code>（各テンプレートにHTML・<code>```</code>・見出しを混ぜた文字列を渡す）</td></tr>
+    <tr><td>表の行</td><td><code>row</code>（表の行はすべてこのメソッドで組み立てる）。改行を<code>&lt;br&gt;</code>に、それ以外の<code>&lt;</code>を<code>&amp;lt;</code>に</td><td>生のHTMLの描画、行の分断</td><td rowspan="3"><code>MarkdownInjectionTest</code>（各テンプレートにHTML・<code>```</code>・見出しを混ぜた文字列を渡す）</td></tr>
     <tr><td>見出し・リストの項目</td><td><code>escapeInline</code>（改行を空白に）</td><td>次の行がMarkdownの構文になること</td></tr>
     <tr><td>関数・ビューの定義、トリガーの本体、パーティションキー</td><td><code>codeFence</code>・<code>codeSpan</code>（中身の最長のバッククォートより長い囲み）</td><td>コードブロックが途中で閉じること</td></tr>
     <tr><td>Mermaidの図</td><td><code>MermaidSupport</code>（識別子は記号を<code>_</code>に、表示名・関連名の二重引用符と改行を置き換える）</td><td>図の構文の破壊、コードブロックを閉じる行</td><td><code>MermaidSupportTest</code></td></tr>
@@ -2056,7 +2056,7 @@ erDiagram
     <tr><td class="file">ConsistencyNotice</td><td>突き合わせの通知（種類・文言）。重要度（INFO・WARN）は種類が決める</td><td>← <code>ExportTargetConsistency</code> → <code>SchemaExportPipeline.report</code></td></tr>
 
     <tr class="group"><td colspan="3">domain.model.table：テーブルとその付属物</td></tr>
-    <tr><td class="file">TableEntity</td><td>テーブル1件（table・view・materialized_view）。論理名・ビューの定義・パーティションキー。<code>getHeaderTableName</code>・<code>isPartitioned</code>・<code>isView</code></td><td>どこでも</td></tr>
+    <tr><td class="file">TableEntity</td><td>テーブル1件（table・view・materialized_view）。論理名・ビューの定義・パーティションキー。<code>headerName</code>・<code>isPartitioned</code>・<code>isView</code></td><td>どこでも</td></tr>
     <tr><td class="file">TableKey</td><td>スキーマ名＋テーブル名。テーブルの識別子で、カラム・関連・付帯情報とテーブルを結ぶ。<code>parse</code>で「スキーマ.テーブル」を解析</td><td>どこでも</td></tr>
     <tr><td class="file">TableType</td><td>テーブルの区分のenum。未知の区分は読み込み時に例外</td><td>← <code>TableDto</code>・<code>TableEntity</code></td></tr>
     <tr><td class="file">Tables</td><td>出力対象のテーブルの集合。<code>contains</code>・<code>find</code>（テーブルキー）、<code>bySchema</code>・<code>byTableName</code>（呼ぶたびに作る。後者は利用テーブルの抽出でスキーマ修飾の無い名前を引く）</td><td>← <code>SchemaExportPipeline</code>・<code>ExportTargetConsistency</code>・<code>FunctionTableUsageAnalyzer</code>・Writer等</td></tr>
@@ -2064,7 +2064,7 @@ erDiagram
     <tr><td class="file">ColumnEntity<br>IndexEntity<br>ConstraintEntity</td><td>カラム・インデックス・制約1件</td><td>← <code>TableDetail</code>・テンプレート・<code>TableSnapshot</code></td></tr>
     <tr><td class="file">Columns<br>Indexes<br>Constraints<span class="sub">パッケージプライベート</span></td><td><code>TableDetail.assembleAll</code>専用の、テーブルキーで引ける集合</td><td>← <code>TableDetail</code></td></tr>
     <tr><td class="file">TriggerEntity<br>Triggers</td><td>トリガー1件と集合。イベントはリスト。定義はOracleでは宣言部だけで、本体（<code>body</code>）を別に持つ（PostgreSQLは空文字）</td><td>← <code>SchemaExportPipeline</code>・<code>TableDefinitionContent</code>・<code>ObjectListWriter</code></td></tr>
-    <tr><td class="file">PartitionEntity<br>Partitions</td><td>パーティション表の下位のパーティション1件と集合。根のテーブルキーで引く。名前は根のスキーマからの相対（<code>getDisplayName</code>）</td><td>← <code>TableDefinitionContent</code>・<code>TableDefinitionTemplates</code></td></tr>
+    <tr><td class="file">PartitionEntity<br>Partitions</td><td>パーティション表の下位のパーティション1件と集合。根のテーブルキーで引く。名前は根のスキーマからの相対（<code>displayName</code>）</td><td>← <code>TableDefinitionContent</code>・<code>TableDefinitionTemplates</code></td></tr>
     <tr><td class="file">ViewReferenceEntity<br>ViewReferences</td><td>ビューが参照するテーブル1件と集合。ビューと参照されるテーブルの両方のテーブルキーで引く（<code>belongingTo</code>・<code>referencingTo</code>）</td><td>← <code>SchemaExportPipeline</code>・<code>TableDefinitionContent</code>・<code>TableSnapshot</code></td></tr>
     <tr><td class="file">SchemaTableKeyed</td><td>スキーマ名・テーブル名を持つエンティティのインタフェース。<code>tableKey()</code>の既定実装</td><td>← 各Entity・<code>AbstractEntities</code></td></tr>
     <tr><td class="file">AbstractEntities</td><td>エンティティのリストをテーブルキーで索引する集合の基底。<code>belongingTo(table)</code></td><td>← <code>Triggers</code>・<code>Partitions</code>・<code>ForeignKeys</code>・<code>Columns</code>等</td></tr>

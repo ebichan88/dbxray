@@ -15,10 +15,10 @@ import java.util.Map;
  * 出力するMarkdownドキュメントの配置（ファイル名と、データベース単位ディレクトリからの相対パス）を一元的に定めるクラス<br>
  * 出力先の絶対パス（{@link OutputPathResolver}）と、ドキュメント間の相対リンク（テンプレート）の双方が
  * このクラスの規則を参照することで、ファイル名を変更した場合にパスとリンクが食い違わないようにする。<br>
- * 複数のデータベースを同じ出力先へ出力してもドキュメントが混ざらないよう、DB1つ分のドキュメントはすべて {@code
- * {DB名}/}ディレクトリ配下にまとめる（このクラスが返す相対パスはこのディレクトリからの相対パスとし、 {@code {DB名}/}自体の付与は{@link
- * OutputPathResolver}が行う）。配置は次のとおり。一覧・ER図・観点ページ・READMEは {@code {DB名}/}直下に、テーブル定義書・関数等の個別定義書は{@code
- * {スキーマ名}/{区分}/}配下に置く。<br>
+ * 複数のデータベースを同じ出力先へ出力してもドキュメントが混ざらないよう、
+ * DB1つ分のドキュメントはすべて{@code {DB名}/}ディレクトリ配下にまとめる（このクラスが返す相対パスはこのディレクトリからの相対パスとし、
+ * {@code {DB名}/}自体の付与は{@link OutputPathResolver}が行う）。配置は次のとおり。一覧・ER図・観点ページ・READMEは{@code {DB名}/}直下に、
+ * テーブル定義書・関数等の個別定義書は{@code {スキーマ名}/{区分}/}配下に置く。<br>
  * パスに用いるDB由来の名前（DB名・スキーマ名・テーブル名等）は、出力先の外を指さないよう{@link PathSegments}で置き換える
  */
 public final class DocumentLocations {
@@ -49,7 +49,7 @@ public final class DocumentLocations {
    * @return {@code {接頭辞}List_{DB名}.md}
    */
   public static String listFile(ListDocumentType type, String dbName) {
-    return String.format(LIST_FILENAME_PATTERN, type.getPrefix(), PathSegments.encode(dbName));
+    return String.format(LIST_FILENAME_PATTERN, type.prefix(), PathSegments.encode(dbName));
   }
 
   /**
@@ -65,15 +65,15 @@ public final class DocumentLocations {
   /**
    * ノード数の上限を超えたため分割したスキーマ別ER図の、1グループ分のファイル名
    *
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    * @return {@code erDiagram_{DB名}_{スキーマ名}_group{グループ番号}.md}
    */
-  public static String erDiagramGroupFile(String dbName, String schemaName, int groupNo) {
+  public static String erDiagramGroupFile(String dbName, String schemaName, int groupNumber) {
     return String.format(
         ER_DIAGRAM_GROUP_FILENAME_PATTERN,
         PathSegments.encode(dbName),
         PathSegments.encode(schemaName),
-        groupNo);
+        groupNumber);
   }
 
   /**
@@ -88,17 +88,17 @@ public final class DocumentLocations {
   /**
    * 分割ページは本体ページと同じディレクトリに置く
    *
-   * @param pageIndex ページ番号（1始まり）
+   * @param pageNumber ページ番号（1始まり）
    * @return 本体ページのファイル名の拡張子の前に{@code _{ページ番号}}を付けたファイル名
    * @throws IllegalArgumentException 本体ページのファイル名がMarkdownの拡張子で終わらない場合
    */
-  public static String pageFile(String fileName, int pageIndex) {
+  public static String pageFile(String fileName, int pageNumber) {
     if (!fileName.endsWith(MARKDOWN_EXTENSION)) {
       throw new IllegalArgumentException("Not a markdown file name: " + fileName);
     }
     return fileName.substring(0, fileName.length() - MARKDOWN_EXTENSION.length())
         + "_"
-        + pageIndex
+        + pageNumber
         + MARKDOWN_EXTENSION;
   }
 
@@ -111,13 +111,13 @@ public final class DocumentLocations {
     return String.join(
         PATH_SEPARATOR,
         PathSegments.encode(table.schemaName()),
-        table.tableType().getName(),
+        table.tableType().id(),
         PathSegments.encode(table.physicalTableName()) + MARKDOWN_EXTENSION);
   }
 
   /**
-   * 同じスキーマに同名の関数・プロシージャ（オーバーロード）が複数存在する場合は、ファイル名が重複しないよう 作成順の番号を付ける（例: {@code calc_1}, {@code
-   * calc_2}）。存在しない場合は関数・プロシージャ名をそのまま用いる
+   * 同じスキーマに同名の関数・プロシージャ（オーバーロード）が複数存在する場合は、ファイル名が重複しないよう作成順の番号を付ける（例: {@code calc_1},
+   * {@code calc_2}）。存在しない場合は関数・プロシージャ名をそのまま用いる
    */
   public static String functionDefinitionName(FunctionEntity function) {
     if (!function.isOverloaded()) {
@@ -128,8 +128,8 @@ public final class DocumentLocations {
 
   /**
    * 個別定義のファイルが同じになる関数・プロシージャを求めるメソッド<br>
-   * オーバーロードに付けた番号が別の関数の名前と重なると（{@code calc}のオーバーロードの{@code calc_1}と、別の関数{@code
-   * calc_1}）、後に書いたほうが先に書いたファイルを上書きする
+   * オーバーロードに付けた番号が別の関数の名前と重なると（{@code calc}のオーバーロードの{@code calc_1}と、
+   * 別の関数{@code calc_1}）、後に書いたほうが先に書いたファイルを上書きする
    *
    * @return 個別定義ファイルの相対パス（{@link #schemaObjectFile}）ごとの、そのファイルを書く関数・プロシージャ（取得順）。
    *     ファイルが同じになるものだけを含み、無ければ空
@@ -157,19 +157,19 @@ public final class DocumentLocations {
   /**
    * 関数・シーケンス・型の個別定義を置くディレクトリの、データベース単位ディレクトリからの相対パス
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    * @return {@code {スキーマ名}/{区分}}
    */
   public static String schemaObjectDirectory(String schemaName, ListDocumentType kind) {
-    return String.join(PATH_SEPARATOR, PathSegments.encode(schemaName), kind.getPrefix());
+    return String.join(PATH_SEPARATOR, PathSegments.encode(schemaName), kind.prefix());
   }
 
   /**
    * 関数・シーケンス・型の個別定義ファイルの、データベース単位ディレクトリからの相対パス
    *
-   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／{@link
-   *     ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
+   * @param kind オブジェクトの区分（{@link ListDocumentType#FUNCTION}／
+   *     {@link ListDocumentType#SEQUENCE}／{@link ListDocumentType#TYPE}）
    * @param name 個別定義ファイル名（拡張子を除く）
    * @return {@code {スキーマ名}/{区分}/{名前}.md}
    */

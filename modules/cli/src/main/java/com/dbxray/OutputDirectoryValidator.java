@@ -18,8 +18,8 @@ import java.nio.file.Path;
  *   <li>{@code --rm-dist}指定時に、ルート・ホームディレクトリ・カレントディレクトリ自体など、削除すると被害が甚大なディレクトリを指す場合は誤りとする
  * </ul>
  *
- * 出力先パスの解決（未指定時の既定値）と、削除してよいディレクトリかの判定は{@link OutputPathResolver}に、 パスの状態の問い合わせは{@link
- * FileRepository}に委ねる
+ * 出力先パスの解決（未指定時の既定値）と、削除してよいディレクトリかの判定は{@link OutputPathResolver}に、
+ * パスの状態の問い合わせは{@link FileRepository}に委ねる
  */
 class OutputDirectoryValidator {
 
@@ -65,7 +65,7 @@ class OutputDirectoryValidator {
    * @throws UserCorrectableException 既存のファイルを指す場合
    */
   private Path requireDirectoryOrAbsent(String outputPath) {
-    final Path outputBaseDir = outputPathResolver.resolveBaseOutputDir(outputPath);
+    final Path outputBaseDir = outputPathResolver.resolveOutputBaseDir(outputPath);
     if (fileRepository.exists(outputBaseDir) && !fileRepository.isDirectory(outputBaseDir)) {
       throw new UserCorrectableException(
           "output.path points to an existing file, not a directory. "

@@ -256,6 +256,6 @@ class FunctionTableUsageTemplatesTest {
   }
 
   private static TableEntity table(String schema, String name, TableType type) {
-    return new TableEntity("db", schema, "", name, type, "");
+    return new TableEntity("db", schema, "", name, type, "", "");
   }
 }

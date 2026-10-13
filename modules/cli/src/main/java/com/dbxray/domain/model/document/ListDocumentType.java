@@ -2,7 +2,7 @@ package com.dbxray.domain.model.document;
 
 /**
  * 一覧ドキュメント（{@code {接頭辞}List_{DB名}.md}）の種別をもつ列挙型クラス<br>
- * 一覧ファイル名の接頭辞と一覧のタイトルを保持する。関数・プロシージャ／シーケンス／ユーザー定義型は、 個別定義ファイルを配置するディレクトリ名にも同じ接頭辞を用いる
+ * 一覧ファイル名の接頭辞と一覧のタイトルを保持する。関数・プロシージャ／シーケンス／ユーザー定義型は、個別定義ファイルを配置するディレクトリ名にも同じ接頭辞を用いる
  */
 public enum ListDocumentType {
   /** テーブル一覧 */
@@ -36,7 +36,7 @@ public enum ListDocumentType {
    *
    * @return 接頭辞（例: {@code function}）
    */
-  public String getPrefix() {
+  public String prefix() {
     return prefix;
   }
 
@@ -45,7 +45,7 @@ public enum ListDocumentType {
    *
    * @return タイトル（例: {@code 関数・プロシージャ一覧}）
    */
-  public String getTitle() {
+  public String title() {
     return title;
   }
 
@@ -54,7 +54,7 @@ public enum ListDocumentType {
    *
    * @return リンクの表示名（例: {@code 関数・プロシージャ一覧へ}）
    */
-  public String getBackLinkLabel() {
+  public String backLinkLabel() {
     return title + "へ";
   }
 }

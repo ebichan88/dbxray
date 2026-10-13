@@ -24,20 +24,20 @@ import com.dbxray.domain.service.path.DocumentLocations;
 import com.dbxray.domain.service.writer.template.MarkdownTemplateSupport;
 import com.dbxray.domain.service.writer.template.MermaidSupport;
 import com.dbxray.domain.service.writer.template.PagedSectionTemplates;
+import com.dbxray.domain.service.writer.template.RowRenderer;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 /** テーブル定義書き込みに利用するMarkdownのテンプレートを扱うクラス */
-public class TableDefinitionTemplates {
+public final class TableDefinitionTemplates {
+
+  private TableDefinitionTemplates() {}
 
   /** テーブル定義ヘッダー */
   public static String fileHeader(TableEntity table) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(table.getHeaderTableName())
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(table.headerName());
   }
 
   /** 基本情報セクション */
@@ -47,7 +47,8 @@ public class TableDefinitionTemplates {
 
   /**
    * テーブル説明セクション<br>
-   * サイドカー由来の説明が存在する場合はその本文を、存在しない場合は従来通り空のセクションを出力する。 説明本文は自由記述のブロックとしてそのまま出力するため、改行はエスケープしない
+   * サイドカー由来の説明が存在する場合はその本文を、存在しない場合は見出しだけの空のセクションを出力する。
+   * 説明本文は自由記述のブロックとしてそのまま出力するため、改行はエスケープしない
    */
   public static String tableExplanation(TableAnnotation annotation) {
     final String description = annotation.description();
@@ -65,7 +66,8 @@ public class TableDefinitionTemplates {
 
   /**
    * テーブル情報セクション<br>
-   * 論理テーブル名はDBコメント由来の自由記述文字列（{@code |}・改行を含みうる）のためエスケープする。 末尾の備考セルはSQLでは付与されないため、サイドカー由来のテーブル備考を
+   * 論理テーブル名はDBコメント由来の自由記述文字列（{@code |}・改行を含みうる）のためエスケープする。
+   * 末尾の備考セルはSQLでは付与されないため、サイドカー由来のテーブル備考を
    * エスケープした上でここで後付けする（FK多重度と同様の後付け方式）
    */
   public static String tableInfo(TableEntity table, TableAnnotation annotation) {
@@ -79,7 +81,7 @@ public class TableDefinitionTemplates {
             table.schemaName(),
             MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
             table.physicalTableName(),
-            table.tableType().getName(),
+            table.tableType().id(),
             MarkdownTemplateSupport.escapeTableCell(annotation.remarks()))
         + LINE_SEPARATOR_DOUBLE;
   }
@@ -90,7 +92,7 @@ public class TableDefinitionTemplates {
    * いずれも自由記述文字列で改行を含む場合もあるためエスケープする
    */
   public static String columns(List<ColumnEntity> columns, TableAnnotation annotation) {
-    String header =
+    final String header =
         """
                 ## カラム情報
 
@@ -117,7 +119,8 @@ public class TableDefinitionTemplates {
 
   /**
    * パーティション情報セクション<br>
-   * パーティション表（宣言的パーティションの親）にだけ出力する。パーティションは個別の定義書を持たないため、ここにまとめる。 多段パーティションは、親から子へ階層順に並べ、親の列で入れ子を示す。
+   * パーティション表（宣言的パーティションの親）にだけ出力する。パーティションは個別の定義書を持たないため、ここにまとめる。
+   * 多段パーティションは、親から子へ階層順に並べ、親の列で入れ子を示す。
    * パーティション境界・下位のパーティションキーは式のため、{@code |}・改行を含みうるのでエスケープする
    *
    * @param partitions 当該テーブルの下位のパーティション（親から子へ階層順）
@@ -148,8 +151,8 @@ public class TableDefinitionTemplates {
         (no, p) ->
             row(
                 no,
-                p.getDisplayName(),
-                p.getDisplayParentName(),
+                p.displayName(),
+                p.displayParentName(),
                 MarkdownTemplateSupport.escapeTableCell(p.bound()),
                 MarkdownTemplateSupport.escapeTableCell(p.partitionKey())));
   }
@@ -176,7 +179,7 @@ public class TableDefinitionTemplates {
    * 備考はDBコメント（{@code COMMENT ON INDEX}）由来の自由記述文字列のためエスケープする
    */
   public static String indexes(List<IndexEntity> indexes) {
-    String header =
+    final String header =
         """
                 ## インデックス情報
 
@@ -202,7 +205,7 @@ public class TableDefinitionTemplates {
    * 備考はDBコメント（{@code COMMENT ON CONSTRAINT}）由来の自由記述文字列のためエスケープする
    */
   public static String constraints(List<ConstraintEntity> constraints) {
-    String header =
+    final String header =
         """
                 ## 制約情報
 
@@ -222,21 +225,23 @@ public class TableDefinitionTemplates {
   }
 
   /** 外部キー情報セクション（DBに実在する外部キー制約のみ） */
-  public static String foreignKeys(List<ForeignKeyEntity> foreignkeys) {
-    String header =
+  public static String foreignKeys(List<ForeignKeyEntity> foreignKeys) {
+    final String header =
         """
                 ## 外部キー情報
 
                 | No. | 外部キー名 | カラムリスト | 参照先 | 参照先カラムリスト | 多重度 |
                 |:---|:---|:---|:---|:---|:---|
                 """;
-    return tableSection(foreignkeys, header, TableDefinitionTemplates::physicalRelationTableLine);
+    return tableSection(foreignKeys, header, TableDefinitionTemplates::physicalRelationTableLine);
   }
 
   /**
    * 論理リレーション情報セクション<br>
-   * DBに外部キー制約が存在せず、サイドカーYAMLで宣言された関連のみを掲載する。 読み手が「DBに制約がある」と誤読しないよう外部キー情報とは別セクションとし、注意書きを添える。
-   * 対象が1件も存在しない場合はセクションごと出力しない（制約を張っているDBでは常に不要なため）。 関連名は現状カラムリストと同じ内容のため列を設けず、カラムリストのみ掲載する
+   * DBに外部キー制約が存在せず、サイドカーYAMLで宣言された関連のみを掲載する。
+   * 読み手が「DBに制約がある」と誤読しないよう外部キー情報とは別セクションとし、注意書きを添える。
+   * 対象が1件も存在しない場合はセクションごと出力しない（制約を張っているDBでは常に不要なため）。
+   * 関連名は現状カラムリストと同じ内容のため列を設けず、カラムリストのみ掲載する
    *
    * @return 対象が存在しない場合は空文字
    */
@@ -260,7 +265,8 @@ public class TableDefinitionTemplates {
 
   /**
    * 被参照情報セクション<br>
-   * 自テーブルを参照している関連（物理外部キー・論理リレーションの双方）を、由来を「区分」列で区別して掲載する。 自己参照は外部キー情報・論理リレーション情報に掲載されるため含まれない。
+   * 自テーブルを参照している関連（物理外部キー・論理リレーションの双方）を、由来を「区分」列で区別して掲載する。
+   * 自己参照は外部キー情報・論理リレーション情報に掲載されるため含まれない。
    * 参照元が無い場合はセクションごと出力しない（外部キー情報と異なり、参照されないテーブルの定義書は変わらない）
    *
    * @param incomingRelations 自テーブルを参照している関連のリスト
@@ -284,11 +290,11 @@ public class TableDefinitionTemplates {
             row(
                 no,
                 fk.tableKey().qualifiedName(),
-                String.join(",", fk.columnNames()),
-                String.join(",", fk.referenceColumnNames()),
+                columnList(fk.columnNames()),
+                columnList(fk.referenceColumnNames()),
                 fk.foreignKeyName(),
-                fk.cardinality().getLabel(),
-                fk.relationType().getLabel()));
+                fk.cardinality().label(),
+                fk.relationType().label()));
   }
 
   /**
@@ -316,7 +322,7 @@ public class TableDefinitionTemplates {
             row(
                 no,
                 reference.referenceTableKey().qualifiedName(),
-                reference.referenceTableType().getName()));
+                reference.referenceTableType().id()));
   }
 
   /**
@@ -341,7 +347,12 @@ public class TableDefinitionTemplates {
         referencingViews,
         header,
         (no, reference) ->
-            row(no, reference.tableKey().qualifiedName(), reference.tableType().getName()));
+            row(no, reference.tableKey().qualifiedName(), reference.tableType().id()));
+  }
+
+  /** 関連のカラムリストの表記（外部キー・論理リレーション・被参照の表で揃える） */
+  private static String columnList(List<String> columnNames) {
+    return String.join(",", columnNames);
   }
 
   /**
@@ -353,10 +364,10 @@ public class TableDefinitionTemplates {
     return row(
         no,
         fk.foreignKeyName(),
-        String.join(",", fk.columnNames()),
-        fk.getReferenceSchemaTableName(),
-        String.join(",", fk.referenceColumnNames()),
-        fk.cardinality().getLabel());
+        columnList(fk.columnNames()),
+        fk.referenceQualifiedName(),
+        columnList(fk.referenceColumnNames()),
+        fk.cardinality().label());
   }
 
   /**
@@ -365,10 +376,10 @@ public class TableDefinitionTemplates {
   private static String logicalRelationTableLine(int no, ForeignKeyEntity fk) {
     return row(
         no,
-        String.join(",", fk.columnNames()),
-        fk.getReferenceSchemaTableName(),
-        String.join(",", fk.referenceColumnNames()),
-        fk.cardinality().getLabel());
+        columnList(fk.columnNames()),
+        fk.referenceQualifiedName(),
+        columnList(fk.referenceColumnNames()),
+        fk.cardinality().label());
   }
 
   /**
@@ -376,7 +387,7 @@ public class TableDefinitionTemplates {
    * 本体を持つトリガー（Oracle）は、表の後にトリガーごとの見出しとコードブロックで本体を出す（複数行のため表のセルに収まらない）
    */
   public static String triggers(List<TriggerEntity> triggers) {
-    String header =
+    final String header =
         """
                 ## トリガー情報
 
@@ -402,23 +413,17 @@ public class TableDefinitionTemplates {
 
   /** トリガーの本体（見出しとコードブロック） */
   private static String triggerBody(TriggerEntity trigger) {
-    final String fence = MarkdownTemplateSupport.codeFence(trigger.body());
     return "### "
         + MarkdownTemplateSupport.escapeInline(trigger.triggerName())
         + LINE_SEPARATOR_DOUBLE
-        + fence
-        + "sql"
-        + LINE_SEPARATOR
-        + trigger.body()
-        + LINE_SEPARATOR
-        + fence
-        + LINE_SEPARATOR_DOUBLE;
+        + MarkdownTemplateSupport.sqlCodeBlock(trigger.body());
   }
 
   /**
    * ER図セクション（Mermaid記法）<br>
-   * 自テーブルは全カラムを、関連テーブル（参照元・参照先）は描画する関連をつなぐカラムだけを箱に表示する。 関連テーブルのカラムはチャンク単位の分割取得の対象外のため、{@code
-   * boxes}が別途取得した関連カラムを用いる
+   * 自テーブルは全カラムを、関連テーブル（参照元・参照先）は描画する関連をつなぐカラムだけを箱に表示する。
+   * 関連テーブルのカラムはチャンク単位の分割取得の対象外のため、
+   * {@code boxes}が別途取得した関連カラムを用いる
    *
    * @param neighborhood 描く関連（描画距離以内のテーブルが持つ関連）
    */
@@ -427,7 +432,7 @@ public class TableDefinitionTemplates {
       List<ColumnEntity> columns,
       DiagramNeighborhood neighborhood,
       DiagramBoxes boxes) {
-    StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
     final List<ForeignKeyEntity> drawnRelations = neighborhood.relations();
     if (drawnRelations.isEmpty()) {
       return sb.append("関連するテーブルはありません。").append(LINE_SEPARATOR_DOUBLE).toString();
@@ -447,28 +452,19 @@ public class TableDefinitionTemplates {
           nodeKeys.add(fk.referenceTableKey());
           nodeKeys.add(fk.tableKey());
         });
-    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(nodeKeys);
-    final Map<TableKey, String> labels = MermaidSupport.assignLabels(nodeKeys, boxes);
-    sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
-    nodeKeys.forEach(key -> sb.append(MermaidSupport.aliasLine(ids.get(key), labels.get(key))));
-    drawnRelations.forEach(
-        fk ->
-            sb.append(
-                MermaidSupport.relationLine(
-                    ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
-    sb.append(
-        MermaidSupport.attributeBlock(
-            ids.get(selfKey), DiagramColumn.of(selfKey, columns, drawnRelations)));
+    final List<DiagramColumn> selfColumns = DiagramColumn.of(selfKey, columns, drawnRelations);
     final Map<TableKey, List<DiagramColumn>> relationColumns =
         boxes.relationColumnsOf(drawnRelations);
-    nodeKeys.stream()
-        .filter(key -> !key.equals(selfKey))
-        .forEach(
-            key ->
-                sb.append(
-                    MermaidSupport.attributeBlock(
-                        ids.get(key), relationColumns.getOrDefault(key, List.of()))));
-    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+    return sb.append(
+            MermaidSupport.erDiagramCodeBlock(
+                nodeKeys,
+                drawnRelations,
+                boxes,
+                key ->
+                    key.equals(selfKey)
+                        ? selfColumns
+                        : relationColumns.getOrDefault(key, List.of())))
+        .toString();
   }
 
   /**
@@ -487,35 +483,31 @@ public class TableDefinitionTemplates {
     viewpoints.forEach(
         viewpoint ->
             sb.append(
-                    String.format(
-                        "* [%s](%s)  ",
-                        MarkdownTemplateSupport.escapeInline(viewpoint.name()),
-                        DocumentLocations.linkFromDefinition(
-                            DocumentLocations.viewpointFile(baseInfo.dbName(), viewpoint))))
-                .append(LINE_SEPARATOR));
+                MarkdownTemplateSupport.linkListItem(
+                    MarkdownTemplateSupport.escapeInline(viewpoint.name()),
+                    DocumentLocations.linkFromDefinition(
+                        DocumentLocations.viewpointFile(baseInfo.dbName(), viewpoint)))));
     return sb.append(LINE_SEPARATOR).toString();
   }
 
   /** テーブル一覧へ戻るリンクのフッター */
   public static String footer(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        DocumentLocations.linkFromDefinition(
-            DocumentLocations.listFile(ListDocumentType.TABLE, baseInfo.dbName())),
-        ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDefinition(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /**
-   * 行番号はリスト内での位置（1始まり）から採番する。当該テーブルへの絞り込みは{@link
-   * com.dbxray.domain.model.target.TableDefinitionContent#assemble}で済んでいる前提とする
+   * 行番号はリスト内での位置（1始まり）から採番する。
+   * 当該テーブルへの絞り込みは{@link com.dbxray.domain.model.target.TableDefinitionContent#assemble}で済んでいる前提とする
    */
-  private static <T> String tableSection(
-      List<T> list, String header, BiFunction<Integer, T, String> lineMapper) {
+  private static <T> String tableSection(List<T> list, String header, RowRenderer<T> rowRenderer) {
     final StringBuilder sb = new StringBuilder(header);
     for (int i = 0; i < list.size(); i++) {
       if (i > 0) {
         sb.append(LINE_SEPARATOR);
       }
-      sb.append(lineMapper.apply(i + 1, list.get(i)));
+      sb.append(rowRenderer.render(i + 1, list.get(i)));
     }
     return sb.append(LINE_SEPARATOR_DOUBLE).toString();
   }

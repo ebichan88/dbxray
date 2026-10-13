@@ -129,22 +129,22 @@ final class ToolArguments {
   }
 
   /**
-   * 必須の文字列のリストの引数を読み取るメソッド（{@link #optionalStringList}と同じく配列・カンマ区切りの文字列・ 単一の文字列を受け付ける）
+   * 必須の文字列のリストの引数を読み取るメソッド（{@link #optionalStringList}と同じく配列・カンマ区切りの文字列・単一の文字列を受け付ける）
    *
    * @param max 受け付ける件数の上限
    * @return 前後の空白を除き、空の要素と重複を除いた値（指定順）
    * @throws InvalidToolArgumentException 未指定・空の場合、{@code max}を超える件数の場合
    */
   List<String> requiredStringList(String name, int max) {
-    final List<String> values = optionalStringList(name);
-    if (values.isEmpty()) {
+    final List<String> items = optionalStringList(name);
+    if (items.isEmpty()) {
       throw new InvalidToolArgumentException("引数" + name + "を指定してください。");
     }
-    if (values.size() > max) {
+    if (items.size() > max) {
       throw new InvalidToolArgumentException(
-          "引数" + name + "は" + max + "件までにしてください。 [count=" + values.size() + "]");
+          "引数" + name + "は" + max + "件までにしてください。 [count=" + items.size() + "]");
     }
-    return values;
+    return items;
   }
 
   /**

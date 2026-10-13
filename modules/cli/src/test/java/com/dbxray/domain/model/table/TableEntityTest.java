@@ -20,7 +20,7 @@ public class TableEntityTest {
   @Test
   @DisplayName("isPartitioned: パーティションキーを持たないテーブルはパーティション表ではない")
   void testIsPartitionedWithoutPartitionKey() {
-    var table = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "");
+    var table = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "", "");
 
     assertEquals("", table.partitionKey());
     assertFalse(table.isPartitioned());

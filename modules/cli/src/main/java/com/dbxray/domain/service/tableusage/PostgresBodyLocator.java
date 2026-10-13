@@ -8,12 +8,12 @@ import java.util.List;
 
 /**
  * PostgreSQLの定義から本体を切り出すクラス<br>
- * {@code pg_get_functiondef}は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直す。 SQL標準の本体（{@code BEGIN
- * ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、最上位の{@code BEGIN ATOMIC}・{@code
- * RETURN}から終わりまでとする。{@code begin}・{@code return}は予約語でなく、関数名（{@code
- * pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない<br>
- * {@code search_path}は見出しの{@code SET search_path}（関数の属性）だけを読む。本体の中の{@code SET}文・{@code
- * set_config('search_path', …)}・{@code EXECUTE}で組み立てたSET文（変数でスキーマを渡す場合を含む）は、本体を切り出した後の字句のため読まない
+ * {@code pg_get_functiondef}は本体を常にドル引用符で囲むため、見出しの後の最上位のドル引用符の中身を字句に分け直す。
+ * SQL標準の本体（{@code BEGIN ATOMIC … END}・{@code RETURN 式}）はドル引用符で囲まれないため、
+ * 最上位の{@code BEGIN ATOMIC}・{@code RETURN}から終わりまでとする。{@code begin}・{@code return}は予約語でなく、
+ * 関数名（{@code pg_get_functiondef}はスキーマで修飾する）や型名にも使えるため、{@code .}の直後のものは区切りとしない<br>
+ * {@code search_path}は見出しの{@code SET search_path}（関数の属性）だけを読む。
+ * 本体の中の{@code SET}文・{@code set_config('search_path', …)}・{@code EXECUTE}で組み立てたSET文（変数でスキーマを渡す場合を含む）は、本体を切り出した後の字句のため読まない
  */
 final class PostgresBodyLocator implements FunctionBodyLocator {
 
@@ -41,32 +41,51 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
       final SqlToken token = tokens.at(i);
       if (token.isSymbol("(")) {
         depth++;
-      } else if (token.isSymbol(")")) {
-        depth = Math.max(0, depth - 1);
-      } else if (depth > 0) {
         continue;
-      } else if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
-        final int name = i + 1;
-        searchPath = readSearchPath(tokens, name + 1);
-      } else if (token.isWord("AS")
-          && tokens.at(i + 1) != null
-          && tokens.at(i + 1).kind() == SqlTokenKind.DOLLAR_STRING) {
+      }
+      if (token.isSymbol(")")) {
+        depth = Math.max(0, depth - 1);
+        continue;
+      }
+      if (depth > 0) {
+        // 引数の並び・既定値等の括弧の中には、本体の区切りも関数の属性も無い
+        continue;
+      }
+      if (token.isWord("SET") && isSearchPathAt(tokens, i + 1)) {
+        final int searchPathIndex = i + 1;
+        searchPath = readSearchPath(tokens, searchPathIndex + 1);
+      } else if (isDollarQuotedBodyAt(tokens, i)) {
         final SqlToken body = tokens.at(i + 1);
         final SqlLexResult inner =
             SqlLexer.lex(
                 definition, body.contentStart(), body.contentEnd(), body.line(), Dbms.POSTGRESQL);
         return new FunctionBody.Postgres(
             inner.tokens(), lexed.incomplete() || inner.incomplete(), searchPath);
-      } else if (tokens.isAfterDot(i)) {
-        continue;
-      } else if ((token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC"))
-          || token.isWord("RETURN")) {
+      } else if (isStandardBodyStartAt(tokens, i)) {
         return new FunctionBody.Postgres(
             all.subList(i, all.size()), lexed.incomplete(), searchPath);
       }
     }
     // 本体の区切りが無い定義の字句は見出しのため、本体と誤らないよう解析しない
     return new FunctionBody.NotAnalyzable(TableUsageStatus.NO_DEFINITION);
+  }
+
+  /** 位置の{@code AS}の直後が、本体を囲むドル引用符か */
+  private static boolean isDollarQuotedBodyAt(SqlTokens tokens, int i) {
+    final SqlToken next = tokens.at(i + 1);
+    return tokens.isWordAt(i, "AS") && next != null && next.kind() == SqlTokenKind.DOLLAR_STRING;
+  }
+
+  /**
+   * 位置が、SQL標準の本体（{@code BEGIN ATOMIC}・{@code RETURN}）の始まりか<br>
+   * {@code .}の直後の語は、スキーマで修飾した関数名・型名の部品のため区切りとしない
+   */
+  private static boolean isStandardBodyStartAt(SqlTokens tokens, int i) {
+    if (tokens.isAfterDot(i)) {
+      return false;
+    }
+    final SqlToken token = tokens.at(i);
+    return (token.isWord("BEGIN") && tokens.isWordAt(i + 1, "ATOMIC")) || token.isWord("RETURN");
   }
 
   private static boolean isSearchPathAt(SqlTokens tokens, int i) {
@@ -76,11 +95,11 @@ final class PostgresBodyLocator implements FunctionBodyLocator {
 
   /**
    * {@code SET search_path TO 'a', 'b'}のスキーマの並びを読むメソッド<br>
-   * {@code pg_get_functiondef}は各スキーマを、大文字小文字を保った文字列にして並べる。手で書いた形（{@code SET search_path = a,
-   * "B"}）も同じ規則で読む。{@code FROM CURRENT}は作成時の値に展開されて保存されるため、{@code pg_get_functiondef}の定義には現れない。
+   * {@code pg_get_functiondef}は各スキーマを、大文字小文字を保った文字列にして並べる。
+   * 手で書いた形（{@code SET search_path = a, "B"}）も同じ規則で読む。{@code FROM CURRENT}は作成時の値に展開されて保存されるため、{@code pg_get_functiondef}の定義には現れない。
    * 手で書いた{@code FROM CURRENT}は値を読めないため、指定が無いものとする。{@code $user}は実行するユーザーの名前のスキーマに決まるため読めず、
-   * 並びから除く。指定があるのに出力対象のスキーマが無い場合（空の文字列の{@code SET search_path TO ''}、{@code $user}を含まず{@code
-   * pg_catalog}・{@code pg_temp}だけ）は、指定が無いものと区別するため、空のスキーマ名で持つ
+   * 並びから除く。指定があるのに出力対象のスキーマが無い場合（空の文字列の{@code SET search_path TO ''}、
+   * {@code $user}を含まず{@code pg_catalog}・{@code pg_temp}だけ）は、指定が無いものと区別するため、空のスキーマ名で持つ
    *
    * @param i {@code search_path}の次の位置（{@code TO}・{@code =}）
    * @return スキーマの並び。{@code TO}・{@code =}で値を指定していない・{@code DEFAULT}の場合は空

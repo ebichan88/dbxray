@@ -25,8 +25,8 @@ final class OracleBodyLocator implements FunctionBodyLocator {
 
   /**
    * 仕様部とパッケージ本体のつなぎ目<br>
-   * {@code catalogMapper.xml}（Oracle）のパッケージの定義の取得が、仕様部の後ろに{@code CHR(10) || CHR(10)}を挟み、{@code
-   * source_text}の関数が{@code 'CREATE OR REPLACE '}を補ったパッケージ本体を続けて組み立てる形と一致させている。
+   * {@code catalogMapper.xml}（Oracle）のパッケージの定義の取得が、仕様部の後ろに{@code CHR(10) || CHR(10)}を挟み、
+   * {@code source_text}の関数が{@code 'CREATE OR REPLACE '}を補ったパッケージ本体を続けて組み立てる形と一致させている。
    * mapperの組み立てを変えると、仕様部が壊れている場合の立て直し（{@link #parseWithBrokenSpecification}）が効かなくなるため、あわせて直す
    */
   private static final String PACKAGE_BODY_SEPARATOR = "\n\n" + PACKAGE_BODY_PREFIX;
@@ -186,19 +186,23 @@ final class OracleBodyLocator implements FunctionBodyLocator {
     if (tokens.isWordAt(nameEnd, "WRAPPED")) {
       return new OracleDefinition.Unanalyzable(TableUsageStatus.WRAPPED);
     }
-    final int is = findIsOrAs(tokens, nameEnd);
-    final boolean invokerRights = hasInvokerRights(tokens, nameEnd, is < 0 ? nameEnd : is);
+    final int isOrAsIndex = findIsOrAs(tokens, nameEnd);
+    final boolean invokerRights =
+        hasInvokerRights(tokens, nameEnd, isOrAsIndex < 0 ? nameEnd : isOrAsIndex);
     if (!isPackage) {
-      if (is < 0) {
+      if (isOrAsIndex < 0) {
         // IS・ASの無い定義（AGGREGATE USING・PIPELINED USING等）に本体は無く、残りは見出しのため解析しない
         return new OracleDefinition.Unanalyzable(TableUsageStatus.NO_DEFINITION);
       }
       return new OracleDefinition.Standalone(
-          lexed, PackageSubprograms.callSpecLanguage(tokens, is + 1), is + 1, invokerRights);
+          lexed,
+          PackageSubprograms.callSpecLanguage(tokens, isOrAsIndex + 1),
+          isOrAsIndex + 1,
+          invokerRights);
     }
-    final int packageBody = findPackageBody(tokens, nameEnd);
-    if (packageBody >= 0) {
-      return parsePackageBody(lexed, packageBody, invokerRights);
+    final int packageBodyIndex = findPackageBody(tokens, nameEnd);
+    if (packageBodyIndex >= 0) {
+      return parsePackageBody(lexed, packageBodyIndex, invokerRights);
     }
     // 仕様部の閉じていない文字列が本体のアポストロフィで閉じると、incompleteにならないまま本体の字句まで飲み込まれる
     final OracleDefinition rebuilt = parseWithBrokenSpecification(definition, invokerRights);
@@ -217,33 +221,35 @@ final class OracleBodyLocator implements FunctionBodyLocator {
    */
   private static OracleDefinition parseWithBrokenSpecification(
       String definition, boolean invokerRights) {
-    final int separator = definition.indexOf(PACKAGE_BODY_SEPARATOR);
-    if (separator < 0) {
+    final int separatorIndex = definition.indexOf(PACKAGE_BODY_SEPARATOR);
+    if (separatorIndex < 0) {
       return null;
     }
-    final int from = separator + "\n\n".length();
+    final int from = separatorIndex + "\n\n".length();
     final int line = 1 + SqlLexer.lineBreaks(definition, 0, from, definition.length());
     final SqlLexResult lexed =
         SqlLexer.lex(definition, from, definition.length(), line, Dbms.ORACLE);
-    final int packageBody = findPackageBody(new SqlTokens(lexed.tokens()), 0);
-    return packageBody >= 0 ? parsePackageBody(lexed, packageBody, invokerRights) : null;
+    final int packageBodyIndex = findPackageBody(new SqlTokens(lexed.tokens()), 0);
+    return packageBodyIndex >= 0 ? parsePackageBody(lexed, packageBodyIndex, invokerRights) : null;
   }
 
   /**
    * パッケージ本体の見出しを読み、最上位のサブプログラムの範囲を求めるメソッド
    *
-   * @param packageBody {@code PACKAGE BODY}の{@code PACKAGE}の位置
+   * @param packageBodyIndex {@code PACKAGE BODY}の{@code PACKAGE}の位置
    */
   private static OracleDefinition parsePackageBody(
-      SqlLexResult lexed, int packageBody, boolean invokerRights) {
+      SqlLexResult lexed, int packageBodyIndex, boolean invokerRights) {
     final SqlTokens tokens = new SqlTokens(lexed.tokens());
-    final int bodyNameEnd = tokens.endOfQualifiedName(packageBody + PACKAGE_BODY_TOKENS);
+    final int bodyNameEnd = tokens.endOfQualifiedName(packageBodyIndex + PACKAGE_BODY_TOKENS);
     if (tokens.isWordAt(bodyNameEnd, "WRAPPED")) {
       return new OracleDefinition.Unanalyzable(TableUsageStatus.WRAPPED);
     }
-    final int bodyIs = findIsOrAs(tokens, bodyNameEnd);
+    final int bodyIsOrAsIndex = findIsOrAs(tokens, bodyNameEnd);
     final List<Subprogram> subprograms =
-        bodyIs < 0 ? List.of() : PackageSubprograms.find(lexed.tokens(), bodyIs + 1);
+        bodyIsOrAsIndex < 0
+            ? List.of()
+            : PackageSubprograms.find(lexed.tokens(), bodyIsOrAsIndex + 1);
     return new OracleDefinition.PackageBody(lexed, subprograms, invokerRights);
   }
 

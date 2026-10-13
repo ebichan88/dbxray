@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 public class ForeignKeysTest {
 
   private TableEntity newTable(String schema, String physical) {
-    return new TableEntity("TEST_DB", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("TEST_DB", schema, "", physical, TableType.TABLE, "", "");
   }
 
   @Test

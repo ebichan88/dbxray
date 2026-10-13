@@ -40,7 +40,7 @@ public class DocumentLocationsTest {
   void testNamesAreEncoded() {
     assertEquals("tableList_~2E~2E.md", DocumentLocations.listFile(ListDocumentType.TABLE, ".."));
     assertEquals("erDiagram_db_a~2Fb.md", DocumentLocations.erDiagramFile("db", "a/b"));
-    var table = new TableEntity("db", "..", "", "../../x", TableType.TABLE, "");
+    var table = new TableEntity("db", "..", "", "../../x", TableType.TABLE, "", "");
     assertEquals("~2E~2E/table/..~2F..~2Fx.md", DocumentLocations.tableDefinitionFile(table));
     assertEquals(
         "~2E~2E/function/a~5Cb.md",
@@ -64,7 +64,7 @@ public class DocumentLocationsTest {
   @Test
   @DisplayName("tableDefinitionFile/schemaObjectFile: {スキーマ名}/{区分}/{名前}.md")
   void testDefinitionFiles() {
-    var table = new TableEntity("testdb", "public", "", "orders", TableType.VIEW, "");
+    var table = new TableEntity("testdb", "public", "", "orders", TableType.VIEW, "", "");
     assertEquals("public/view/orders.md", DocumentLocations.tableDefinitionFile(table));
     assertEquals(
         "public/function",

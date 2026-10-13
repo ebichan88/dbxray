@@ -20,12 +20,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * 文法から生成した妥当なOracleのパッケージで、サブプログラムごとの抽出結果が正解と一致することを確かめるテスト<br>
- * 変形テスト（{@link TableUsageMetamorphicTest}）は字句の分け方に依存するため、サブプログラムの範囲の切り出し（{@link
- * PackageSubprograms}）の誤りはこちらで検知する。サブプログラムごとに自身だけが使うテーブルを1つ（入れ子のサブプログラムがあればその分も）本体の任意の深さに置く。
- * 文は{@code IF}・{@code LOOP}・{@code CASE}文・{@code CASE}式（{@code FOR}の範囲・{@code
- * WHILE}の条件を含む）・ブロック・ラベル等を組み合わせ、 条件付きコンパイルは、分岐ごとに{@code BEGIN}・{@code
- * CASE}・見出し・サブプログラムを書き分けた形まで生成する。 パッケージの宣言部のカーソル・初期化の処理は、どのサブプログラムにも含まれないテーブルを使い、列の別名・列名に{@code
- * function}・{@code procedure}を使う
+ * 変形テスト（{@link TableUsageMetamorphicTest}）は字句の分け方に依存するため、
+ * サブプログラムの範囲の切り出し（{@link PackageSubprograms}）の誤りはこちらで検知する。サブプログラムごとに自身だけが使うテーブルを1つ（入れ子のサブプログラムがあればその分も）本体の任意の深さに置く。
+ * 文は{@code IF}・{@code LOOP}・{@code CASE}文・{@code CASE}式（{@code FOR}の範囲・
+ * {@code WHILE}の条件を含む）・ブロック・ラベル等を組み合わせ、条件付きコンパイルは、
+ * 分岐ごとに{@code BEGIN}・{@code CASE}・見出し・サブプログラムを書き分けた形まで生成する。
+ * パッケージの宣言部のカーソル・初期化の処理は、どのサブプログラムにも含まれないテーブルを使い、
+ * 列の別名・列名に{@code function}・{@code procedure}を使う
  */
 class GeneratedPackagesTest {
 
@@ -52,7 +53,7 @@ class GeneratedPackagesTest {
     for (int p = 0; p < PACKAGES; p++) {
       final Generated generated = new Generator(random).packageDefinition();
       final FunctionTableUsageAnalyzer analyzer =
-          FunctionTableUsageAnalyzer.of(Tables.of(generated.tables), Dbms.ORACLE);
+          AnalyzerFixtures.analyzerOf(Tables.of(generated.tables), Dbms.ORACLE);
       for (final Expected expected : generated.expected) {
         final String actual =
             FunctionTableUsageAnalyzerTest.describe(

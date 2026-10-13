@@ -28,9 +28,9 @@ import java.time.Clock;
 /**
  * DB種別に依存しない依存関係を束縛するモジュール<br>
  * DBへ接続する前（入力の検証の時点）に組み立てるDIコンテナの束縛を定義する。ファイル入出力・出力先パスの解決・ドメインサービス等、
- * 接続先のDB種別で実装が変わらないものはここに束縛する。DB種別が決まってから束縛するもの（{@link
- * com.dbxray.domain.repository.CatalogRepository}と、それに依存するユースケース）は、 このモジュールで組み立てたコンテナの子として{@link
- * DatabaseDependentModule}で束縛する
+ * 接続先のDB種別で実装が変わらないものはここに束縛する。
+ * DB種別が決まってから束縛するもの（{@link com.dbxray.domain.repository.CatalogRepository}と、それに依存するユースケース）は、
+ * このモジュールで組み立てたコンテナの子として{@link DatabaseDependentModule}で束縛する
  */
 public class DbxrayModule extends AbstractModule {
 

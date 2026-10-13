@@ -120,7 +120,7 @@ class OracleCatalogRepositoryIT {
 
     assertEquals(
         List.of("SAMPLE_ARCHIVE.DEPARTMENT"),
-        archived.stream().map(TableEntity::getSchemaTableName).toList());
+        archived.stream().map(TableEntity::qualifiedName).toList());
   }
 
   @Test

@@ -33,7 +33,8 @@ public final class FunctionTableUsageTemplates {
 
   /**
    * 利用しているテーブルのセクション<br>
-   * 表の前に、抽出の限界（該当なし・動的SQL・字句を最後まで読めなかった・オーバーロードの本体をまとめた）を示す文を置く。 解析しなかった場合は、表の代わりに理由を示す
+   * 表の前に、抽出の限界（該当なし・動的SQL・字句を最後まで読めなかった・オーバーロードの本体をまとめた）を示す文を置く。
+   * 解析しなかった場合は、表の代わりに理由を示す
    *
    * @return 抽出を行わない実行（プレビューの機能を有効にしていない実行）では空文字
    */
@@ -115,7 +116,7 @@ public final class FunctionTableUsageTemplates {
           MarkdownTemplateSupport.row(
               i + 1,
               MarkdownTemplateSupport.escapeTableCell(displayName(usage)),
-              usage.tableType().map(TableType::getName).orElse(""),
+              usage.tableType().map(TableType::id).orElse(""),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.CREATE)),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.READ)),
               MarkdownTemplateSupport.marker(usage.has(CrudOperation.UPDATE)),

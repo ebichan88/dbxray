@@ -19,7 +19,7 @@ class RelationGraphTest {
   class JoinPathsTest {
 
     /**
-     * employee → department、assignment → employee・project、project → department、 audit_log ⇢
+     * employee → department、assignment → employee・project、project → department、audit_log ⇢
      * employee（論理）、orders → customer（スナップショットに無い）
      */
     private final SchemaCatalog catalog =

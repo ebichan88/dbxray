@@ -1,6 +1,6 @@
 package com.dbxray.domain.service.writer.viewpoint;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
 
@@ -24,14 +24,14 @@ import java.util.List;
  * ER図の描画と、テーブル・関連の表の1行分は、スキーマ別ER図（{@link ErDiagramTemplates}）と同じものを用いる。
  * 観点は人が選んだテーブルのまとまりのため、スキーマ別ER図と異なり連結成分によるグループ分割は行わない
  */
-public class ViewpointTemplates {
+public final class ViewpointTemplates {
+
+  private ViewpointTemplates() {}
 
   /** 観点ページのファイルヘッダー */
   public static String fileHeader(Viewpoint viewpoint, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format("観点：%s（DB名：%s）", viewpoint.name(), baseInfo.dbName()))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(
+        String.format("観点：%s（DB名：%s）", viewpoint.name(), baseInfo.dbName()));
   }
 
   /** 基本情報セクション */
@@ -53,7 +53,7 @@ public class ViewpointTemplates {
 
   /**
    * ER図セクション（Mermaid記法）<br>
-   * 所属テーブル同士の関連のみを描画する。描画の内容・上限を超えた場合の扱いはスキーマ別ER図と同じ （{@link ErDiagramTemplates#erDiagram}）
+   * 所属テーブル同士の関連のみを描画する。描画の内容・上限を超えた場合の扱いはスキーマ別ER図と同じ（{@link ErDiagramTemplates#erDiagram}）
    */
   public static String erDiagram(RenderingPlan plan, DiagramBoxes boxes) {
     if (plan.group().foreignKeys().isEmpty()) {
@@ -110,21 +110,20 @@ public class ViewpointTemplates {
    * 観点一覧・テーブル一覧へ戻る導線を置く
    */
   public static String footer(BaseInfoEntity baseInfo) {
-    return HORIZON
+    return HORIZONTAL_RULE
         + LINE_SEPARATOR_DOUBLE
         + String.format(
             "[%s](%s) / [%s](%s)",
-            ListDocumentType.VIEWPOINT.getBackLinkLabel(),
-            listLink(ListDocumentType.VIEWPOINT, baseInfo),
-            ListDocumentType.TABLE.getBackLinkLabel(),
-            listLink(ListDocumentType.TABLE, baseInfo))
+            ListDocumentType.VIEWPOINT.backLinkLabel(),
+            MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.VIEWPOINT, baseInfo),
+            ListDocumentType.TABLE.backLinkLabel(),
+            MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo))
         + LINE_SEPARATOR;
   }
 
   /** 観点一覧のファイルヘッダー */
   public static String indexFileHeader(BaseInfoEntity baseInfo) {
-    return MarkdownTemplateSupport.titledFileHeader(
-        ListDocumentType.VIEWPOINT.getTitle(), baseInfo);
+    return MarkdownTemplateSupport.titledFileHeader(ListDocumentType.VIEWPOINT.title(), baseInfo);
   }
 
   /** 観点一覧セクションの見出し */
@@ -161,7 +160,8 @@ public class ViewpointTemplates {
   /** 観点一覧のフッター */
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        listLink(ListDocumentType.TABLE, baseInfo), ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /**
@@ -178,14 +178,5 @@ public class ViewpointTemplates {
       sb.append(ErDiagramTemplates.foreignKeyTableLine(i + 1, relations.get(i)));
     }
     return sb.append(LINE_SEPARATOR).toString();
-  }
-
-  /**
-   * 一覧への相対リンクを生成するメソッド<br>
-   * 観点ページ・観点一覧はデータベース単位ディレクトリ直下に配置される
-   */
-  private static String listLink(ListDocumentType type, BaseInfoEntity baseInfo) {
-    return DocumentLocations.linkFromDatabaseRoot(
-        DocumentLocations.listFile(type, baseInfo.dbName()));
   }
 }

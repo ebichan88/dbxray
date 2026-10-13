@@ -106,7 +106,7 @@ public class ViewpointWriterTest {
   }
 
   private TableEntity table(String physical, String logical) {
-    return new TableEntity("testdb", "sales", logical, physical, TableType.TABLE, "");
+    return new TableEntity("testdb", "sales", logical, physical, TableType.TABLE, "", "");
   }
 
   private final TableEntity orders = table("orders", "受注");
@@ -179,14 +179,14 @@ public class ViewpointWriterTest {
 
         | No. | スキーマ名 | 物理テーブル名 | 論理テーブル名 | 区分 | Link |
         |:---|:---|:---|:---|:---|:---|
-        | 1 | sales | customer | 顧客 | table | [■](./sales/table/customer.md) |
-        | 2 | sales | orders | 受注 | table | [■](./sales/table/orders.md) |
+        |1|sales|customer|顧客|table|[■](./sales/table/customer.md)|
+        |2|sales|orders|受注|table|[■](./sales/table/orders.md)|
 
         ## 観点外のテーブルとの関連
 
         | No. | 参照元 | 外部キー名 | 参照先 |
         |:---|:---|:---|:---|
-        | 1 | sales.orders | rel_orders_product | sales.product |
+        |1|sales.orders|rel_orders_product|sales.product|
 
         ___
 
@@ -205,7 +205,7 @@ public class ViewpointWriterTest {
     assertFalse(page.contains("```mermaid"));
     assertTrue(page.contains("上限（erDiagramMaxNodes = 1件）を超えるため描画を省略しました。"));
     assertTrue(page.contains("## 外部キー一覧"));
-    assertTrue(page.contains("| 1 | sales.orders | fk_orders_customer | sales.customer |"));
+    assertTrue(page.contains("|1|sales.orders|fk_orders_customer|sales.customer|"));
   }
 
   @Test

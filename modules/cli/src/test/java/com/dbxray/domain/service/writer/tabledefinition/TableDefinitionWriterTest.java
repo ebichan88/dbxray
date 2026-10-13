@@ -107,7 +107,7 @@ public class TableDefinitionWriterTest {
   }
 
   private TableEntity table(String physical) {
-    return new TableEntity("testdb", "public", "受注", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", "public", "受注", physical, TableType.TABLE, "", "");
   }
 
   @BeforeEach
@@ -219,7 +219,7 @@ public class TableDefinitionWriterTest {
             1,
             1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
 
     Path expectedFile =
         OUT.resolve("testdb").resolve("public").resolve("table").resolve("orders.md");
@@ -257,7 +257,7 @@ public class TableDefinitionWriterTest {
   void testWriteTableDefinitionPartitionSection() {
     var partitioned =
         new TableEntity("testdb", "public", "売上", "sales", TableType.TABLE, "", "RANGE (sold_on)");
-    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "");
+    var ordinary = new TableEntity("testdb", "public", "", "customer", TableType.TABLE, "", "");
     var partition =
         new PartitionEntity(
             "public",
@@ -288,7 +288,7 @@ public class TableDefinitionWriterTest {
             List.of()),
         new DiagramNeighborhood(List.of(), 1, 1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
     writer.writeTableDefinition(
         new TableDefinitionContent(
             baseInfo(),
@@ -307,7 +307,7 @@ public class TableDefinitionWriterTest {
             List.of()),
         new DiagramNeighborhood(List.of(), 1, 1),
         DiagramBoxesFixtures.none(),
-        OUT);
+        outputRoot());
 
     String salesContent = definitionOf("sales");
     assertTrue(salesContent.contains("## パーティション情報"));

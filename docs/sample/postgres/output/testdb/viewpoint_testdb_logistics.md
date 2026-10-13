@@ -27,8 +27,8 @@ erDiagram
 
 | No. | スキーマ名 | 物理テーブル名 | 論理テーブル名 | 区分 | Link |
 |:---|:---|:---|:---|:---|:---|
-| 1 | sample | shipment |  | table | [■](./sample/table/shipment.md) |
-| 2 | sample | warehouse_zone |  | table | [■](./sample/table/warehouse_zone.md) |
+|1|sample|shipment||table|[■](./sample/table/shipment.md)|
+|2|sample|warehouse_zone||table|[■](./sample/table/warehouse_zone.md)|
 
 ___
 

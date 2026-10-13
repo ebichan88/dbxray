@@ -6,7 +6,7 @@ public final class MarkdownAssert {
 
   private MarkdownAssert() {}
 
-  /** 改行コードをプラットフォーム依存→LF 正規化し、文字列全体を厳密比較。 差分があった場合は可視化しやすいように期待値と実際値をそのまま出力。 */
+  /** 改行コードをプラットフォーム依存→LF 正規化し、文字列全体を厳密比較。差分があった場合は可視化しやすいように期待値と実際値をそのまま出力。 */
   public static void assertMarkdownEquals(String expected, String actual) {
     String normExpected = normalize(expected);
     String normActual = normalize(actual);

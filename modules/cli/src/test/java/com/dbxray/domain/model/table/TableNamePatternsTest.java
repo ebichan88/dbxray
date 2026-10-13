@@ -186,8 +186,8 @@ public class TableNamePatternsTest {
         filter.unmatchedInclusions(
             Tables.of(
                 List.of(
-                    new TableEntity("testdb", "sales", "", "orders", TableType.TABLE, ""),
-                    new TableEntity("testdb", "sales", "", "customer", TableType.TABLE, ""))));
+                    new TableEntity("testdb", "sales", "", "orders", TableType.TABLE, "", ""),
+                    new TableEntity("testdb", "sales", "", "customer", TableType.TABLE, "", ""))));
 
     assertEquals(List.of("sales.custmer", "other.orders"), unmatched);
   }

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 public class TablesTest {
 
   private static TableEntity table(String schema, String physical) {
-    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", schema, "", physical, TableType.TABLE, "", "");
   }
 
   @Test
@@ -47,7 +47,7 @@ public class TablesTest {
   @DisplayName("byTableName: 同じテーブルキーが重複しても、find と同じく先に現れたものだけを用いる")
   void testByTableNameIgnoresDuplicateKeys() {
     var first = table("sales", "orders");
-    var duplicate = new TableEntity("testdb", "sales", "", "orders", TableType.VIEW, "");
+    var duplicate = new TableEntity("testdb", "sales", "", "orders", TableType.VIEW, "", "");
     var publicOrders = table("public", "orders");
     Tables tables = Tables.of(List.of(first, duplicate, publicOrders));
 

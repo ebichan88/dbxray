@@ -324,7 +324,7 @@ public final class SnapshotDirectoryReader {
 
   /**
    * 定義本体（UTF-8）のSHA-256を16進数の小文字で求めるクラス（cliの参考情報の{@code definitionHash}と同じ求め方）<br>
-   * Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体を持つ。サブプログラムの数だけ同じ本体をハッシュしないよう、 直前に求めた定義本体と同じなら結果を使い回す
+   * Oracleのパッケージのサブプログラムは、どれも定義にパッケージ全体を持つ。サブプログラムの数だけ同じ本体をハッシュしないよう、直前に求めた定義本体と同じなら結果を使い回す
    */
   private static final class DefinitionHasher {
 

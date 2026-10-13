@@ -15,10 +15,10 @@ import com.dbxray.domain.service.path.OutputRoot;
 import com.dbxray.domain.service.writer.PagedSectionWriter;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PageLayout;
 import com.dbxray.domain.service.writer.PagedSectionWriter.PagedSection;
+import com.dbxray.domain.service.writer.template.RowRenderer;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.BiFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -80,28 +80,27 @@ public class ObjectListWriter {
         outputRoot);
   }
 
-  /** 行数がMarkdownの表に表示できる最大件数を超える場合は、別ファイルへ分割する。 対象が存在しない一覧を出力しないことの判定は呼び出し側（出力する一覧の決定）が行う */
+  /** 行数がMarkdownの表に表示できる最大件数を超える場合は、別ファイルへ分割する。対象が存在しない一覧を出力しないことの判定は呼び出し側（出力する一覧の決定）が行う */
   private <T> void writeObjectList(
       ListDocumentType type,
       String tableHeader,
       List<T> objects,
-      BiFunction<Integer, T, String> lineMapper,
+      RowRenderer<T> rowRenderer,
       OutputRoot outputRoot) {
     final PagedSection<T> section =
-        new PagedSection<>(type.getTitle(), tableHeader, objects, lineMapper);
+        new PagedSection<>(type.title(), tableHeader, objects, rowRenderer);
     final PageLayout layout =
         new PageLayout(
-            ObjectListTemplates.fileHeader(type.getTitle(), outputRoot.baseInfo()),
+            ObjectListTemplates.fileHeader(type.title(), outputRoot.baseInfo()),
             outputPathResolver.resolveListFile(outputRoot, type),
-            type.getBackLinkLabel());
+            type.backLinkLabel());
     final String objectListSection = pagedSectionWriter.writePagedSection(section, layout);
     final List<String> contents =
         List.of(
-            layout.fileHeader(), // ヘッダー
-            ObjectListTemplates.baseInfo(outputRoot.baseInfo()), // 基本情報
+            layout.fileHeader(),
+            ObjectListTemplates.baseInfo(outputRoot.baseInfo()),
             objectListSection, // 一覧
-            ObjectListTemplates.footer(outputRoot.baseInfo()) // フッター
-            );
+            ObjectListTemplates.footer(outputRoot.baseInfo()));
     fileRepository.writeFile(layout.file(), contents);
   }
 
@@ -146,6 +145,6 @@ public class ObjectListWriter {
     fileRepository.createDirectory(
         outputPathResolver.resolveSchemaObjectDirectory(outputRoot, schemaName, kind));
     fileRepository.writeFile(filePath, List.of(content));
-    logger.debug("exportSchemaObjectDefinition complete. [kind={}, filePath={}]", kind, filePath);
+    logger.debug("Wrote a schema object definition. [kind={}, filePath={}]", kind, filePath);
   }
 }

@@ -112,7 +112,7 @@ public class ErDiagramWriterTest {
   }
 
   private TableEntity table(String physical) {
-    return new TableEntity("testdb", "public", "", physical, TableType.TABLE, "");
+    return new TableEntity("testdb", "public", "", physical, TableType.TABLE, "", "");
   }
 
   private ForeignKeyEntity fk(String table, String name, String refTable) {

@@ -1,8 +1,9 @@
 package com.dbxray.domain.service.writer.erdiagram;
 
-import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZON;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.HORIZONTAL_RULE;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR;
 import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.LINE_SEPARATOR_DOUBLE;
+import static com.dbxray.domain.service.writer.template.MarkdownTemplateSupport.row;
 
 import com.dbxray.domain.model.database.BaseInfoEntity;
 import com.dbxray.domain.model.document.ListDocumentType;
@@ -25,12 +26,15 @@ import java.util.Map;
 
 /**
  * スキーマ単位のER図（全体ER図）書き込みに利用するMarkdownのテンプレートを扱うクラス<br>
- * テーブル単位のER図（{@link TableDefinitionTemplates#erDiagram}）とは異なり、 すべてのテーブルの箱に関連をつなぐカラムだけを表示する。
+ * テーブル単位のER図（{@link TableDefinitionTemplates#erDiagram}）とは異なり、すべてのテーブルの箱に関連をつなぐカラムだけを表示する。
  * カラムは関連カラム（{@link DiagramBoxes}）を用いるため、テーブル詳細のチャンク分割取得の影響を受けない<br>
- * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、 テーブル一覧（{@link
- * TableDefinitionListTemplates}）と同じ方針である
+ * 表のセクションはヘッダーと1行分を個別に生成できるようにしている。
+ * 行数が多い場合に呼び出し側がページ単位で切り出して書き込めるようにするためで、
+ * テーブル一覧（{@link TableDefinitionListTemplates}）と同じ方針である
  */
-public class ErDiagramTemplates {
+public final class ErDiagramTemplates {
+
+  private ErDiagramTemplates() {}
 
   /** ER図ファイルヘッダー */
   public static String fileHeader(String title, BaseInfoEntity baseInfo) {
@@ -39,23 +43,20 @@ public class ErDiagramTemplates {
 
   /** スキーマ別ER図ページのファイルヘッダー */
   public static String schemaFileHeader(String schemaName, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format("ER図（DB名：%s / スキーマ名：%s）", baseInfo.dbName(), schemaName))
-        + LINE_SEPARATOR_DOUBLE;
+    return MarkdownTemplateSupport.fileHeader(
+        String.format("ER図（DB名：%s / スキーマ名：%s）", baseInfo.dbName(), schemaName));
   }
 
   /**
    * グループ別ER図ページのファイルヘッダー
    *
-   * @param groupNo グループ番号（1始まり）
+   * @param groupNumber グループ番号（1始まり）
    */
-  public static String groupFileHeader(String schemaName, int groupNo, BaseInfoEntity baseInfo) {
-    return "# "
-        + MarkdownTemplateSupport.escapeInline(
-            String.format(
-                "ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNo))
-        + LINE_SEPARATOR_DOUBLE;
+  public static String groupFileHeader(
+      String schemaName, int groupNumber, BaseInfoEntity baseInfo) {
+    return MarkdownTemplateSupport.fileHeader(
+        String.format(
+            "ER図（DB名：%s / スキーマ名：%s / グループ%d）", baseInfo.dbName(), schemaName, groupNumber));
   }
 
   /** 基本情報セクション */
@@ -66,42 +67,42 @@ public class ErDiagramTemplates {
   /** ER図索引セクション（スキーマ別ER図へのリンク一覧） */
   public static String schemaIndex(
       BaseInfoEntity baseInfo, Map<String, List<TableEntity>> tablesBySchema) {
-    StringBuilder sb =
-        new StringBuilder("## スキーマ別ER図")
-            .append(LINE_SEPARATOR_DOUBLE)
-            .append("| No. | スキーマ名 | テーブル数 | Link |")
-            .append(LINE_SEPARATOR)
-            .append("|:---|:---|:---|:---|")
-            .append(LINE_SEPARATOR);
-    final int[] no = {0};
-    tablesBySchema.forEach(
-        (schemaName, tables) ->
-            sb.append(
-                    MarkdownTemplateSupport.escapeTableRow(
-                        String.format(
-                            "| %d | %s | %d | %s |",
-                            ++no[0],
-                            schemaName,
-                            tables.size(),
-                            MarkdownTemplateSupport.linkCell(
-                                DocumentLocations.linkFromDatabaseRoot(
-                                    DocumentLocations.erDiagramFile(
-                                        baseInfo.dbName(), schemaName))))))
-                .append(LINE_SEPARATOR));
+    final StringBuilder sb =
+        new StringBuilder(
+            """
+            ## スキーマ別ER図
+
+            | No. | スキーマ名 | テーブル数 | Link |
+            |:---|:---|:---|:---|
+            """);
+    int no = 0;
+    for (final Map.Entry<String, List<TableEntity>> schema : tablesBySchema.entrySet()) {
+      no++;
+      sb.append(
+              row(
+                  no,
+                  schema.getKey(),
+                  schema.getValue().size(),
+                  MarkdownTemplateSupport.linkCell(
+                      DocumentLocations.linkFromDatabaseRoot(
+                          DocumentLocations.erDiagramFile(baseInfo.dbName(), schema.getKey())))))
+          .append(LINE_SEPARATOR);
+    }
     return sb.append(LINE_SEPARATOR).toString();
   }
 
   /**
    * ER図セクション（Mermaid記法）<br>
-   * 外部キーによる関連を持つテーブルのみをノードとして描画する。 関連を持たないテーブルを含めるとノード数が膨らみ図が読めなくなるため描画対象から除外する （全テーブルはテーブル一覧{@code
-   * tableList_{DB名}.md}側に掲載されている）。<br>
+   * 外部キーによる関連を持つテーブルのみをノードとして描画する。
+   * 関連を持たないテーブルを含めるとノード数が膨らみ図が読めなくなるため描画対象から除外する（全テーブルはテーブル一覧
+   * {@code tableList_{DB名}.md}側に掲載されている）。<br>
    * テーブルの箱には、図に描画する関連をつなぐカラムだけを表示する。<br>
    * 描画を省略する計画（{@link RenderingPlan.Omit}）の場合はMermaidの描画を諦め、その旨のメッセージのみを返す
    * （代替として掲載する外部キー一覧は呼び出し側が組み立てる）
    */
   public static String erDiagram(RenderingPlan plan, DiagramBoxes boxes) {
     final ForeignKeyGroup group = plan.group();
-    StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
+    final StringBuilder sb = new StringBuilder("## ER図").append(LINE_SEPARATOR_DOUBLE);
     if (group.foreignKeys().isEmpty()) {
       return sb.append("外部キーによる関連を持つテーブルはありません。").append(LINE_SEPARATOR_DOUBLE).toString();
     }
@@ -115,29 +116,14 @@ public class ErDiagramTemplates {
           .append(LINE_SEPARATOR_DOUBLE)
           .toString();
     }
-    final Map<TableKey, String> ids = MermaidSupport.assignNodeIds(group.nodes());
-    final Map<TableKey, String> labels = MermaidSupport.assignLabels(group.nodes(), boxes);
-    sb.append("```mermaid").append(LINE_SEPARATOR).append("erDiagram").append(LINE_SEPARATOR);
-    group
-        .nodes()
-        .forEach(key -> sb.append(MermaidSupport.aliasLine(ids.get(key), labels.get(key))));
-    // 参照先（親） → 参照元（子） の向きは、テーブル単位のER図の表記と揃える
-    group
-        .foreignKeys()
-        .forEach(
-            fk ->
-                sb.append(
-                    MermaidSupport.relationLine(
-                        ids.get(fk.referenceTableKey()), fk, ids.get(fk.tableKey()))));
     final Map<TableKey, List<DiagramColumn>> columns = boxes.relationColumnsOf(group.foreignKeys());
-    group
-        .nodes()
-        .forEach(
-            key ->
-                sb.append(
-                    MermaidSupport.attributeBlock(
-                        ids.get(key), columns.getOrDefault(key, List.of()))));
-    return sb.append("```").append(LINE_SEPARATOR_DOUBLE).toString();
+    return sb.append(
+            MermaidSupport.erDiagramCodeBlock(
+                group.nodes(),
+                group.foreignKeys(),
+                boxes,
+                key -> columns.getOrDefault(key, List.of())))
+        .toString();
   }
 
   /** ER図をグループに分割した場合の、スキーマページに掲載する説明セクション */
@@ -154,17 +140,33 @@ public class ErDiagramTemplates {
         .toString();
   }
 
-  /** グループ一覧セクションの見出し */
-  public static String groupIndexHeading() {
-    return "グループ一覧";
-  }
-
-  /** グループ一覧セクションの表ヘッダー */
-  public static String groupIndexHeader() {
-    return """
+  /**
+   * グループ一覧セクション（スキーマのER図を分割したグループごとのページへのリンク）
+   *
+   * @param groups 分割したグループ（グループ番号の順）
+   */
+  public static String groupIndex(
+      String schemaName, List<ForeignKeyGroup> groups, BaseInfoEntity baseInfo) {
+    final StringBuilder sb =
+        new StringBuilder(PagedSectionTemplates.heading("グループ一覧"))
+            .append(
+                """
                 | No. | テーブル数 | 外部キー数 | 主なテーブル | Link |
                 |:---|:---|:---|:---|:---|
-                """;
+                """);
+    for (int groupNumber = 1; groupNumber <= groups.size(); groupNumber++) {
+      final ForeignKeyGroup group = groups.get(groupNumber - 1);
+      sb.append(
+          groupIndexLine(
+              groupNumber,
+              group.nodeCount(),
+              group.foreignKeys().size(),
+              group.mainTable(),
+              DocumentLocations.linkFromDatabaseRoot(
+                  DocumentLocations.erDiagramGroupFile(
+                      baseInfo.dbName(), schemaName, groupNumber))));
+    }
+    return sb.append(LINE_SEPARATOR).toString();
   }
 
   /**
@@ -175,14 +177,12 @@ public class ErDiagramTemplates {
    */
   public static String groupIndexLine(
       int no, int tableCount, int fkCount, TableKey mainTable, String href) {
-    return MarkdownTemplateSupport.escapeTableRow(
-            String.format(
-                "| %d | %d | %d | %s | %s |",
-                no,
-                tableCount,
-                fkCount,
-                mainTable.qualifiedName(),
-                MarkdownTemplateSupport.linkCell(href)))
+    return row(
+            no,
+            tableCount,
+            fkCount,
+            mainTable.qualifiedName(),
+            MarkdownTemplateSupport.linkCell(href))
         + LINE_SEPARATOR;
   }
 
@@ -191,13 +191,13 @@ public class ErDiagramTemplates {
    * スキーマ全体のER図（グループ一覧）へ戻る導線を加える
    */
   public static String groupFooter(String schemaName, BaseInfoEntity baseInfo) {
-    return HORIZON
+    return HORIZONTAL_RULE
         + LINE_SEPARATOR_DOUBLE
         + String.format(
             "[スキーマのER図へ](%s) / ",
             DocumentLocations.linkFromDatabaseRoot(
                 DocumentLocations.erDiagramFile(baseInfo.dbName(), schemaName)))
-        + listLinks(baseInfo)
+        + backLinks(baseInfo)
         + LINE_SEPARATOR;
   }
 
@@ -223,21 +223,17 @@ public class ErDiagramTemplates {
   public static String diagramTableLine(int no, TableKey key, TableEntity table) {
     // 出力対象範囲外のテーブルを参照している場合、定義書が存在しないためリンクを張らない
     if (table == null) {
-      return MarkdownTemplateSupport.escapeTableRow(
-              String.format("| %d | %s | %s |  |  | - |", no, key.schema(), key.table()))
-          + LINE_SEPARATOR;
+      return row(no, key.schema(), key.table(), "", "", "-") + LINE_SEPARATOR;
     }
-    return MarkdownTemplateSupport.escapeTableRow(
-            String.format(
-                "| %d | %s | %s | %s | %s | %s |",
-                no,
-                table.schemaName(),
-                table.physicalTableName(),
-                MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
-                table.tableType().getName(),
-                MarkdownTemplateSupport.linkCell(
-                    DocumentLocations.linkFromDatabaseRoot(
-                        DocumentLocations.tableDefinitionFile(table)))))
+    return row(
+            no,
+            table.schemaName(),
+            table.physicalTableName(),
+            MarkdownTemplateSupport.escapeTableCell(table.logicalTableName()),
+            table.tableType().id(),
+            MarkdownTemplateSupport.linkCell(
+                DocumentLocations.linkFromDatabaseRoot(
+                    DocumentLocations.tableDefinitionFile(table))))
         + LINE_SEPARATOR;
   }
 
@@ -248,7 +244,7 @@ public class ErDiagramTemplates {
 
   /**
    * スキーマ跨ぎ外部キーセクションの見出し<br>
-   * スキーマ単位にER図を分割すると、スキーマをまたぐ関連は双方の図に現れて全体像が追いにくいため、 索引ページに一覧としてまとめて掲載する
+   * スキーマ単位にER図を分割すると、スキーマをまたぐ関連は双方の図に現れて全体像が追いにくいため、索引ページに一覧としてまとめて掲載する
    */
   public static String crossSchemaForeignKeyHeading() {
     return "スキーマ跨ぎの外部キー";
@@ -264,40 +260,29 @@ public class ErDiagramTemplates {
 
   /** 外部キー一覧セクションの1行分 */
   public static String foreignKeyTableLine(int no, ForeignKeyEntity fk) {
-    return MarkdownTemplateSupport.escapeTableRow(
-            String.format(
-                "| %d | %s | %s | %s |",
-                no, fk.getSchemaTableName(), fk.foreignKeyName(), fk.getReferenceSchemaTableName()))
+    return row(no, fk.qualifiedName(), fk.foreignKeyName(), fk.referenceQualifiedName())
         + LINE_SEPARATOR;
   }
 
   /** スキーマ別ER図ページのフッター */
   public static String schemaFooter(BaseInfoEntity baseInfo) {
-    return HORIZON + LINE_SEPARATOR_DOUBLE + listLinks(baseInfo) + LINE_SEPARATOR;
+    return HORIZONTAL_RULE + LINE_SEPARATOR_DOUBLE + backLinks(baseInfo) + LINE_SEPARATOR;
   }
 
   /** ER図索引ページのフッター */
   public static String indexFooter(BaseInfoEntity baseInfo) {
     return PagedSectionTemplates.backOnlyFooter(
-        listLink(ListDocumentType.TABLE, baseInfo), ListDocumentType.TABLE.getBackLinkLabel());
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo),
+        ListDocumentType.TABLE.backLinkLabel());
   }
 
   /** ER図一覧・テーブル一覧へ戻るリンクを並べた文字列を生成するメソッド */
-  private static String listLinks(BaseInfoEntity baseInfo) {
+  private static String backLinks(BaseInfoEntity baseInfo) {
     return String.format(
         "[%s](%s) / [%s](%s)",
-        ListDocumentType.ER_DIAGRAM.getBackLinkLabel(),
-        listLink(ListDocumentType.ER_DIAGRAM, baseInfo),
-        ListDocumentType.TABLE.getBackLinkLabel(),
-        listLink(ListDocumentType.TABLE, baseInfo));
-  }
-
-  /**
-   * 一覧への相対リンクを生成するメソッド<br>
-   * ER図はデータベース単位ディレクトリ直下に配置される
-   */
-  private static String listLink(ListDocumentType type, BaseInfoEntity baseInfo) {
-    return DocumentLocations.linkFromDatabaseRoot(
-        DocumentLocations.listFile(type, baseInfo.dbName()));
+        ListDocumentType.ER_DIAGRAM.backLinkLabel(),
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.ER_DIAGRAM, baseInfo),
+        ListDocumentType.TABLE.backLinkLabel(),
+        MarkdownTemplateSupport.listLinkFromDatabaseRoot(ListDocumentType.TABLE, baseInfo));
   }
 }
