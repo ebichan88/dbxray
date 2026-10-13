@@ -7,12 +7,14 @@ import static com.dbxray.mcp.tool.ToolSpecifications.readOnlyTool;
 import static com.dbxray.mcp.tool.ToolSpecifications.stringOrArrayProperty;
 import static com.dbxray.mcp.tool.ToolSpecifications.stringProperty;
 
+import com.dbxray.mcp.catalog.ObjectReference;
 import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.SearchScope;
 import com.dbxray.mcp.catalog.SimilarTable;
 import com.dbxray.mcp.catalog.SimilarTableQuery;
 import com.dbxray.mcp.catalog.SimilarTables;
 import com.dbxray.mcp.catalog.TableEntry;
+import com.dbxray.mcp.catalog.TableFilter;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import java.util.List;
@@ -52,26 +54,31 @@ final class SimilarTableTools {
             "構造（カラム名）が似ているテーブルを探す。tableに既存のテーブルを指定するか、columnsに設計中のカラム名を指定する"
                 + "（どちらか一方）。新しいテーブルを作る前に同じ目的の既存テーブルが無いか確かめるときや、"
                 + "履歴・バックアップ・複製のテーブルを見つけるときに使う。"
-                + "全テーブルが持つid・created_atのような汎用のカラムが、類似の根拠にならないよう重みを下げて比べる。"
-                + "結果は、類似度（%）、種別（identical: カラムが同じ、superset: 相手が基準の全カラムを持ち追加がある、"
-                + "subset: 相手は基準の一部だけ、overlap: それ以外）、基準にだけある・相手にだけあるカラム、"
-                + "同名で型の異なるカラム（tableを指定した場合だけ）を返す。"
+                + "多くのテーブルが持つid・created_atのような汎用のカラムは、類似の根拠にならないよう重みを下げて比べる。"
+                + "結果は、類似度（%。100はカラムが同じ場合だけ）、種別（identical: カラムが同じ、"
+                + "superset: 相手が基準の全カラムを持ち追加がある、subset: 相手は基準の一部だけ、overlap: それ以外）、"
+                + "基準にだけある・相手にだけあるカラム、同名で型の異なるカラム（tableを指定した場合だけ。"
+                + "difference: typeは型が異なる、sizeは長さ・精度だけが異なる）を返す。"
+                + "基準と外部キー・論理リレーションで直接つながるテーブルにはrelatedToBaseが付く"
+                + "（親子は互いのキーを持つため似て見えることがある。履歴・拡張のテーブルは基準を参照していることが多い）。"
                 + "構造の類似であり、同じ意味のテーブルかどうかはget_tableの説明・定義を見て判断する。"
-                + "対象は区分がtableのテーブルで、基準と外部キー・論理リレーションで直接つながるテーブルは含めない"
-                + "（親子は互いのキーを持つため似て見える）。tableを指定した場合は、同じDBのテーブルから探す",
+                + "対象は区分がtableのテーブル。tableを指定した場合は、同じDBのテーブルから探す",
             objectSchema(
                 Map.of(
                     "table",
-                    stringProperty(TableTools.TABLE_DESCRIPTION + "。columnsとどちらか一方を指定する"),
+                    stringProperty(
+                        TableTools.TABLE_DESCRIPTION
+                            + "。同名のテーブルが複数のスキーマにある場合は、スキーマ名.テーブル名の形で指定する。"
+                            + "columnsとどちらか一方を指定する"),
                     "columns",
                     stringOrArrayProperty(
                         "設計中のテーブルのカラム名（物理名。大文字小文字を区別しない。最大" + MAX_COLUMNS + "件）。tableとどちらか一方を指定する"),
                     "schema",
-                    stringProperty(
-                        "tableを指定した場合: 同名のテーブルが複数のスキーマにあるときに、基準のスキーマを指定する"
-                            + "（探す範囲は同じDBの全スキーマ）。columnsを指定した場合: 探す範囲をスキーマで絞り込む"),
+                    stringProperty("探す範囲をスキーマ名で絞り込む場合に指定する（基準のテーブルの特定には使わない）"),
                     "database",
                     DATABASE_PROPERTY,
+                    "viewpoint",
+                    TableTools.VIEWPOINT_PROPERTY,
                     "minShared",
                     integerProperty(
                         "共通のカラム数の下限（既定" + DEFAULT_MIN_SHARED + "）。小さなテーブルの偶然の一致を除く",
@@ -96,29 +103,37 @@ final class SimilarTableTools {
     final int minSimilarity = arguments.optionalInt("minSimilarity", DEFAULT_MIN_SIMILARITY);
     final int limit = arguments.optionalInt("limit", DEFAULT_LIMIT);
     if (arguments.isPresent("columns")) {
-      final SimilarTables found =
-          catalog
-              .tables()
-              .findSimilar(
-                  SimilarTableQuery.ofColumns(
-                      arguments.requiredStringList("columns", MAX_COLUMNS),
-                      minShared,
-                      minSimilarity),
-                  arguments.scope(),
-                  limit);
-      return ToolResults.json(FindSimilarTablesOutput.of(null, found));
+      final SimilarTableQuery query =
+          SimilarTableQuery.ofColumns(
+              arguments.requiredStringList("columns", MAX_COLUMNS), minShared, minSimilarity);
+      return ToolResults.json(
+          FindSimilarTablesOutput.of(
+              null,
+              query,
+              catalog.tables().findSimilar(query, scoped(arguments, arguments.scope()), limit)));
     }
     final TableEntry base =
         ObjectResolver.resolve(
-            arguments, "table", "テーブル", TableTools.SEARCH_TABLES, catalog.tables()::lookup);
-    final SimilarTables found =
-        catalog
-            .tables()
-            .findSimilar(
-                SimilarTableQuery.ofTable(base, minShared, minSimilarity),
-                new SearchScope(base.key().database(), ""),
-                limit);
-    return ToolResults.json(FindSimilarTablesOutput.of(base.key().qualifiedName(), found));
+            ObjectReference.of(
+                arguments.optionalString("database"), null, arguments.requiredString("table")),
+            "テーブル",
+            TableTools.SEARCH_TABLES,
+            "tableをスキーマ名.テーブル名の形（DBが異なる場合はdatabaseも）で指定してください。",
+            catalog.tables()::lookup);
+    final SimilarTableQuery query = SimilarTableQuery.ofTable(base, minShared, minSimilarity);
+    final SearchScope sameDatabase =
+        new SearchScope(base.key().database(), arguments.optionalString("schema"));
+    return ToolResults.json(
+        FindSimilarTablesOutput.of(
+            base.key().qualifiedName(),
+            query,
+            catalog.tables().findSimilar(query, scoped(arguments, sameDatabase), limit)));
+  }
+
+  /** 探す範囲（DB・スキーマ・観点） */
+  private TableFilter scoped(ToolArguments arguments, SearchScope scope) {
+    final TableFilter filter = TableFilter.of(scope);
+    return ViewpointResolver.resolve(catalog, arguments).map(filter::withViewpoint).orElse(filter);
   }
 
   /**
@@ -130,14 +145,28 @@ final class SimilarTableTools {
    */
   record FindSimilarTablesOutput(String base, int total, List<Table> tables, String message) {
 
-    static FindSimilarTablesOutput of(String base, SimilarTables found) {
+    static FindSimilarTablesOutput of(String base, SimilarTableQuery query, SimilarTables found) {
       return new FindSimilarTablesOutput(
           base,
           found.total(),
           found.tables().stream().map(Table::of).toList(),
-          found.total() == 0
-              ? "条件を満たすテーブルはありません。minSharedまたはminSimilarityを小さくすると、似ている度合いの低いテーブルも探せます。"
-              : null);
+          found.total() == 0 ? messageWhenNothingFound(query) : null);
+    }
+
+    private static String messageWhenNothingFound(SimilarTableQuery query) {
+      if (query.columns().isEmpty()) {
+        return "基準のテーブルにカラムが無いため、比べられません。";
+      }
+      if (query.hasFewerColumnsThanMinShared()) {
+        return "基準のカラムは"
+            + query.columns().size()
+            + "個で、minShared（"
+            + query.minShared()
+            + "）に満たないため、条件を満たすテーブルはありません。minSharedを"
+            + query.columns().size()
+            + "以下にしてください。";
+      }
+      return "条件を満たすテーブルはありません。minSharedまたはminSimilarityを小さくすると、似ている度合いの低いテーブルも探せます。";
     }
 
     /**
@@ -149,6 +178,7 @@ final class SimilarTableTools {
      * @param sharedColumns 共通のカラムの数
      * @param onlyInBaseOmitted {@code onlyInBase}を上限で切り捨てた場合の、省いたカラムの数。切り捨てていない場合はnull
      * @param onlyInOtherOmitted {@code onlyInOther}を上限で切り捨てた場合の、省いたカラムの数。切り捨てていない場合はnull
+     * @param relatedToBase 基準と外部キー・論理リレーションで直接つながる場合はtrue。つながらない場合はnull
      */
     record Table(
         String database,
@@ -161,7 +191,8 @@ final class SimilarTableTools {
         Integer onlyInBaseOmitted,
         List<String> onlyInOther,
         Integer onlyInOtherOmitted,
-        List<TypeMismatch> typeMismatches) {
+        List<TypeMismatch> typeMismatches,
+        Boolean relatedToBase) {
 
       static Table of(SimilarTable similar) {
         final TableEntry table = similar.table();
@@ -176,7 +207,8 @@ final class SimilarTableTools {
             omitted(similar.onlyInBase()),
             listed(similar.onlyInOther()),
             omitted(similar.onlyInOther()),
-            similar.typeMismatches().stream().map(TypeMismatch::of).toList());
+            similar.typeMismatches().stream().map(TypeMismatch::of).toList(),
+            similar.relatedToBase() ? Boolean.TRUE : null);
       }
 
       private static List<String> listed(List<String> columns) {
@@ -194,11 +226,16 @@ final class SimilarTableTools {
      * @param column 基準でのカラム名
      * @param base 基準の型
      * @param other 相手の型
+     * @param difference {@code type}（型が異なる）・{@code size}（長さ・精度等だけが異なる）
      */
-    record TypeMismatch(String column, String base, String other) {
+    record TypeMismatch(String column, String base, String other, String difference) {
 
       static TypeMismatch of(SimilarTable.TypeMismatch mismatch) {
-        return new TypeMismatch(mismatch.column(), mismatch.baseType(), mismatch.otherType());
+        return new TypeMismatch(
+            mismatch.column(),
+            mismatch.baseType(),
+            mismatch.otherType(),
+            mismatch.difference().value());
       }
     }
   }

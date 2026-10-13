@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dbxray.mcp.catalog.ColumnEntry;
+import com.dbxray.mcp.catalog.ObjectKey;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.TestCatalogs;
 import com.dbxray.mcp.catalog.TestTables;
+import com.dbxray.mcp.catalog.ViewpointEntry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
@@ -69,29 +71,31 @@ class SimilarTableToolsTest {
   }
 
   @Test
-  @DisplayName("tableに既存のテーブルを指定すると、基準と総数、似ているテーブルの類似度・種別・差分・型の違いを返し、関連でつながるテーブルは含めない")
+  @DisplayName("tableに既存のテーブルを指定すると、基準と総数、似ているテーブルの類似度・種別・差分・型の違いを返し、関連でつながるテーブルには印を付ける")
   void findsSimilarTablesOfTable() throws Exception {
     final JsonNode result =
         json(call("find_similar_tables", Map.of("table", "order_detail", "minSimilarity", 30)));
 
     assertEquals("sample.order_detail", result.get("base").asText());
-    assertEquals(2, result.get("total").asInt());
+    assertEquals(3, result.get("total").asInt());
     assertEquals(
-        List.of("sample.order_detail_bk", "sample.order_detail_hist"),
+        List.of("sample.order_detail_bk", "sample.order_detail_note", "sample.order_detail_hist"),
         result.get("tables").findValuesAsText("name"));
     assertEquals(
         objectMapper.readTree(
             "{\"database\":\"testdb\",\"name\":\"sample.order_detail_bk\",\"similarity\":100,"
                 + "\"kind\":\"identical\",\"sharedColumns\":4,"
                 + "\"typeMismatches\":[{\"column\":\"qty\",\"base\":\"integer\","
-                + "\"other\":\"numeric(10,2)\"}]}"),
+                + "\"other\":\"numeric(10,2)\",\"difference\":\"type\"}]}"),
         result.get("tables").get(0));
-    final JsonNode hist = result.get("tables").get(1);
+    assertTrue(result.get("tables").get(1).get("relatedToBase").asBoolean());
+    final JsonNode hist = result.get("tables").get(2);
     assertEquals("superset", hist.get("kind").asText());
     assertEquals(4, hist.get("sharedColumns").asInt());
     assertEquals(objectMapper.readTree("[\"valid_from\"]"), hist.get("onlyInOther"));
     assertFalse(hist.has("onlyInBase"));
     assertFalse(hist.has("typeMismatches"));
+    assertFalse(hist.has("relatedToBase"));
   }
 
   @Test
@@ -191,6 +195,89 @@ class SimilarTableToolsTest {
 
     assertTrue(result.isError());
     assertTrue(text(result).contains("columns"), text(result));
+  }
+
+  @Test
+  @DisplayName("tableを指定した場合、schemaは探す範囲の絞り込みに使い、基準はスキーマ名.テーブル名で特定する")
+  void narrowsBySchemaWithQualifiedBase() throws Exception {
+    final TableDefinitionTools schemaTools =
+        new TableDefinitionTools(
+            TestCatalogs.of(
+                List.of(
+                    table(TestTables.table("testdb", "sales", "order_detail"), ORDER_DETAIL),
+                    table(TestTables.table("testdb", "archive", "order_detail"), ORDER_DETAIL),
+                    table(TestTables.table("testdb", "sales", "order_detail_bk"), ORDER_DETAIL))));
+
+    final JsonNode result =
+        json(
+            call(
+                schemaTools,
+                "find_similar_tables",
+                Map.of("table", "sales.order_detail", "schema", "archive")));
+
+    assertEquals("sales.order_detail", result.get("base").asText());
+    assertEquals(List.of("archive.order_detail"), result.get("tables").findValuesAsText("name"));
+
+    final CallToolResult ambiguous =
+        call(
+            schemaTools, "find_similar_tables", Map.of("table", "order_detail", "schema", "sales"));
+    assertTrue(ambiguous.isError());
+    assertTrue(
+        text(ambiguous).contains("tableをスキーマ名.テーブル名の形（DBが異なる場合はdatabaseも）で指定してください。"),
+        text(ambiguous));
+  }
+
+  @Test
+  @DisplayName("viewpointを指定すると、観点の所属テーブルだけから探す")
+  void narrowsByViewpoint() throws Exception {
+    final TableDefinitionTools viewpointTools =
+        new TableDefinitionTools(
+            TestCatalogs.of(
+                    List.of(
+                        table("order_detail", ORDER_DETAIL),
+                        table("order_detail_bk", ORDER_DETAIL),
+                        table("order_detail_old", ORDER_DETAIL)))
+                .withViewpoints(
+                    List.of(
+                        new ViewpointEntry(
+                            "testdb",
+                            "backup",
+                            "バックアップ",
+                            null,
+                            List.of(new ObjectKey("testdb", "sample", "order_detail_old"))))));
+
+    final JsonNode result =
+        json(
+            call(
+                viewpointTools,
+                "find_similar_tables",
+                Map.of("table", "order_detail", "viewpoint", "backup")));
+
+    assertEquals(List.of("sample.order_detail_old"), result.get("tables").findValuesAsText("name"));
+  }
+
+  @Test
+  @DisplayName("基準のカラムがminSharedより少ない場合は、minSharedを下げる値を示すmessageを返す")
+  void explainsWhenColumnsAreFewerThanMinShared() throws Exception {
+    final JsonNode result =
+        json(
+            call("find_similar_tables", Map.of("columns", List.of("order_id", "ORDER_ID", "qty"))));
+
+    assertEquals(0, result.get("total").asInt());
+    assertEquals(
+        "基準のカラムは2個で、minShared（3）に満たないため、条件を満たすテーブルはありません。minSharedを2以下にしてください。",
+        result.get("message").asText());
+  }
+
+  @Test
+  @DisplayName("基準のテーブルにカラムが無い場合は、比べられないことを示すmessageを返す")
+  void explainsWhenBaseHasNoColumns() throws Exception {
+    final TableDefinitionTools emptyTools =
+        new TableDefinitionTools(TestCatalogs.of(List.of(table("empty"), table("other", "a"))));
+
+    final JsonNode result = json(call(emptyTools, "find_similar_tables", Map.of("table", "empty")));
+
+    assertEquals("基準のテーブルにカラムが無いため、比べられません。", result.get("message").asText());
   }
 
   /** c01〜cNN（NNは{@code count}）のカラム名 */

@@ -2,7 +2,6 @@ package com.dbxray.mcp.catalog;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,10 +19,12 @@ public final class TableCatalog {
 
   private final List<TableEntry> tables;
   private final RelationGraph relations;
+  private final SimilarTableFinder similarTables;
 
   TableCatalog(List<TableEntry> tables, RelationGraph relations) {
     this.tables = List.copyOf(tables);
     this.relations = relations;
+    this.similarTables = new SimilarTableFinder(this.tables);
   }
 
   /**
@@ -102,21 +103,17 @@ public final class TableCatalog {
 
   /**
    * 構造（カラム名）が似ているテーブルを探すメソッド<br>
-   * 比べる相手は範囲内の区分が{@code table}のテーブル。基準が既存のテーブルの場合は、基準自身と、基準と関連（外部キー・論理リレーション）で
-   * 直接つながるテーブルを除く。親子は互いのキーを持つため、構造の類似ではなく関連の結果として似て見えるため。
+   * 比べる相手は範囲内の区分が{@code table}のテーブル（基準自身を除く）。
+   * 基準が既存のテーブルの場合は、基準と関連（外部キー・論理リレーション）で直接つながるテーブルに印を付ける。
+   * 履歴・拡張のテーブルは基準を参照することが多く、除くと見つけたいテーブルが結果から消えるため、除かずに区別できるようにする。
    * 求め方は{@link SimilarTableFinder}を参照
    *
    * @param limit 返すテーブルの件数の上限（1以上）
    */
-  public SimilarTables findSimilar(SimilarTableQuery query, SearchScope scope, int limit) {
-    final TableFilter inScope = TableFilter.of(scope).withType(TableType.TABLE);
-    final Set<ObjectKey> excluded = new HashSet<>();
-    if (query.base() != null) {
-      excluded.add(query.base());
-      excluded.addAll(relations.adjacentTables(query.base()));
-    }
-    return new SimilarTableFinder(tables.stream().filter(inScope::matches).toList())
-        .find(query, excluded, limit);
+  public SimilarTables findSimilar(SimilarTableQuery query, TableFilter filter, int limit) {
+    final Set<ObjectKey> related =
+        query.base() == null ? Set.of() : relations.adjacentTables(query.base().key());
+    return similarTables.find(query, filter, related, limit);
   }
 
   /**

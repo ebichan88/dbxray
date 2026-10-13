@@ -21,6 +21,7 @@ import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.SchemaSummary;
 import com.dbxray.mcp.catalog.SearchQuery;
 import com.dbxray.mcp.catalog.SearchScope;
+import com.dbxray.mcp.catalog.SimilarTable;
 import com.dbxray.mcp.catalog.SimilarTableQuery;
 import com.dbxray.mcp.catalog.SimilarTables;
 import com.dbxray.mcp.catalog.SimilarityKind;
@@ -260,14 +261,14 @@ class SampleSnapshotContractTest {
   }
 
   @Test
-  @DisplayName("サンプルのカラム名から構造の似たテーブル（attendance_note）を探せ、基準にした既存のテーブル自身は含まない")
+  @DisplayName("サンプルのカラム名から構造の似たテーブル（attendance_note）を探せ、基準にした既存のテーブル自身は含まず、外部キーでつながるテーブルには印を付ける")
   void findsSimilarTablesOfSample() {
     final SimilarTables byColumns =
         catalog
             .tables()
             .findSimilar(
                 SimilarTableQuery.ofColumns(List.of("attendance_id", "work_date", "note"), 3, 10),
-                SearchScope.ALL,
+                TableFilter.ALL,
                 10);
 
     assertEquals(
@@ -279,10 +280,22 @@ class SampleSnapshotContractTest {
     assertTrue(
         catalog
             .tables()
-            .findSimilar(SimilarTableQuery.ofTable(shipment, 1, 10), SearchScope.ALL, 10)
+            .findSimilar(SimilarTableQuery.ofTable(shipment, 1, 10), TableFilter.ALL, 10)
             .tables()
             .stream()
             .noneMatch(similar -> similar.table().key().equals(shipment.key())));
+
+    final SimilarTable attendance =
+        catalog
+            .tables()
+            .findSimilar(
+                SimilarTableQuery.ofTable(find("attendance_note"), 2, 10), TableFilter.ALL, 10)
+            .tables()
+            .stream()
+            .filter(similar -> similar.table().key().name().equals("attendance"))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(attendance.relatedToBase(), "外部キーで参照するattendanceも除かずに、関連の印を付けて返す");
   }
 
   @Test

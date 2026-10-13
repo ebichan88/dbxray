@@ -12,43 +12,51 @@ import java.util.Set;
 /**
  * 構造（カラム名）が似ているテーブルを求めるクラス<br>
  * カラム名（NFKC正規化＋小文字化）の集合を、重み付きJaccard係数で比べる。
- * 重みは、そのカラム名を持つテーブルが範囲内で少ないほど大きくする。全テーブルが持つ{@code id}・{@code created_at}のような
+ * 重みは、そのカラム名を持つテーブルが少ないほど大きくする。全テーブルが持つ{@code id}・{@code created_at}のような
  * 汎用のカラムを共有しているだけで、似ているとみなさないため。
- * 結果は範囲内のテーブルの集合だけで決まり、同じスナップショットからは常に同じ結果を返す
+ * 重みは探す範囲（スキーマ・観点）ではなく、範囲のDBの区分が{@code table}の全テーブル（基準自身を除く）で決める。
+ * 範囲を絞るとテーブルが減り、汎用のカラムの重みが下がらなくなるため。
+ * 結果はスナップショットと条件だけで決まり、同じ条件には常に同じ結果を返す
  */
 final class SimilarTableFinder {
 
-  private final List<TableEntry> tables;
+  /** カラムが同じでない相手の類似度の上限。丸めて100になっても、カラムが同じ相手と区別できるようにする */
+  private static final int MAX_SIMILARITY_UNLESS_IDENTICAL = 99;
 
-  /** 正規化したカラム名ごとの重み。範囲内のテーブルに無いカラム名は含まない */
-  private final Map<String, Double> weights = new HashMap<>();
+  /** 比べる相手になりうるテーブル（区分が{@code table}）。カラム名の正規化を呼び出しのたびに繰り返さないよう、組み立て時に1回だけ行う */
+  private final List<ComparedTable> candidates = new ArrayList<>();
 
-  /**
-   * @param tables 基準と比べる相手のテーブル（範囲内の全テーブル）。重みはこの範囲で決まる
-   */
+  /** DB名ごとの、カラム名を持つテーブルの数 */
+  private final Map<String, ColumnFrequencies> frequenciesByDatabase = new LinkedHashMap<>();
+
   SimilarTableFinder(List<TableEntry> tables) {
-    this.tables = List.copyOf(tables);
-    final Map<String, Integer> frequencies = new HashMap<>();
-    for (final TableEntry table : this.tables) {
-      for (final String name : columnsByName(table.columns()).keySet()) {
-        frequencies.merge(name, 1, Integer::sum);
+    for (final TableEntry table : tables) {
+      if (TableType.TABLE.value().equals(table.type())) {
+        final ComparedTable compared = new ComparedTable(table, columnsByName(table.columns()));
+        candidates.add(compared);
+        frequenciesByDatabase
+            .computeIfAbsent(table.key().database(), database -> new ColumnFrequencies())
+            .add(compared.columns().keySet());
       }
     }
-    frequencies.forEach((name, frequency) -> weights.put(name, weightByFrequency(frequency)));
   }
 
   /**
    * 基準に似ているテーブルを求めるメソッド
    *
-   * @param excluded 比べない相手のテーブル（基準自身等）
+   * @param filter 探す範囲。区分が{@code table}でないテーブルは条件にかかわらず比べない。基準自身は比べない
+   * @param related 基準と関連で直接つながるテーブル（結果に印を付ける）
    * @param limit 返すテーブルの件数の上限（1以上）
    */
-  SimilarTables find(SimilarTableQuery query, Set<ObjectKey> excluded, int limit) {
+  SimilarTables find(
+      SimilarTableQuery query, TableFilter filter, Set<ObjectKey> related, int limit) {
     final Map<String, ColumnEntry> base = columnsByName(query.columns());
+    final ColumnFrequencies frequencies = frequenciesFor(query.base(), base.keySet(), filter);
     final List<SimilarTable> found = new ArrayList<>();
-    for (final TableEntry table : tables) {
-      if (!excluded.contains(table.key())) {
-        compare(query, base, table).ifPresent(found::add);
+    for (final ComparedTable candidate : candidates) {
+      if (filter.matches(candidate.table()) && !isBase(query, candidate.table())) {
+        compare(query, base, candidate, frequencies, related.contains(candidate.table().key()))
+            .ifPresent(found::add);
       }
     }
     found.sort(
@@ -59,14 +67,40 @@ final class SimilarTableFinder {
     return new SimilarTables(found.size(), found.stream().limit(limit).toList());
   }
 
+  private static boolean isBase(SimilarTableQuery query, TableEntry table) {
+    return query.base() != null && query.base().key().equals(table.key());
+  }
+
+  /** 範囲のDBのテーブルのカラム名の数を求める。基準自身は数えない（カラム名で指定した場合と重みを揃えるため） */
+  private ColumnFrequencies frequenciesFor(
+      TableEntry base, Set<String> baseNames, TableFilter filter) {
+    final ColumnFrequencies frequencies = new ColumnFrequencies();
+    frequenciesByDatabase.forEach(
+        (database, counted) -> {
+          if (filter.matchesDatabase(database)) {
+            frequencies.addAll(counted);
+          }
+        });
+    if (base != null
+        && TableType.TABLE.value().equals(base.type())
+        && filter.matchesDatabase(base.key().database())) {
+      frequencies.remove(baseNames);
+    }
+    return frequencies;
+  }
+
   /**
    * 基準と1テーブルを比べるメソッド
    *
    * @return 共通のカラムが無い場合、条件を満たさない場合は空
    */
-  private Optional<SimilarTable> compare(
-      SimilarTableQuery query, Map<String, ColumnEntry> base, TableEntry table) {
-    final Map<String, ColumnEntry> other = columnsByName(table.columns());
+  private static Optional<SimilarTable> compare(
+      SimilarTableQuery query,
+      Map<String, ColumnEntry> base,
+      ComparedTable candidate,
+      ColumnFrequencies frequencies,
+      boolean relatedToBase) {
+    final Map<String, ColumnEntry> other = candidate.columns();
     final List<String> onlyInBase = new ArrayList<>();
     final List<String> onlyInOther = new ArrayList<>();
     final List<SimilarTable.TypeMismatch> typeMismatches = new ArrayList<>();
@@ -74,7 +108,7 @@ final class SimilarTableFinder {
     double sharedWeight = 0;
     double totalWeight = 0;
     for (final Map.Entry<String, ColumnEntry> entry : base.entrySet()) {
-      final double weight = weightOfName(entry.getKey());
+      final double weight = frequencies.weightOf(entry.getKey());
       totalWeight += weight;
       final ColumnEntry counterpart = other.get(entry.getKey());
       if (counterpart == null) {
@@ -88,49 +122,44 @@ final class SimilarTableFinder {
     for (final Map.Entry<String, ColumnEntry> entry : other.entrySet()) {
       if (!base.containsKey(entry.getKey())) {
         onlyInOther.add(entry.getValue().name());
-        totalWeight += weightOfName(entry.getKey());
+        totalWeight += frequencies.weightOf(entry.getKey());
       }
     }
     if (shared == 0) {
       return Optional.empty();
     }
-    final int similarity = (int) Math.round(100 * sharedWeight / totalWeight);
+    final SimilarityKind kind = SimilarityKind.of(!onlyInBase.isEmpty(), !onlyInOther.isEmpty());
+    final int similarity =
+        kind == SimilarityKind.IDENTICAL
+            ? 100
+            : Math.min(
+                MAX_SIMILARITY_UNLESS_IDENTICAL,
+                (int) Math.round(100 * sharedWeight / totalWeight));
     if (!query.accepts(shared, similarity)) {
       return Optional.empty();
     }
     return Optional.of(
         new SimilarTable(
-            table,
+            candidate.table(),
             similarity,
-            SimilarityKind.of(!onlyInBase.isEmpty(), !onlyInOther.isEmpty()),
+            kind,
             shared,
             onlyInBase,
             onlyInOther,
-            typeMismatches));
+            typeMismatches,
+            relatedToBase));
   }
 
   private static Optional<SimilarTable.TypeMismatch> typeMismatch(
       ColumnEntry base, ColumnEntry other) {
-    if (base.type().isEmpty()
-        || other.type().isEmpty()
-        || TextValues.normalize(base.type()).equals(TextValues.normalize(other.type()))) {
+    if (base.type().isEmpty() || other.type().isEmpty()) {
       return Optional.empty();
     }
-    return Optional.of(new SimilarTable.TypeMismatch(base.name(), base.type(), other.type()));
-  }
-
-  /** カラムの重みを返す。範囲内のテーブルに無いカラム名は、1テーブルだけが持つ場合と同じ重みにする */
-  private double weightOfName(String normalizedName) {
-    final Double known = weights.get(normalizedName);
-    return known != null ? known : weightByFrequency(0);
-  }
-
-  /**
-   * 範囲内のテーブルのうち{@code frequency}個が持つカラム名の重みを求める。
-   * 全テーブルが持つカラム名でも0にならないよう、テーブル数に1を足している
-   */
-  private double weightByFrequency(int frequency) {
-    return Math.log((tables.size() + 1.0) / Math.max(frequency, 1));
+    return SimilarTable.TypeDifference.between(
+            ColumnType.parse(base.type()), ColumnType.parse(other.type()))
+        .map(
+            difference ->
+                new SimilarTable.TypeMismatch(base.name(), base.type(), other.type(), difference));
   }
 
   /** 正規化したカラム名から、カラムを引く。正規化後に同じ名前になるカラムは、先に現れたものを使う */
@@ -140,5 +169,38 @@ final class SimilarTableFinder {
       byName.putIfAbsent(TextValues.normalize(column.name()), column);
     }
     return byName;
+  }
+
+  /** 比べる相手のテーブルと、正規化したカラム名から引くカラム */
+  private record ComparedTable(TableEntry table, Map<String, ColumnEntry> columns) {}
+
+  /** テーブルの数と、正規化したカラム名ごとの、そのカラム名を持つテーブルの数。カラム名の重みを求める */
+  private static final class ColumnFrequencies {
+
+    private int tables;
+    private final Map<String, Integer> counts = new HashMap<>();
+
+    void add(Set<String> names) {
+      tables++;
+      names.forEach(name -> counts.merge(name, 1, Integer::sum));
+    }
+
+    void remove(Set<String> names) {
+      tables--;
+      names.forEach(name -> counts.merge(name, -1, Integer::sum));
+    }
+
+    void addAll(ColumnFrequencies other) {
+      tables += other.tables;
+      other.counts.forEach((name, count) -> counts.merge(name, count, Integer::sum));
+    }
+
+    /**
+     * {@code ln((N+1)/そのカラム名を持つテーブルの数)}（Nはテーブルの数）を返すメソッド。
+     * 全テーブルが持つカラム名でも0にならないようNに1を足し、どのテーブルも持たないカラム名は1テーブルだけが持つ場合と同じにする
+     */
+    double weightOf(String name) {
+      return Math.log((tables + 1.0) / Math.max(counts.getOrDefault(name, 0), 1));
+    }
   }
 }
