@@ -35,7 +35,12 @@ class SimilarTableToolsTest {
                   table("order_detail", ORDER_DETAIL),
                   orderDetailWithQtyType("order_detail_bk", "numeric(10,2)"),
                   table(
-                      "order_detail_hist", "order_id", "item_no", "qty", "unit_price", "valid_from"),
+                      "order_detail_hist",
+                      "order_id",
+                      "item_no",
+                      "qty",
+                      "unit_price",
+                      "valid_from"),
                   table(
                       TestTables.table("order_detail_note")
                           .foreignKey("order_id", "order_detail", "order_id"),
@@ -96,7 +101,8 @@ class SimilarTableToolsTest {
         json(
             call(
                 "find_similar_tables",
-                Map.of("columns", List.of("order_id", "item_no", "qty", "unit_price"), "limit", 1)));
+                Map.of(
+                    "columns", List.of("order_id", "item_no", "qty", "unit_price"), "limit", 1)));
     final JsonNode byString =
         json(
             call(
@@ -133,7 +139,8 @@ class SimilarTableToolsTest {
             TestCatalogs.of(List.of(table("narrow", columns(12)), table("wide", columns(33)))));
 
     final JsonNode byTable =
-        json(call(wideTools, "find_similar_tables", Map.of("table", "narrow", "minSimilarity", 10)));
+        json(
+            call(wideTools, "find_similar_tables", Map.of("table", "narrow", "minSimilarity", 10)));
     final JsonNode wide = byTable.get("tables").get(0);
     assertEquals("sample.wide", wide.get("name").asText());
     assertEquals(20, wide.get("onlyInOther").size());

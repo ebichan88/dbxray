@@ -151,7 +151,9 @@ class SimilarTableFinderTest {
   @DisplayName("findSimilar: 共通のカラムが下限に満たないテーブルは、類似度が高くても返さない")
   void appliesMinShared() {
     final SchemaCatalog catalog =
-        catalogOf(tableOf("pair", "pair_left", "pair_right"), tableOf("pair_bk", "pair_left", "pair_right"));
+        catalogOf(
+            tableOf("pair", "pair_left", "pair_right"),
+            tableOf("pair_bk", "pair_left", "pair_right"));
 
     assertEquals(List.of(), names(similarTo(catalog, "pair", 3, 50)));
     assertEquals(List.of("pair_bk"), names(similarTo(catalog, "pair", 2, 50)));
@@ -166,7 +168,8 @@ class SimilarTableFinderTest {
             tableOf("customer", columns),
             tableOf("customer_bk", columns),
             tableOf(
-                TestTables.table("customer_fk").foreignKey("customer_id", "customer", "customer_id"),
+                TestTables.table("customer_fk")
+                    .foreignKey("customer_id", "customer", "customer_id"),
                 columns),
             tableOf(
                 TestTables.table("customer_lr")
@@ -236,7 +239,8 @@ class SimilarTableFinderTest {
         catalog.tables().findSimilar(query, new SearchScope("db2", "SALES"), 10).tables().stream()
             .map(similar -> similar.table().key())
             .toList());
-    assertEquals(0, catalog.tables().findSimilar(query, new SearchScope("db2", "other"), 10).total());
+    assertEquals(
+        0, catalog.tables().findSimilar(query, new SearchScope("db2", "other"), 10).total());
   }
 
   @Test
@@ -247,13 +251,15 @@ class SimilarTableFinderTest {
             List.of(
                 tableOf(
                     TestTables.table("base")
-                        .column(new ColumnEntry("order_id", null, "INTEGER", true, true, null, null))
+                        .column(
+                            new ColumnEntry("order_id", null, "INTEGER", true, true, null, null))
                         .column(new ColumnEntry("qty", null, "integer", false, false, null, null))
                         .column(new ColumnEntry("note", null, "text", false, false, null, null)),
                     "price"),
                 tableOf(
                     TestTables.table("other")
-                        .column(new ColumnEntry("order_id", null, "integer", true, true, null, null))
+                        .column(
+                            new ColumnEntry("order_id", null, "integer", true, true, null, null))
                         .column(
                             new ColumnEntry("qty", null, "numeric(10,2)", false, false, null, null))
                         .column(new ColumnEntry("note", null, null, false, false, null, null)),
@@ -293,8 +299,7 @@ class SimilarTableFinderTest {
     assertEquals(4, limited.total());
     assertEquals(List.of("order_detail_bk1", "order_detail_bk2"), names(limited));
     assertEquals(
-        List.of(
-            "order_detail_bk1", "order_detail_bk2", "order_detail_bk3", "order_detail_ext"),
+        List.of("order_detail_bk1", "order_detail_bk2", "order_detail_bk3", "order_detail_ext"),
         names(similarTo(catalog, "order_detail", 3, 10)),
         "類似度の高い順");
   }
@@ -313,6 +318,7 @@ class SimilarTableFinderTest {
   @Test
   @DisplayName("ofColumns: カラム名が1つも無い場合は例外を投げる")
   void rejectsEmptyColumnNames() {
-    assertThrows(IllegalArgumentException.class, () -> SimilarTableQuery.ofColumns(List.of(), 3, 50));
+    assertThrows(
+        IllegalArgumentException.class, () -> SimilarTableQuery.ofColumns(List.of(), 3, 50));
   }
 }

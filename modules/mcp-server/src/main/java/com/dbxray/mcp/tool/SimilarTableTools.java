@@ -65,9 +65,7 @@ final class SimilarTableTools {
                     stringProperty(TableTools.TABLE_DESCRIPTION + "。columnsとどちらか一方を指定する"),
                     "columns",
                     stringOrArrayProperty(
-                        "設計中のテーブルのカラム名（物理名。大文字小文字を区別しない。最大"
-                            + MAX_COLUMNS
-                            + "件）。tableとどちらか一方を指定する"),
+                        "設計中のテーブルのカラム名（物理名。大文字小文字を区別しない。最大" + MAX_COLUMNS + "件）。tableとどちらか一方を指定する"),
                     "schema",
                     stringProperty(
                         "tableを指定した場合: 同名のテーブルが複数のスキーマにあるときに、基準のスキーマを指定する"
@@ -103,7 +101,9 @@ final class SimilarTableTools {
               .tables()
               .findSimilar(
                   SimilarTableQuery.ofColumns(
-                      arguments.requiredStringList("columns", MAX_COLUMNS), minShared, minSimilarity),
+                      arguments.requiredStringList("columns", MAX_COLUMNS),
+                      minShared,
+                      minSimilarity),
                   arguments.scope(),
                   limit);
       return ToolResults.json(FindSimilarTablesOutput.of(null, found));
