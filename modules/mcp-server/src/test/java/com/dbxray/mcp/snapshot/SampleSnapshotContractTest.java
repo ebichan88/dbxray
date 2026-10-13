@@ -264,17 +264,17 @@ class SampleSnapshotContractTest {
         List.of("project_assignment"),
         catalog
             .tables()
-            .list(
-                TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions()), TableOrder.NAME)
+            .list(TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions()), TableOrder.NAME)
             .stream()
             .map(table -> table.key().name())
             .toList(),
         "1対1の拡張（employee_profile）や複合外部キー（shipment）は中間テーブルにしない");
     assertEquals(
         List.of(
-            new ObjectKey("testdb", "sample", "project"),
-            new ObjectKey("testdb", "sample", "employee")),
-        catalog.junctions().of(find("project_assignment")).orElseThrow().parents());
+            new ObjectKey("testdb", "sample", "employee"),
+            new ObjectKey("testdb", "sample", "project")),
+        catalog.junctions().of(find("project_assignment")).orElseThrow().parents(),
+        "スナップショットの外部キーの並び（制約名順）に従う");
     assertEquals(
         List.of(
             new ManyToMany(

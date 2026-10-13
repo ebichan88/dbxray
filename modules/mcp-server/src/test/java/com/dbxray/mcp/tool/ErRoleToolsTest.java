@@ -54,7 +54,8 @@ class ErRoleToolsTest {
 
     assertEquals("junction", result.get("erRole").asText());
     assertEquals(
-        objectMapper.readTree("[\"sample.project\",\"sample.employee\"]"), result.get("junctionOf"));
+        objectMapper.readTree("[\"sample.project\",\"sample.employee\"]"),
+        result.get("junctionOf"));
     assertFalse(result.has("manyToMany"), "中間テーブル自身は多対多の相手を持たない");
   }
 
@@ -109,12 +110,14 @@ class ErRoleToolsTest {
   void resourceIncludesManyToMany() {
     final String uri = "dbxray://testdb/sample/project";
     final SyncResourceSpecification project =
-        new TableDefinitionResources(catalog).specifications().stream()
-            .filter(spec -> spec.resource().uri().equals(uri))
-            .findFirst()
-            .orElseThrow();
+        new TableDefinitionResources(catalog)
+            .specifications().stream()
+                .filter(spec -> spec.resource().uri().equals(uri))
+                .findFirst()
+                .orElseThrow();
 
-    final ReadResourceResult result = project.readHandler().apply(null, new ReadResourceRequest(uri));
+    final ReadResourceResult result =
+        project.readHandler().apply(null, new ReadResourceRequest(uri));
 
     final String text = ((TextResourceContents) result.contents().get(0)).text();
     assertTrue(
@@ -150,10 +153,15 @@ class ErRoleToolsTest {
   @DisplayName("list_tablesは、erRoleをtypeと組み合わせて絞り込める")
   void listTablesCombinesErRoleWithType() throws Exception {
     assertEquals(
-        0, json(call("list_tables", Map.of("erRole", "junction", "type", "view"))).get("total").asInt());
+        0,
+        json(call("list_tables", Map.of("erRole", "junction", "type", "view")))
+            .get("total")
+            .asInt());
     assertEquals(
         1,
-        json(call("list_tables", Map.of("erRole", "junction", "type", "table"))).get("total").asInt());
+        json(call("list_tables", Map.of("erRole", "junction", "type", "table")))
+            .get("total")
+            .asInt());
   }
 
   @Test

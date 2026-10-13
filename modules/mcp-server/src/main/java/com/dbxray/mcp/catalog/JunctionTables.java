@@ -27,7 +27,8 @@ public final class JunctionTables {
       JunctionTable.detect(table, relations.outgoing(table.key()))
           .ifPresent(junction -> junctions.put(junction.key(), junction));
     }
-    final Set<ObjectKey> existing = tables.stream().map(TableEntry::key).collect(Collectors.toSet());
+    final Set<ObjectKey> existing =
+        tables.stream().map(TableEntry::key).collect(Collectors.toSet());
     final Map<ObjectKey, Set<ManyToMany>> partners = new HashMap<>();
     for (final JunctionTable junction : junctions.values()) {
       final List<ObjectKey> parents = junction.links().stream().map(Relation::to).toList();
@@ -35,7 +36,9 @@ public final class JunctionTables {
         for (int partnerIndex = 0; partnerIndex < parents.size(); partnerIndex++) {
           final ObjectKey owner = parents.get(ownerIndex);
           final ObjectKey partner = parents.get(partnerIndex);
-          if (ownerIndex != partnerIndex && existing.contains(owner) && existing.contains(partner)) {
+          if (ownerIndex != partnerIndex
+              && existing.contains(owner)
+              && existing.contains(partner)) {
             partners
                 .computeIfAbsent(owner, key -> new TreeSet<>(BY_TABLE_THEN_VIA))
                 .add(new ManyToMany(partner, junction.key()));

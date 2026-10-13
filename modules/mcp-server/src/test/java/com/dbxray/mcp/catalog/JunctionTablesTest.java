@@ -392,7 +392,8 @@ class JunctionTablesTest {
     @Test
     @DisplayName("ER上の区分で絞り込むと、中間テーブルだけを一覧にする")
     void filtersByErRole() {
-      final TableFilter junctions = TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
+      final TableFilter junctions =
+          TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
 
       assertEquals(
           List.of("project_assignment"),
@@ -406,10 +407,10 @@ class JunctionTablesTest {
     @Test
     @DisplayName("ER上の区分での絞り込みは、検索にも効く")
     void filtersSearchByErRole() {
-      final TableFilter junctions = TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
+      final TableFilter junctions =
+          TableFilter.ALL.withErRole(ErRole.JUNCTION, catalog.junctions());
 
-      assertEquals(
-          1, catalog.tables().search(SearchQuery.of("project"), junctions, 10).total());
+      assertEquals(1, catalog.tables().search(SearchQuery.of("project"), junctions, 10).total());
     }
 
     @Test
