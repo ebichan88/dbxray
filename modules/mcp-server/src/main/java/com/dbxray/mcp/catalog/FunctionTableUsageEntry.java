@@ -63,5 +63,30 @@ public record FunctionTableUsageEntry(
       schemaCandidates = schemaCandidates == null ? List.of() : List.copyOf(schemaCandidates);
       operations = operations == null ? List.of() : List.copyOf(operations);
     }
+
+    /** 利用しているテーブルが、あるテーブルを指すか */
+    public enum Match {
+      /** 指さない */
+      NONE,
+      /** スキーマが決まった名前が、テーブルのスキーマと名前に一致する */
+      CONFIRMED,
+      /** スキーマが決まらない名前で、名前が一致し、候補のスキーマにテーブルのスキーマが含まれる */
+      CANDIDATE
+    }
+
+    /**
+     * 利用しているテーブルが、指定したテーブルを指すか判定するメソッド<br>
+     * 参考情報は出力対象のテーブルのカタログ上の名前で出力されるため、大文字小文字を区別して比べる。
+     * 関数と同じDBのテーブルかどうかは、呼び出し側で確かめる
+     */
+    public Match matches(ObjectKey table) {
+      if (!name.equals(table.name())) {
+        return Match.NONE;
+      }
+      if (!schema.isEmpty()) {
+        return schema.equals(table.schema()) ? Match.CONFIRMED : Match.NONE;
+      }
+      return schemaCandidates.contains(table.schema()) ? Match.CANDIDATE : Match.NONE;
+    }
   }
 }
