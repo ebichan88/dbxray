@@ -159,6 +159,9 @@ class SampleFunctionTableUsagesContractTest {
         new FunctionCoverage(functionCount, functionCount, 0, 0, 0, 1, 0, 0),
         impact.functions().coverage(),
         "サンプルの関数はすべて解析済みで、動的SQLを含むのはcount_rowsだけ");
+    assertTrue(
+        impact.functions().unverified().isEmpty(),
+        "動的SQLを含むcount_rowsは、employeeを使うと分かって一覧（usages）に載るため、確かめきれない関数には入らない");
     assertEquals(
         List.of("employee_employee_id_seq"),
         impact.sequences().stream().map(use -> use.sequence().name()).toList());

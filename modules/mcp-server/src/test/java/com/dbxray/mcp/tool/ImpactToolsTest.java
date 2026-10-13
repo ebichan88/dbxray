@@ -125,6 +125,8 @@ class ImpactToolsTest {
     final ObjectNode result =
         (ObjectNode) json(call(catalogOf(List.of(table("memo").build())), Map.of("table", "memo")));
 
+    assertEquals(2, result.get("notes").size(), "関数が1つも無いDBでは、functionsの参考値の注意を出さない");
+    assertFalse(result.get("notes").toString().contains("functionsは"));
     result.remove("notes");
     assertEquals(
         objectMapper.readTree(
@@ -212,9 +214,9 @@ class ImpactToolsTest {
             .map(function -> usage(function, List.of(), used("sample", "master", "R")))
             .toList();
 
-    final JsonNode affected =
-        json(call(catalogOf(tables, functions, usages, List.of()), Map.of("table", "master")))
-            .get("affected");
+    final SchemaCatalog catalog = catalogOf(tables, functions, usages, List.of());
+    final JsonNode result = json(call(catalog, Map.of("table", "master")));
+    final JsonNode affected = result.get("affected");
 
     final JsonNode referencedBy = affected.get("referencedBy");
     assertEquals(50, referencedBy.get("direct").size());
@@ -231,6 +233,166 @@ class ImpactToolsTest {
     assertEquals(count, affected.get("functions").get("usagesTotal").asInt());
     assertEquals(
         "sample.fn_01", affected.get("functions").get("usages").get(0).get("function").asText());
+    assertEquals(
+        objectMapper.readTree(
+            "[{\"section\":\"directReferences\",\"total\":60,\"nextOffset\":50},"
+                + "{\"section\":\"indirectReferences\",\"total\":55,\"nextOffset\":50},"
+                + "{\"section\":\"views\",\"total\":51,\"nextOffset\":50},"
+                + "{\"section\":\"triggers\",\"total\":51,\"nextOffset\":50},"
+                + "{\"section\":\"functions\",\"total\":51,\"nextOffset\":50}]"),
+        result.get("more"),
+        "切り捨てたリストと続きの取り方を、概要に並ぶ順に示す");
+    assertTrue(result.get("notes").toString().contains("section"), "続きの取り方をnotesでも示す");
+
+    final JsonNode secondPage =
+        json(call(catalog, Map.of("table", "master", "section", "directReferences", "offset", 50)));
+    assertEquals(60, secondPage.get("total").asInt());
+    assertEquals(10, secondPage.get("items").size());
+    assertEquals("sample.child_51", secondPage.get("items").get(0).get("table").asText());
+    assertFalse(secondPage.has("nextOffset"), "最後のページには、続きが無い");
+  }
+
+  private static SchemaCatalog pagingCatalog() {
+    final List<TableEntry> tables = new ArrayList<>();
+    final TestTables master = table("master");
+    IntStream.rangeClosed(1, 7)
+        .forEach(number -> master.trigger("trg_%d".formatted(number), "sample.fn"));
+    tables.add(master.build());
+    IntStream.rangeClosed(1, 7)
+        .forEach(
+            number ->
+                tables.add(
+                    table("child_%d".formatted(number))
+                        .foreignKey("master_id", "master", "master_id")
+                        .build()));
+    IntStream.rangeClosed(1, 7)
+        .forEach(
+            number ->
+                tables.add(
+                    table("grand_%d".formatted(number))
+                        .foreignKey("child_id", "child_1", "child_id")
+                        .build()));
+    IntStream.rangeClosed(1, 7)
+        .forEach(
+            number ->
+                tables.add(
+                    table("view_%d".formatted(number))
+                        .type("view")
+                        .referencedTable("master")
+                        .build()));
+    final List<FunctionEntry> functions = new ArrayList<>();
+    final List<FunctionTableUsageEntry> usages = new ArrayList<>();
+    IntStream.rangeClosed(1, 7)
+        .forEach(
+            number -> {
+              final FunctionEntry used = function("FUNCTION", "used_%d".formatted(number), "");
+              functions.add(used);
+              usages.add(usage(used, List.of(), used("sample", "master", "R")));
+              functions.add(function("FUNCTION", "no_insight_%d".formatted(number), ""));
+            });
+    return catalogOf(tables, functions, usages, List.of());
+  }
+
+  @Test
+  @DisplayName("sectionを指定すると、6つのリストをそれぞれ1ページずつ返し、概要の各リストと同じ形・同じ並びの要素を、offsetとnextOffsetで順にたどれる")
+  void pagesEachSection() throws Exception {
+    final SchemaCatalog catalog = pagingCatalog();
+    final JsonNode overview = json(call(catalog, Map.of("table", "master")));
+    assertFalse(overview.has("more"), "どのリストも上限以内なら、続きは示さない");
+    final Map<String, String> overviewPaths =
+        Map.of(
+            "directReferences", "/affected/referencedBy/direct",
+            "indirectReferences", "/affected/referencedBy/indirect",
+            "views", "/affected/views",
+            "triggers", "/affected/triggers",
+            "functions", "/affected/functions/usages",
+            "unverifiedFunctions", "/affected/functions/unverified");
+
+    for (final Map.Entry<String, String> entry : overviewPaths.entrySet()) {
+      final String section = entry.getKey();
+      final JsonNode all = overview.at(entry.getValue());
+      assertEquals(7, all.size(), section);
+
+      final JsonNode first =
+          json(call(catalog, Map.of("table", "master", "section", section, "limit", 3)));
+      assertEquals("sample.master", first.get("table").asText(), section);
+      assertEquals("testdb", first.get("database").asText(), section);
+      assertEquals(section, first.get("section").asText());
+      assertEquals(7, first.get("total").asInt(), section);
+      assertEquals(3, first.get("nextOffset").asInt(), section);
+      assertEquals(3, first.get("items").size(), section);
+      for (int i = 0; i < 3; i++) {
+        assertEquals(all.get(i), first.get("items").get(i), section + "[" + i + "]");
+      }
+
+      final JsonNode second =
+          json(
+              call(
+                  catalog, Map.of("table", "master", "section", section, "offset", 3, "limit", 3)));
+      assertEquals(6, second.get("nextOffset").asInt(), section);
+      assertEquals(all.get(3), second.get("items").get(0), section);
+
+      final JsonNode last =
+          json(
+              call(
+                  catalog, Map.of("table", "master", "section", section, "offset", 6, "limit", 3)));
+      assertEquals(1, last.get("items").size(), section);
+      assertEquals(all.get(6), last.get("items").get(0), section);
+      assertFalse(last.has("nextOffset"), section + ": 最後のページには、続きが無い");
+    }
+  }
+
+  @Test
+  @DisplayName("sectionで総数を超えるoffsetを指定した場合は、総数だけを返し、要素もnextOffsetも返さない")
+  void returnsOnlyTotalBeyondTheEnd() throws Exception {
+    final JsonNode result =
+        json(call(pagingCatalog(), Map.of("table", "master", "section", "views", "offset", 100)));
+
+    assertEquals(7, result.get("total").asInt());
+    assertFalse(result.has("items"));
+    assertFalse(result.has("nextOffset"));
+  }
+
+  @Test
+  @DisplayName("関数の確かめきれないオーバーロード（unverified）を、関数・引数・理由とともに返す")
+  void returnsUnverifiedFunctions() throws Exception {
+    final List<FunctionEntry> functions =
+        List.of(function("FUNCTION", "dyn", ""), function("FUNCTION", "no_insight", "a integer"));
+    final SchemaCatalog catalog =
+        catalogOf(
+            List.of(table("employee").build()),
+            functions,
+            List.of(usage(functions.get(0), List.of("EXECUTE"))),
+            List.of());
+
+    final JsonNode functionsNode =
+        json(call(catalog, Map.of("table", "employee"))).get("affected").get("functions");
+
+    assertEquals(
+        objectMapper.readTree(
+            "[{\"function\":\"sample.dyn\",\"arguments\":\"()\",\"reason\":\"dynamicSql\"},"
+                + "{\"function\":\"sample.no_insight\",\"arguments\":\"a integer\",\"reason\":\"noInsight\"}]"),
+        functionsNode.get("unverified"));
+    assertFalse(functionsNode.has("unverifiedTotal"));
+  }
+
+  @Test
+  @DisplayName("offset・limitはsectionなしでは使えず、未知のsectionもエラーにして、直し方を示す")
+  void rejectsInvalidPagingArguments() {
+    final SchemaCatalog catalog = pagingCatalog();
+    for (final Map<String, Object> arguments :
+        List.of(
+            Map.<String, Object>of("table", "master", "offset", 5),
+            Map.<String, Object>of("table", "master", "limit", 10),
+            Map.<String, Object>of("table", "master", "section", "nope"))) {
+      final CallToolResult result = call(catalog, arguments);
+
+      assertTrue(result.isError(), arguments.toString());
+      assertTrue(text(result).contains("section"), text(result));
+    }
+    assertTrue(
+        text(call(catalog, Map.of("table", "master", "offset", 5))).contains("directReferences"),
+        "指定できるsectionを示す");
   }
 
   @Test

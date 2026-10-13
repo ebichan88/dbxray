@@ -87,6 +87,19 @@ class SampleOracleImpactContractTest {
         new FunctionCoverage(6, 6, 0, 0, 0, 1, 0, 5),
         impact.functions().coverage(),
         "サンプルのプロシージャ・関数はすべて解析済み（動的SQLを含むのはPURGE_AUDIT_LOGだけ）で、関数名を持たないトリガーは5つ");
+    assertEquals(
+        List.of("DYNAMIC_SQL:PROJECT_OPS.PURGE_AUDIT_LOG(P_TABLE_NAME VARCHAR2)"),
+        impact.functions().unverified().stream()
+            .map(
+                found ->
+                    found.reason().name()
+                        + ":"
+                        + found.function().name()
+                        + "("
+                        + found.arguments()
+                        + ")")
+            .toList(),
+        "動的SQL（EXECUTE IMMEDIATE）を含むPURGE_AUDIT_LOGは、EMPLOYEEを使うか確かめきれない関数として挙がる");
     assertTrue(impact.sequences().isEmpty(), "IDENTITY列はnextvalのデフォルト値ではない");
     assertTrue(impact.types().isEmpty());
   }

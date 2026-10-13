@@ -1,5 +1,7 @@
 package com.dbxray.mcp.tool;
 
+import static com.dbxray.mcp.tool.ToolSpecifications.enumProperty;
+import static com.dbxray.mcp.tool.ToolSpecifications.integerProperty;
 import static com.dbxray.mcp.tool.ToolSpecifications.namedObjectProperties;
 import static com.dbxray.mcp.tool.ToolSpecifications.objectSchema;
 import static com.dbxray.mcp.tool.ToolSpecifications.readOnlyTool;
@@ -15,14 +17,17 @@ import com.dbxray.mcp.catalog.TableImpact;
 import com.dbxray.mcp.catalog.TableImpact.IndirectReference;
 import com.dbxray.mcp.catalog.TableImpact.SequenceUse;
 import com.dbxray.mcp.catalog.TableImpact.TypeUse;
+import com.dbxray.mcp.catalog.TableImpact.UnverifiedFunction;
 import com.dbxray.mcp.catalog.TableImpact.ViewReference;
 import com.dbxray.mcp.catalog.TableTrigger;
 import com.dbxray.mcp.catalog.TriggerEntry;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** テーブルの影響範囲をまとめて返すツール（{@code get_impact}） */
 final class ImpactTools {
@@ -45,33 +50,122 @@ final class ImpactTools {
             GET_IMPACT,
             "影響範囲調査",
             "テーブル（ビュー・マテリアライズドビューを含む）を変更・削除したときの影響範囲を、1回で返す。"
-                + "影響範囲を調べるときは最初に呼び、詳細はget_related_tables（どのカラム同士でつながるか）、"
+                + "影響範囲を調べるときは最初にsectionなしで呼び、詳細はget_related_tables（どのカラム同士でつながるか）、"
                 + "get_function（定義本体・利用しているテーブル）、get_table（定義）で調べる。"
                 + "affectedは影響を受けるもの: referencedBy（外部キー・論理リレーションで参照しているテーブル。"
                 + "directは段1の関連、indirectは"
                 + RelationCounts.IMPACT_DEPTH
                 + "段までの間接参照）、views（参照しているビュー。ビューを参照するビューを含み、viaは経由したビュー）、"
-                + "triggers（自テーブルのトリガー）、functions（自テーブルかそのビューを使う関数・プロシージャと操作C・R・U・D）。"
+                + "triggers（自テーブルのトリガー）、functions（自テーブルかそのビューを使う関数・プロシージャ）。"
+                + "functions.usagesは関数と経路（自テーブルか、使っているビューか）ごとの行で、操作C・R・U・Dを付ける"
+                + "（自テーブルとビューの両方を使う関数は2行になる）。"
                 + "functionsはcliを--previewで実行して出力した参考情報から機械的に求めた参考値で、"
                 + "載っていなくても使われていないとは限らない（動的SQL、呼び出している関数の中、出力対象外のテーブルは含まない）。"
-                + "coverageで、調べがついた範囲（総数・解析済み・解析不可・参考情報なし・古い・動的SQLあり）が分かる。"
-                + "スキーマが決まらない名前でしか一致しなかったものはmatchがpossible（実際はそのスキーマのテーブルではない可能性がある）。"
+                + "coverageは調べがついた範囲の件数、unverifiedは自テーブルを使うかどうか確かめきれない関数"
+                + "（reason: dynamicSql・incomplete・unsupported・stale・noInsight。get_functionで確かめられる）。"
+                + "スキーマが決まらない名前でしか一致しなかった行はmatchがpossible。"
+                + "確定で一致したオーバーロードと候補でだけ一致したオーバーロードが混ざる行はpossibleにならず、"
+                + "候補のオーバーロードの操作もoperationsに含まれる。"
                 + "dependsOnは影響を受けるものではなく、自テーブルのカラムが使うシーケンスとユーザー定義型。"
                 + "ビュー・関数の影響はテーブル単位で、カラム単位ではない。"
-                + "各リストは"
+                + "sectionなしでは各リストを"
                 + MAX_LISTED
-                + "件までで、超えた場合は〇〇Totalで総数を示す",
+                + "件まで返し、超えたリストの総数をdirectTotal・viewsTotal・triggersTotal・usagesTotal・unverifiedTotalで、"
+                + "続きの取り方をmoreで示す（間接参照の総数indirectTotalは常に返す）。"
+                + "続きを取るには、同じtableにsection（"
+                + String.join("・", Section.allValues())
+                + "のいずれか）とoffsetを指定する（limitは1ページの件数）。offset・limitはsectionを指定した場合だけ使える",
             objectSchema(
-                namedObjectProperties("table", TableTools.TABLE_DESCRIPTION, Map.of()),
+                namedObjectProperties(
+                    "table",
+                    TableTools.TABLE_DESCRIPTION,
+                    Map.of(
+                        "section",
+                        enumProperty(
+                            "続きを取りたいリストを1つ指定する。省略すると全体の概要を返す。"
+                                + "directReferences: affected.referencedBy.direct、indirectReferences: referencedBy.indirect、"
+                                + "views、triggers、functions: functions.usages、unverifiedFunctions: functions.unverified",
+                            Section.allValues()),
+                        "offset",
+                        integerProperty(
+                            "sectionを指定した場合の、先頭から読み飛ばす件数（既定0）。続きは前回の結果のnextOffsetを指定する",
+                            0,
+                            Integer.MAX_VALUE),
+                        "limit",
+                        integerProperty(
+                            "sectionを指定した場合の、1ページの件数（既定" + Page.DEFAULT_LIMIT + "）",
+                            1,
+                            Page.MAX_LIMIT))),
                 List.of("table")),
             this::getImpact));
   }
 
   private CallToolResult getImpact(ToolArguments arguments) {
+    final Optional<Section> section =
+        Section.of(arguments.optionalChoice("section", Section.allValues()));
+    if (section.isEmpty() && (arguments.isPresent("offset") || arguments.isPresent("limit"))) {
+      throw new InvalidToolArgumentException(
+          "引数offset・limitは、sectionを指定した場合だけ使えます。続きを取るには、sectionに"
+              + String.join("・", Section.allValues())
+              + "のいずれかを指定してください。");
+    }
     final TableEntry table =
         ObjectResolver.resolve(
             arguments, "table", "テーブル", TableTools.SEARCH_TABLES, catalog.tables()::lookup);
-    return ToolResults.json(GetImpactOutput.of(table, catalog.impactOf(table)));
+    final TableImpact impact = catalog.impactOf(table);
+    return section.isEmpty()
+        ? ToolResults.json(GetImpactOutput.of(table, impact))
+        : ToolResults.json(
+            SectionOutput.of(
+                table, section.get(), impact, Page.read(arguments, Page.DEFAULT_LIMIT)));
+  }
+
+  /** 続きを取れるリスト。値は結果のJSONのキーに合わせる */
+  enum Section {
+    DIRECT_REFERENCES("directReferences"),
+    INDIRECT_REFERENCES("indirectReferences"),
+    VIEWS("views"),
+    TRIGGERS("triggers"),
+    FUNCTIONS("functions"),
+    UNVERIFIED_FUNCTIONS("unverifiedFunctions");
+
+    private final String value;
+
+    Section(String value) {
+      this.value = value;
+    }
+
+    String value() {
+      return value;
+    }
+
+    /** 全セクションの値を返すメソッド（ツールの入力スキーマの{@code enum}に使う） */
+    static List<String> allValues() {
+      return Arrays.stream(values()).map(Section::value).toList();
+    }
+
+    /**
+     * 値からセクションを求めるメソッド
+     *
+     * @return 空文字（未指定）は空。未知の値は、入力スキーマの検証と{@code optionalChoice}が先に拒否する
+     */
+    static Optional<Section> of(String value) {
+      return Arrays.stream(values()).filter(section -> section.value.equals(value)).findFirst();
+    }
+
+    /** セクションのリストの全要素（概要の各リストと同じ形） */
+    List<?> items(TableImpact impact) {
+      return switch (this) {
+        case DIRECT_REFERENCES -> impact.directReferences().stream().map(DirectRef::of).toList();
+        case INDIRECT_REFERENCES ->
+            impact.indirectReferences().stream().map(IndirectRef::of).toList();
+        case VIEWS -> impact.views().stream().map(ViewRef::of).toList();
+        case TRIGGERS -> impact.triggers().stream().map(TriggerRef::of).toList();
+        case FUNCTIONS -> impact.functions().usages().stream().map(Usage::of).toList();
+        case UNVERIFIED_FUNCTIONS ->
+            impact.functions().unverified().stream().map(UnverifiedRef::of).toList();
+      };
+    }
   }
 
   private static <T> List<T> head(List<T> items) {
@@ -94,6 +188,7 @@ final class ImpactTools {
    * @param type 区分（table/view/materialized_view）
    * @param affected テーブルを変更・削除したときに影響を受けるもの
    * @param dependsOn テーブルが依存するもの（影響を受けるものではない）。無い場合はnull
+   * @param more 上限（{@value ImpactTools#MAX_LISTED}件）で切り捨てたリストと、続きの取り方
    * @param notes 結果の読み方の注意
    */
   record GetImpactOutput(
@@ -102,6 +197,7 @@ final class ImpactTools {
       String type,
       Affected affected,
       DependsOn dependsOn,
+      List<More> more,
       List<String> notes) {
 
     static GetImpactOutput of(TableEntry table, TableImpact impact) {
@@ -109,21 +205,37 @@ final class ImpactTools {
           new DependsOn(
               impact.sequences().stream().map(SequenceRef::of).toList(),
               impact.types().stream().map(TypeRef::of).toList());
+      final List<More> more = more(impact);
       return new GetImpactOutput(
           table.key().qualifiedName(),
           table.key().database(),
           table.type(),
           Affected.of(impact),
           impact.sequences().isEmpty() && impact.types().isEmpty() ? null : dependsOn,
-          notes(impact.functions().coverage()));
+          more,
+          notes(impact.functions().coverage(), !more.isEmpty()));
+    }
+
+    /** 上限で切り捨てたリストを、概要に並ぶ順に求める */
+    private static List<More> more(TableImpact impact) {
+      final List<More> more = new ArrayList<>();
+      for (final Section section : Section.values()) {
+        final int total = section.items(impact).size();
+        if (total > MAX_LISTED) {
+          more.add(new More(section.value(), total, MAX_LISTED));
+        }
+      }
+      return more;
     }
 
     /** 結果の読み方の注意。参考情報の状態に応じて、利用者がすべきことも示す */
-    private static List<String> notes(FunctionCoverage coverage) {
+    private static List<String> notes(FunctionCoverage coverage, boolean hasMore) {
       final List<String> notes = new ArrayList<>();
-      notes.add(
-          "functionsは、cliを--previewで実行して出力した参考情報から機械的に求めた参考値です。"
-              + "載っていなくても使われていないとは限りません（動的SQL、呼び出している関数の中、出力対象外のテーブルは含みません）。");
+      if (coverage.total() > 0) {
+        notes.add(
+            "functionsは、cliを--previewで実行して出力した参考情報から機械的に求めた参考値です。"
+                + "載っていなくても使われていないとは限りません（動的SQL、呼び出している関数の中、出力対象外のテーブルは含みません）。");
+      }
       if (coverage.noInsight() > 0 || coverage.stale() > 0) {
         notes.add(
             "関数の参考情報が無い（noInsight）または古い（stale）関数があります。"
@@ -136,11 +248,51 @@ final class ImpactTools {
                 + "件あります（Oracle）。トリガーの本体の中の参照は含まないため、"
                 + "トリガーが触るテーブルは、このツールでは分かりません。");
       }
+      if (hasMore) {
+        notes.add(
+            MAX_LISTED
+                + "件を超えたリストは、先頭の"
+                + MAX_LISTED
+                + "件だけを返しています（moreの各項目）。"
+                + "続きは、同じtableにsectionとoffsetを指定して取得してください。");
+      }
       notes.add("ビュー・関数の影響は、テーブル単位です（ビューや関数がどのカラムを使うかは、スナップショットに含まれません）。");
       notes.add(
           "dependsOnは、影響を受けるものではなく、このテーブルが使うものです。"
               + "シーケンスはカラムのデフォルト値のnextvalから拾うため、IDENTITY列やトリガーの本体で採番するシーケンスは含みません。");
       return notes;
+    }
+  }
+
+  /**
+   * 上限で切り捨てたリスト
+   *
+   * @param section 続きを取るときに指定する{@code section}
+   * @param total リストの総数
+   * @param nextOffset 続きを取るときに指定する{@code offset}
+   */
+  record More(String section, int total, int nextOffset) {}
+
+  /**
+   * {@code section}を指定した場合の結果（1つのリストの1ページ）
+   *
+   * @param section 指定した{@code section}
+   * @param total リストの総数
+   * @param nextOffset 続きを取るときに指定する{@code offset}。続きが無い場合はnull
+   * @param items このページの要素。形は概要の各リストと同じ
+   */
+  record SectionOutput(
+      String table, String database, String section, int total, Integer nextOffset, List<?> items) {
+
+    static SectionOutput of(TableEntry table, Section section, TableImpact impact, Page page) {
+      final List<?> all = section.items(impact);
+      return new SectionOutput(
+          table.key().qualifiedName(),
+          table.key().database(),
+          section.value(),
+          all.size(),
+          page.nextOffset(all.size()),
+          page.apply(all));
     }
   }
 
@@ -256,13 +408,45 @@ final class ImpactTools {
    *
    * @param preview 常にtrue。cliの{@code --preview}の参考情報から求めた参考値で、互換性の約束の対象外であることを示す
    * @param usagesTotal {@code usages}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
+   * @param unverified 自テーブルを使うかどうか確かめきれない関数。{@code usages}に載ったオーバーロードを除く
+   * @param unverifiedTotal {@code unverified}を上限で切り捨てた場合の総数。切り捨てていない場合はnull
    */
-  record Functions(boolean preview, Coverage coverage, List<Usage> usages, Integer usagesTotal) {
+  record Functions(
+      boolean preview,
+      Coverage coverage,
+      List<Usage> usages,
+      Integer usagesTotal,
+      List<UnverifiedRef> unverified,
+      Integer unverifiedTotal) {
 
     static Functions of(TableImpact impact) {
       final List<Usage> usages = impact.functions().usages().stream().map(Usage::of).toList();
+      final List<UnverifiedRef> unverified =
+          impact.functions().unverified().stream().map(UnverifiedRef::of).toList();
       return new Functions(
-          true, Coverage.of(impact.functions().coverage()), head(usages), totalIfOver(usages));
+          true,
+          Coverage.of(impact.functions().coverage()),
+          head(usages),
+          totalIfOver(usages),
+          head(unverified),
+          totalIfOver(unverified));
+    }
+  }
+
+  /**
+   * 自テーブルを使うかどうか確かめきれない関数のオーバーロード1つ
+   *
+   * @param function {@code スキーマ名.関数名}
+   * @param arguments 引数。引数が無い場合は{@code ()}
+   * @param reason {@code dynamicSql}・{@code incomplete}・{@code unsupported}・{@code stale}・{@code noInsight}
+   */
+  record UnverifiedRef(String function, String arguments, String reason) {
+
+    static UnverifiedRef of(UnverifiedFunction unverified) {
+      return new UnverifiedRef(
+          name(unverified.function()),
+          unverified.arguments().isEmpty() ? "()" : unverified.arguments(),
+          unverified.reason().value());
     }
   }
 

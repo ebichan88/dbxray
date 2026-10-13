@@ -6,6 +6,7 @@ import com.dbxray.mcp.catalog.TableImpact.FunctionImpact;
 import com.dbxray.mcp.catalog.TableImpact.IndirectReference;
 import com.dbxray.mcp.catalog.TableImpact.SequenceUse;
 import com.dbxray.mcp.catalog.TableImpact.TypeUse;
+import com.dbxray.mcp.catalog.TableImpact.UnverifiedFunction;
 import com.dbxray.mcp.catalog.TableImpact.ViewReference;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -131,25 +132,34 @@ final class ImpactAnalyzer {
             .filter(function -> function.key().database().equals(database))
             .sorted(Comparator.comparing(FunctionOverloads::key, ObjectKey.ORDER))
             .toList();
+    final List<Target> targets = new ArrayList<>();
+    targets.add(new Target(table.key(), null));
+    views.forEach(view -> targets.add(new Target(view.view().key(), view.view().key())));
     final List<FunctionUse> uses = new ArrayList<>();
+    final Set<FunctionEntry> matched = new HashSet<>();
     for (final FunctionOverloads function : inDatabase) {
-      useOf(function, table.key(), null).ifPresent(uses::add);
-      for (final ViewReference view : views) {
-        useOf(function, view.view().key(), view.view().key()).ifPresent(uses::add);
+      for (final Target target : targets) {
+        useOf(function, target)
+            .ifPresent(
+                found -> {
+                  uses.add(found.use());
+                  found.matches().forEach(match -> matched.add(match.overload()));
+                });
       }
     }
-    return new FunctionImpact(coverage(inDatabase, database), uses);
+    return new FunctionImpact(
+        coverage(inDatabase, database), uses, unverified(inDatabase, matched));
   }
 
   /**
-   * 関数が対象のテーブルを使っているか求めるメソッド（同名のオーバーロードは1つにまとめる）
-   *
-   * @param via 対象がビューの場合、そのビュー。自テーブルの場合はnull
+   * 関数が対象のテーブルを使っているか求めるメソッド（同名のオーバーロードは1つにまとめる）<br>
+   * 一致したオーバーロードの中に、確定で一致したものと候補でだけ一致したものが混ざる場合は、候補としては扱わず、
+   * 候補のオーバーロードの操作も合算する（その操作は確定のように見える）
    */
-  private Optional<FunctionUse> useOf(FunctionOverloads function, ObjectKey target, ObjectKey via) {
+  private Optional<FoundUse> useOf(FunctionOverloads function, Target target) {
     final List<OverloadMatch> matches =
         function.overloads().stream()
-            .map(overload -> matchOf(overload, target))
+            .map(overload -> matchOf(overload, target.key()))
             .flatMap(Optional::stream)
             .toList();
     if (matches.isEmpty()) {
@@ -157,19 +167,21 @@ final class ImpactAnalyzer {
     }
     final boolean possible = matches.stream().allMatch(OverloadMatch::possible);
     return Optional.of(
-        new FunctionUse(
-            function.key(),
-            kindOf(matches),
-            matches.stream().map(match -> match.overload().arguments()).toList(),
-            mergedOperations(matches.stream().map(OverloadMatch::operations).toList()),
-            possible,
-            possible ? matches.get(0).schemaResolution() : "",
-            matches.stream()
-                .flatMap(match -> match.usage().dynamicSql().stream())
-                .distinct()
-                .toList(),
-            via,
-            tables.triggersCalling(function)));
+        new FoundUse(
+            new FunctionUse(
+                function.key(),
+                kindOf(matches),
+                matches.stream().map(match -> match.overload().arguments()).toList(),
+                mergedOperations(matches.stream().map(OverloadMatch::operations).toList()),
+                possible,
+                possible ? matches.get(0).schemaResolution() : "",
+                matches.stream()
+                    .flatMap(match -> match.usage().dynamicSql().stream())
+                    .distinct()
+                    .toList(),
+                target.via(),
+                tables.triggersCalling(function)),
+            matches));
   }
 
   /**
@@ -256,7 +268,8 @@ final class ImpactAnalyzer {
       }
     }
     final long triggersWithoutFunction =
-        tables.triggers(new SearchScope(database, "")).stream()
+        tables.triggers(SearchScope.ALL).stream()
+            .filter(found -> found.table().key().database().equals(database))
             .filter(found -> found.trigger().function().isEmpty())
             .count();
     return new FunctionCoverage(
@@ -268,6 +281,51 @@ final class ImpactAnalyzer {
         withDynamicSql,
         incomplete,
         (int) triggersWithoutFunction);
+  }
+
+  /**
+   * 自テーブルを使うかどうか確かめきれない関数を、オーバーロード単位で求める<br>
+   * 自テーブルかそのビューを使うと分かったオーバーロード（{@code matched}）は含めない
+   */
+  private List<UnverifiedFunction> unverified(
+      List<FunctionOverloads> inDatabase, Set<FunctionEntry> matched) {
+    final List<UnverifiedFunction> found = new ArrayList<>();
+    for (final FunctionOverloads function : inDatabase) {
+      for (final FunctionEntry overload : function.overloads()) {
+        if (!matched.contains(overload)) {
+          reasonOf(overload)
+              .ifPresent(
+                  reason ->
+                      found.add(
+                          new UnverifiedFunction(function.key(), overload.arguments(), reason)));
+        }
+      }
+    }
+    found.sort(
+        Comparator.comparing(UnverifiedFunction::reason)
+            .thenComparing(UnverifiedFunction::function, ObjectKey.ORDER)
+            .thenComparing(UnverifiedFunction::arguments));
+    return found;
+  }
+
+  /** オーバーロードの参考情報から、確かめきれない理由を求める。解析済みで、動的SQLも読み残しも無ければ空 */
+  private Optional<UnverifiedFunction.Reason> reasonOf(FunctionEntry overload) {
+    final Optional<FunctionTableUsageEntry> usage = usages.find(overload);
+    if (usage.isEmpty()) {
+      return Optional.of(
+          usages.freshnessOf(overload) == FunctionTableUsages.Freshness.STALE
+              ? UnverifiedFunction.Reason.STALE
+              : UnverifiedFunction.Reason.NO_INSIGHT);
+    }
+    if (!usage.get().status().equals(FunctionTableUsageEntry.ANALYZED)) {
+      return Optional.of(UnverifiedFunction.Reason.UNSUPPORTED);
+    }
+    if (!usage.get().dynamicSql().isEmpty()) {
+      return Optional.of(UnverifiedFunction.Reason.DYNAMIC_SQL);
+    }
+    return usage.get().incomplete()
+        ? Optional.of(UnverifiedFunction.Reason.INCOMPLETE)
+        : Optional.empty();
   }
 
   /** デフォルト値の{@code nextval}で使うシーケンスを、シーケンスの順に求める */
@@ -305,6 +363,17 @@ final class ImpactAnalyzer {
         .sorted(Comparator.comparing(use -> use.type().key(), ObjectKey.ORDER))
         .toList();
   }
+
+  /**
+   * 関数の逆引きの対象
+   *
+   * @param key 対象のテーブルまたはビュー
+   * @param via 対象がビューの場合、そのビュー。自テーブルの場合はnull
+   */
+  private record Target(ObjectKey key, ObjectKey via) {}
+
+  /** 関数が対象を使っている、という結果と、その元になったオーバーロードの一致 */
+  private record FoundUse(FunctionUse use, List<OverloadMatch> matches) {}
 
   /** オーバーロード1つが対象のテーブルを使っている、という一致 */
   private record OverloadMatch(

@@ -56,12 +56,50 @@ public record TableImpact(
    *
    * @param coverage 関数の参考情報で調べがついた範囲
    * @param usages 自テーブルを使う関数。関数のキー順で、同じ関数は自テーブル・ビューの順
+   * @param unverified 自テーブルを使うかどうか確かめきれない関数（{@code usages}に載ったオーバーロードを除く）。
+   *     理由（{@link UnverifiedFunction.Reason}の順）・関数のキー・引数の順
    */
-  public record FunctionImpact(FunctionCoverage coverage, List<FunctionUse> usages) {
+  public record FunctionImpact(
+      FunctionCoverage coverage, List<FunctionUse> usages, List<UnverifiedFunction> unverified) {
 
     /** 複製して保持する */
     public FunctionImpact {
       usages = List.copyOf(usages);
+      unverified = List.copyOf(unverified);
+    }
+  }
+
+  /**
+   * 自テーブルを使うかどうか、参考情報から確かめきれない関数のオーバーロード1つ
+   *
+   * @param arguments 引数。引数が無い場合は空文字
+   * @param reason 確かめきれない理由
+   */
+  public record UnverifiedFunction(ObjectKey function, String arguments, Reason reason) {
+
+    /** 確かめきれない理由。1つのオーバーロードに複数当てはまる場合は、宣言順で先のものを採る */
+    public enum Reason {
+      /** 動的SQLを含む（動的SQLの中の参照は参考情報に含まれない） */
+      DYNAMIC_SQL("dynamicSql"),
+      /** 定義本体を最後まで読めなかった */
+      INCOMPLETE("incomplete"),
+      /** 参考情報はあるが、解析しなかった（対象外の言語・難読化・定義本体が無い等） */
+      UNSUPPORTED("unsupported"),
+      /** 参考情報はあるが、抽出元の定義本体がスナップショットと異なる */
+      STALE("stale"),
+      /** 参考情報が無い */
+      NO_INSIGHT("noInsight");
+
+      private final String value;
+
+      Reason(String value) {
+        this.value = value;
+      }
+
+      /** ツールの結果で使う値を返すメソッド */
+      public String value() {
+        return value;
+      }
     }
   }
 

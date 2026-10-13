@@ -148,6 +148,27 @@ class McpServerProcessTest {
           "既定のベースラインにはプレビューの参考情報が無いため、解析済みの関数は無い: " + text(impact));
       assertTrue(text(impact).contains("--preview"), "参考情報が無い場合の対応をnotesで示す: " + text(impact));
 
+      final CallToolResult impactViews =
+          client.callTool(
+              CallToolRequest.builder("get_impact")
+                  .arguments(Map.of("table", "employee", "section", "views", "limit", 1))
+                  .build());
+      assertFalse(Boolean.TRUE.equals(impactViews.isError()), () -> text(impactViews));
+      assertTrue(text(impactViews).contains("\"section\":\"views\""), text(impactViews));
+      assertTrue(text(impactViews).contains("\"total\":2"), text(impactViews));
+      assertTrue(text(impactViews).contains("\"nextOffset\":1"), text(impactViews));
+      assertTrue(
+          text(impactViews).contains("\"view\":\"sample.employee_directory_view\""),
+          text(impactViews));
+
+      final CallToolResult impactWithoutSection =
+          client.callTool(
+              CallToolRequest.builder("get_impact")
+                  .arguments(Map.of("table", "employee", "offset", 1))
+                  .build());
+      assertTrue(Boolean.TRUE.equals(impactWithoutSection.isError()));
+      assertTrue(text(impactWithoutSection).contains("section"), text(impactWithoutSection));
+
       final CallToolResult function =
           client.callTool(
               CallToolRequest.builder("get_function")

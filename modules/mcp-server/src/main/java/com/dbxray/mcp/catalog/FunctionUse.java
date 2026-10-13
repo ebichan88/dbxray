@@ -10,7 +10,9 @@ import java.util.List;
  * @param kind 種別（FUNCTION/PROCEDURE）。一致したオーバーロードで種別が異なる場合・未設定の場合は空文字
  * @param overloads テーブルに一致したオーバーロードの引数。引数が無い場合は空文字
  * @param operations 操作（{@code C}・{@code R}・{@code U}・{@code D}の順）。一致したオーバーロードの合算
- * @param possible 一致したすべてのオーバーロードが、スキーマが決まらない名前（候補）でしか一致しなかった場合はtrue
+ * @param possible 一致したすべてのオーバーロードが、スキーマが決まらない名前（候補）でしか一致しなかった場合はtrue。
+ *     確定で一致したオーバーロードと候補でだけ一致したオーバーロードが混ざる場合はfalseで、候補のオーバーロードの操作も
+ *     {@code operations}に合算されるため、その操作は確定のように見える
  * @param schemaResolution スキーマが決まらない名前が何で決まるか（{@code possible}の場合だけ。それ以外は空文字）
  * @param dynamicSql 一致したオーバーロードに含まれる動的SQLの種類
  * @param via 関数が使っているビュー（自テーブルではなくビューを使っている場合）。自テーブルを使っている場合はnull

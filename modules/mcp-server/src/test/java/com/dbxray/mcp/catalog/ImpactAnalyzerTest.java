@@ -337,7 +337,10 @@ class ImpactAnalyzerTest {
                     .trigger("trg_body_only", "")
                     .build(),
                 table("testdb", "sample", "department").trigger("trg_other_body_only", "").build(),
-                table("db2", "sample", "employee").trigger("trg_db2_body_only", "").build()),
+                table("db2", "sample", "employee").trigger("trg_db2_body_only", "").build(),
+                table("TESTDB", "sample", "employee")
+                    .trigger("trg_upper_db_body_only", "")
+                    .build()),
             functions,
             usages,
             List.of());
@@ -346,6 +349,89 @@ class ImpactAnalyzerTest {
         new FunctionCoverage(6, 3, 1, 1, 1, 1, 1, 2),
         impactOf(catalog, "employee").functions().coverage(),
         "別DBの関数・トリガーは数えない。関数名を持たないトリガーはDB全体で数える");
+  }
+
+  @Test
+  @DisplayName(
+      "impactOf: 自テーブルを使うか確かめきれない関数を、理由の優先順・関数のキー・引数の順に返す。自テーブルかそのビューを使うと分かったオーバーロード・別DBの関数は含めない")
+  void listsUnverifiedFunctions() {
+    final List<FunctionEntry> functions = new ArrayList<>();
+    final List<FunctionTableUsageEntry> usages = new ArrayList<>();
+    // 動的SQLを含むが、自テーブルを使うと分かったオーバーロードは含めない。同じ関数の別のオーバーロードは含める
+    add(
+        functions,
+        usages,
+        function("FUNCTION", "mixed", "a integer"),
+        List.of("EXECUTE"),
+        used("sample", "employee", "R"));
+    add(functions, usages, function("FUNCTION", "mixed", "a text"), List.of("EXECUTE"));
+    add(
+        functions,
+        usages,
+        function("FUNCTION", "via_view_dynamic", ""),
+        List.of("EXECUTE"),
+        used("sample", "v1", "R"));
+    add(functions, usages, function("FUNCTION", "b_dynamic", ""), List.of("EXECUTE"));
+    add(functions, usages, function("FUNCTION", "a_dynamic", "z integer"), List.of("EXECUTE"));
+    add(functions, usages, function("FUNCTION", "a_dynamic", "a integer"), List.of("EXECUTE"));
+    // 動的SQLも読み残しもある場合は、先に並ぶ動的SQLを採る
+    final FunctionEntry both = function("FUNCTION", "both", "");
+    functions.add(both);
+    usages.add(
+        usageOf(both, FunctionTableUsageEntry.ANALYZED, HASH, List.of(), List.of("EXECUTE"), true));
+    final FunctionEntry incomplete = function("FUNCTION", "incomplete_only", "");
+    functions.add(incomplete);
+    usages.add(
+        usageOf(incomplete, FunctionTableUsageEntry.ANALYZED, HASH, List.of(), List.of(), true));
+    final FunctionEntry unsupported = function("FUNCTION", "unsupported", "");
+    functions.add(unsupported);
+    usages.add(usageOf(unsupported, "unsupported_language", HASH, List.of(), List.of(), false));
+    final FunctionEntry stale = function("FUNCTION", "stale", "");
+    functions.add(stale);
+    usages.add(
+        usageOf(stale, FunctionTableUsageEntry.ANALYZED, "old", List.of(), List.of(), false));
+    functions.add(function("FUNCTION", "no_insight", ""));
+    add(functions, usages, function("FUNCTION", "clean", ""));
+    add(functions, usages, function("db2", "FUNCTION", "other_database", ""), List.of("EXECUTE"));
+    final SchemaCatalog catalog =
+        catalogOf(
+            List.of(
+                table("employee").build(),
+                table("v1").type("view").referencedTable("employee").build()),
+            functions,
+            usages,
+            List.of());
+
+    final List<TableImpact.UnverifiedFunction> unverified =
+        impactOf(catalog, "employee").functions().unverified();
+
+    assertEquals(
+        List.of(
+            "DYNAMIC_SQL:a_dynamic(a integer)",
+            "DYNAMIC_SQL:a_dynamic(z integer)",
+            "DYNAMIC_SQL:b_dynamic()",
+            "DYNAMIC_SQL:both()",
+            "DYNAMIC_SQL:mixed(a text)",
+            "INCOMPLETE:incomplete_only()",
+            "UNSUPPORTED:unsupported()",
+            "STALE:stale()",
+            "NO_INSIGHT:no_insight()"),
+        unverified.stream()
+            .map(
+                found ->
+                    found.reason().name()
+                        + ":"
+                        + found.function().name()
+                        + "("
+                        + found.arguments()
+                        + ")")
+            .toList());
+    assertEquals(
+        List.of("dynamicSql", "incomplete", "unsupported", "stale", "noInsight"),
+        List.of(TableImpact.UnverifiedFunction.Reason.values()).stream()
+            .map(TableImpact.UnverifiedFunction.Reason::value)
+            .toList(),
+        "ツールの結果で使う値は、理由の優先順に並ぶ");
   }
 
   @Test
