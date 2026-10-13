@@ -4,7 +4,7 @@
 
 | RDBMS | データベース名 | 作成日 |
 |:---|:---|:---|
-|PostgreSQL 16|testdb|2026/10/08|
+|PostgreSQL 16|testdb|2026/10/13|
 
 ## 説明
 
@@ -49,8 +49,9 @@ erDiagram
 |1|sample.attendance|attendance_employee_id_fkey|sample.employee|
 |2|sample.employee|employee_department_id_fkey|sample.department|
 |3|sample.employee|employee_parking_spot_id_fkey|sample.parking_spot|
-|4|sample.employee_profile|employee_profile_employee_id_fkey|sample.employee|
-|5|sample.audit_log|record_id|sample.employee|
+|4|sample.employee_history|employee_history_employee_id_fkey|sample.employee|
+|5|sample.employee_profile|employee_profile_employee_id_fkey|sample.employee|
+|6|sample.audit_log|record_id|sample.employee|
 
 ___
 

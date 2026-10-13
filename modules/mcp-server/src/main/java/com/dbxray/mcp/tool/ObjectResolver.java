@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 /** ツールの引数で名前を指定されたオブジェクトの解決 */
 final class ObjectResolver {
 
+  private static final String AMBIGUITY_HINT = "schema（DBが異なる場合はdatabase）を指定してください。";
+
   private ObjectResolver() {}
 
   /**
@@ -45,13 +47,31 @@ final class ObjectResolver {
       String kind,
       String searchTool,
       Function<ObjectReference, Lookup<E>> lookup) {
+    return resolve(reference, kind, searchTool, AMBIGUITY_HINT, lookup);
+  }
+
+  /**
+   * 名前の指定（{@link ObjectReference}）で、オブジェクトを1つに解決するメソッド<br>
+   * 引数{@code schema}を名前の解決に使わないツールのように、複数に当てはまる場合の案内を変えたいときに使う
+   *
+   * @param ambiguityHint 複数に当てはまる場合に、絞り込み方として示す文
+   * @throws InvalidToolArgumentException 見つからない場合、複数に当てはまる場合（候補をメッセージに含める）
+   */
+  static <E extends SchemaObject> E resolve(
+      ObjectReference reference,
+      String kind,
+      String searchTool,
+      String ambiguityHint,
+      Function<ObjectReference, Lookup<E>> lookup) {
     return switch (lookup.apply(reference)) {
       case Lookup.Found<E> found -> found.value();
       case Lookup.Ambiguous<E> ambiguous ->
           throw new InvalidToolArgumentException(
               kind
                   + reference.name()
-                  + "が複数あります。schema（DBが異なる場合はdatabase）を指定してください。候補: "
+                  + "が複数あります。"
+                  + ambiguityHint
+                  + "候補: "
                   + describe(ambiguous.candidates()));
       case Lookup.NotFound<E> notFound ->
           throw new InvalidToolArgumentException(

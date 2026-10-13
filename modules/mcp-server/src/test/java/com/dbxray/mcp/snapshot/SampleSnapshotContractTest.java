@@ -21,6 +21,10 @@ import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.SchemaSummary;
 import com.dbxray.mcp.catalog.SearchQuery;
 import com.dbxray.mcp.catalog.SearchScope;
+import com.dbxray.mcp.catalog.SimilarTable;
+import com.dbxray.mcp.catalog.SimilarTableQuery;
+import com.dbxray.mcp.catalog.SimilarTables;
+import com.dbxray.mcp.catalog.SimilarityKind;
 import com.dbxray.mcp.catalog.TableClusters;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.TableFilter;
@@ -48,7 +52,7 @@ class SampleSnapshotContractTest {
   @Test
   @DisplayName("サンプルの全テーブル（ビュー・マテリアライズドビューを含む）を読み込む")
   void readsAllTables() {
-    assertEquals(14, catalog.tables().all().size());
+    assertEquals(15, catalog.tables().all().size());
     final TableEntry employee = find("employee");
     assertEquals("従業員", employee.logicalName());
     assertEquals("table", employee.type());
@@ -129,7 +133,7 @@ class SampleSnapshotContractTest {
   @DisplayName("database.jsonのDBMS種別・メジャーバージョンと、スキーマごとのオブジェクトの数を読み込む")
   void summarizesSchemas() {
     assertEquals(
-        List.of(new SchemaSummary("testdb", "PostgreSQL", 16, "sample", 11, 2, 1, 11, 2, 8, 3, 5)),
+        List.of(new SchemaSummary("testdb", "PostgreSQL", 16, "sample", 12, 2, 1, 11, 2, 9, 3, 5)),
         catalog.schemas());
   }
 
@@ -242,7 +246,8 @@ class SampleSnapshotContractTest {
         List.of("employee"), clusters.hubs().stream().map(table -> table.key().name()).toList());
     assertEquals(
         List.of(
-            List.of("department", "parking_spot", "audit_log", "employee_profile"),
+            List.of(
+                "department", "parking_spot", "audit_log", "employee_history", "employee_profile"),
             List.of("attendance", "attendance_note"),
             List.of("project", "project_assignment"),
             List.of("warehouse_zone", "shipment")),
@@ -254,6 +259,71 @@ class SampleSnapshotContractTest {
         clusters.clusters().stream().mapToInt(cluster -> cluster.tables().size()).sum()
             + clusters.hubs().size()
             + clusters.unrelatedTables());
+  }
+
+  @Test
+  @DisplayName("サンプルのカラム名から構造の似たテーブル（attendance_note）を探せ、基準にした既存のテーブル自身は含まず、外部キーでつながるテーブルには印を付ける")
+  void findsSimilarTablesOfSample() {
+    final SimilarTables byColumns =
+        catalog
+            .tables()
+            .findSimilar(
+                SimilarTableQuery.ofColumns(List.of("attendance_id", "work_date", "note"), 3, 10),
+                TableFilter.ALL,
+                10);
+
+    assertEquals(
+        List.of("attendance_note"),
+        byColumns.tables().stream().map(similar -> similar.table().key().name()).toList());
+    assertEquals(SimilarityKind.SUPERSET, byColumns.tables().get(0).kind());
+
+    final TableEntry shipment = find("shipment");
+    assertTrue(
+        catalog
+            .tables()
+            .findSimilar(SimilarTableQuery.ofTable(shipment, 1, 10), TableFilter.ALL, 10)
+            .tables()
+            .stream()
+            .noneMatch(similar -> similar.table().key().equals(shipment.key())));
+
+    final SimilarTable attendance =
+        catalog
+            .tables()
+            .findSimilar(
+                SimilarTableQuery.ofTable(find("attendance_note"), 2, 10), TableFilter.ALL, 10)
+            .tables()
+            .stream()
+            .filter(similar -> similar.table().key().name().equals("attendance"))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(attendance.relatedToBase(), "外部キーで参照するattendanceも除かずに、関連の印を付けて返す");
+  }
+
+  @Test
+  @DisplayName(
+      "サンプルのemployeeに構造の似たテーブルとして、employeeを参照する履歴テーブル（employee_history）を"
+          + "関連の印付きのsupersetで返し、桁数だけ異なる型をsizeの違いとして返す")
+  void findsHistoryTableOfSample() {
+    final SimilarTables found =
+        catalog
+            .tables()
+            .findSimilar(SimilarTableQuery.ofTable(find("employee"), 3, 50), TableFilter.ALL, 10);
+
+    assertEquals(
+        List.of("employee_history"),
+        found.tables().stream().map(similar -> similar.table().key().name()).toList());
+    final SimilarTable history = found.tables().get(0);
+    assertEquals(SimilarityKind.SUPERSET, history.kind());
+    assertTrue(history.relatedToBase());
+    assertEquals(List.of("history_id", "valid_from", "valid_to"), history.onlyInOther());
+    assertEquals(
+        List.of(
+            new SimilarTable.TypeMismatch(
+                "employee_name",
+                "character varying(50)",
+                "character varying(100)",
+                SimilarTable.TypeDifference.SIZE)),
+        history.typeMismatches());
   }
 
   @Test

@@ -56,6 +56,14 @@ public final class TestTables {
     return column(name, null, null);
   }
 
+  /** 型がintegerのカラムを、指定した順に足す */
+  public TestTables columns(String... names) {
+    for (final String name : names) {
+      column(name);
+    }
+    return this;
+  }
+
   public TestTables column(String name, String logicalName, String remarks) {
     return column(new ColumnEntry(name, logicalName, "integer", false, false, null, remarks));
   }

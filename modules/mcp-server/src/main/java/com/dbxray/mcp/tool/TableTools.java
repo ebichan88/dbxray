@@ -51,8 +51,8 @@ final class TableTools {
   /** {@code get_table}等でテーブルを指定する引数の説明 */
   static final String TABLE_DESCRIPTION = "テーブル名（大文字小文字を区別しない）。スキーマ名.テーブル名の形でもよい";
 
-  /** {@code list_tables}・{@code search_tables}で観点に絞り込む引数のプロパティ */
-  private static final Map<String, Object> VIEWPOINT_PROPERTY =
+  /** テーブルの一覧・検索を観点に絞り込む引数のプロパティ */
+  static final Map<String, Object> VIEWPOINT_PROPERTY =
       stringProperty("指定した観点（list_viewpointsのid）の所属テーブルだけに絞り込む場合に指定する");
 
   /** {@code list_tables}・{@code search_tables}でER上の区分に絞り込む引数のプロパティ */

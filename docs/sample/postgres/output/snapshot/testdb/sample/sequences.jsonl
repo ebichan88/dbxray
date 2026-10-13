@@ -2,6 +2,7 @@
 {"schema":"sample","name":"audit_log_log_id_seq","incrementBy":"1","minValue":"1","maxValue":"9223372036854775807","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"audit_log.log_id"}
 {"schema":"sample","name":"department_department_id_seq","incrementBy":"1","minValue":"1","maxValue":"2147483647","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"department.department_id"}
 {"schema":"sample","name":"employee_employee_id_seq","incrementBy":"1","minValue":"1","maxValue":"2147483647","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"employee.employee_id"}
+{"schema":"sample","name":"employee_history_history_id_seq","incrementBy":"1","minValue":"1","maxValue":"2147483647","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"employee_history.history_id"}
 {"schema":"sample","name":"invoice_no_seq","incrementBy":"1","minValue":"1000","maxValue":"999999","cacheSize":"5","startValue":"1000","cycle":true}
 {"schema":"sample","name":"parking_spot_parking_spot_id_seq","incrementBy":"1","minValue":"1","maxValue":"2147483647","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"parking_spot.parking_spot_id"}
 {"schema":"sample","name":"project_project_id_seq","incrementBy":"1","minValue":"1","maxValue":"2147483647","cacheSize":"1","startValue":"1","cycle":false,"ownedBy":"project.project_id"}

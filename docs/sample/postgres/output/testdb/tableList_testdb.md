@@ -4,7 +4,7 @@
 
 | RDBMS | データベース名 | 作成日 |
 |:---|:---|:---|
-|PostgreSQL 16|testdb|2026/10/08|
+|PostgreSQL 16|testdb|2026/10/13|
 
 ## 関連ドキュメント
 
@@ -26,11 +26,12 @@
 |5|sample||department|table|[■](./sample/table/department.md)|
 |6|sample|従業員|employee|table|[■](./sample/table/employee.md)|
 |7|sample||employee_directory_view|view|[■](./sample/view/employee_directory_view.md)|
-|8|sample||employee_profile|table|[■](./sample/table/employee_profile.md)|
-|9|sample||parking_spot|table|[■](./sample/table/parking_spot.md)|
-|10|sample|プロジェクト|project|table|[■](./sample/table/project.md)|
-|11|sample||project_assignment|table|[■](./sample/table/project_assignment.md)|
-|12|sample|プロジェクト別要員数集計|project_summary_mv|materialized_view|[■](./sample/materialized_view/project_summary_mv.md)|
-|13|sample||shipment|table|[■](./sample/table/shipment.md)|
-|14|sample||warehouse_zone|table|[■](./sample/table/warehouse_zone.md)|
+|8|sample|従業員履歴|employee_history|table|[■](./sample/table/employee_history.md)|
+|9|sample||employee_profile|table|[■](./sample/table/employee_profile.md)|
+|10|sample||parking_spot|table|[■](./sample/table/parking_spot.md)|
+|11|sample|プロジェクト|project|table|[■](./sample/table/project.md)|
+|12|sample||project_assignment|table|[■](./sample/table/project_assignment.md)|
+|13|sample|プロジェクト別要員数集計|project_summary_mv|materialized_view|[■](./sample/materialized_view/project_summary_mv.md)|
+|14|sample||shipment|table|[■](./sample/table/shipment.md)|
+|15|sample||warehouse_zone|table|[■](./sample/table/warehouse_zone.md)|
 

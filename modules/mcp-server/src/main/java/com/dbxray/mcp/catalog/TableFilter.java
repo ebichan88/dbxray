@@ -52,6 +52,11 @@ public final class TableFilter {
     return new TableFilter(scope, type, viewpoint, junctions);
   }
 
+  /** DB名だけが条件に当てはまるか判定するメソッド */
+  boolean matchesDatabase(String database) {
+    return scope.matchesDatabase(database);
+  }
+
   /** テーブルが条件に当てはまるか判定するメソッド */
   boolean matches(TableEntry table) {
     return scope.matches(table.key())

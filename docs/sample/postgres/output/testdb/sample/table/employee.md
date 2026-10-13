@@ -4,7 +4,7 @@
 
 | RDBMS | データベース名 | 作成日 |
 |:---|:---|:---|
-|PostgreSQL 16|testdb|2026/10/08|
+|PostgreSQL 16|testdb|2026/10/13|
 
 ## テーブル説明
 
@@ -70,9 +70,10 @@
 | No. | 参照元 | 参照元カラムリスト | 参照されるカラムリスト | 関連名 | 多重度 | 区分 |
 |:---|:---|:---|:---|:---|:---|:---|
 |1|sample.attendance|employee_id|employee_id|attendance_employee_id_fkey|1対多|物理|
-|2|sample.employee_profile|employee_id|employee_id|employee_profile_employee_id_fkey|1対1|物理|
-|3|sample.project_assignment|employee_id|employee_id|project_assignment_employee_id_fkey|1対多|物理|
-|4|sample.audit_log|record_id|employee_id|record_id|0..1対多|論理|
+|2|sample.employee_history|employee_id|employee_id|employee_history_employee_id_fkey|1対多|物理|
+|3|sample.employee_profile|employee_id|employee_id|employee_profile_employee_id_fkey|1対1|物理|
+|4|sample.project_assignment|employee_id|employee_id|project_assignment_employee_id_fkey|1対多|物理|
+|5|sample.audit_log|record_id|employee_id|record_id|0..1対多|論理|
 
 ## 参照しているビュー
 
@@ -95,6 +96,7 @@ erDiagram
     sample_department["department"]
     sample_parking_spot["parking_spot"]
     sample_attendance["attendance（勤怠（月次パーティション））"]
+    sample_employee_history["employee_history（従業員履歴）"]
     sample_employee_profile["employee_profile"]
     sample_project_assignment["project_assignment"]
     sample_audit_log["audit_log"]
@@ -102,6 +104,7 @@ erDiagram
     sample_employee |o--o{ sample_employee : "employee_manager_id_fkey"
     sample_parking_spot |o--o| sample_employee : "employee_parking_spot_id_fkey"
     sample_employee ||--o{ sample_attendance : "attendance_employee_id_fkey"
+    sample_employee ||--o{ sample_employee_history : "employee_history_employee_id_fkey"
     sample_employee ||--o| sample_employee_profile : "employee_profile_employee_id_fkey"
     sample_employee ||--o{ sample_project_assignment : "project_assignment_employee_id_fkey"
     sample_employee |o..o{ sample_audit_log : "record_id"
@@ -125,6 +128,9 @@ erDiagram
         integer parking_spot_id PK
     }
     sample_attendance {
+        integer employee_id FK
+    }
+    sample_employee_history {
         integer employee_id FK
     }
     sample_employee_profile {
