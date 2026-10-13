@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 
 /**
  * テーブルの影響範囲を、各窓口の情報から集める規則を持つクラス<br>
@@ -147,8 +148,12 @@ final class ImpactAnalyzer {
                 });
       }
     }
+    final Map<FunctionEntry, Insight> insights = new LinkedHashMap<>();
+    inDatabase.stream()
+        .flatMap(function -> function.overloads().stream())
+        .forEach(overload -> insights.put(overload, insightOf(overload)));
     return new FunctionImpact(
-        coverage(inDatabase, database), uses, unverified(inDatabase, matched));
+        coverage(insights.values(), database), uses, unverified(insights, matched));
   }
 
   /**
@@ -240,92 +245,57 @@ final class ImpactAnalyzer {
     return kinds.size() == 1 ? kinds.get(0) : "";
   }
 
-  private FunctionCoverage coverage(List<FunctionOverloads> inDatabase, String database) {
-    int total = 0;
-    int analyzed = 0;
-    int unsupported = 0;
-    int noInsight = 0;
-    int stale = 0;
-    int withDynamicSql = 0;
-    int incomplete = 0;
-    for (final FunctionOverloads function : inDatabase) {
-      for (final FunctionEntry overload : function.overloads()) {
-        total++;
-        final Optional<FunctionTableUsageEntry> usage = usages.find(overload);
-        if (usage.isEmpty()) {
-          if (usages.freshnessOf(overload) == FunctionTableUsages.Freshness.STALE) {
-            stale++;
-          } else {
-            noInsight++;
-          }
-        } else if (usage.get().status().equals(FunctionTableUsageEntry.ANALYZED)) {
-          analyzed++;
-          withDynamicSql += usage.get().dynamicSql().isEmpty() ? 0 : 1;
-          incomplete += usage.get().incomplete() ? 1 : 0;
-        } else {
-          unsupported++;
-        }
-      }
-    }
+  private Insight insightOf(FunctionEntry overload) {
+    return usages
+        .find(overload)
+        .map(usage -> new Insight(FunctionTableUsages.Freshness.CURRENT, usage))
+        .orElseGet(() -> new Insight(usages.freshnessOf(overload), null));
+  }
+
+  private FunctionCoverage coverage(Collection<Insight> insights, String database) {
     final long triggersWithoutFunction =
         tables.triggers(SearchScope.ALL).stream()
             .filter(found -> found.table().key().database().equals(database))
             .filter(found -> found.trigger().function().isEmpty())
             .count();
     return new FunctionCoverage(
-        total,
-        analyzed,
-        unsupported,
-        noInsight,
-        stale,
-        withDynamicSql,
-        incomplete,
+        insights.size(),
+        count(insights, Insight::analyzed),
+        count(insights, Insight::unsupported),
+        count(insights, insight -> insight.freshness() == FunctionTableUsages.Freshness.ABSENT),
+        count(insights, insight -> insight.freshness() == FunctionTableUsages.Freshness.STALE),
+        count(insights, Insight::hasDynamicSql),
+        count(insights, Insight::incomplete),
         (int) triggersWithoutFunction);
+  }
+
+  private static int count(Collection<Insight> insights, Predicate<Insight> condition) {
+    return (int) insights.stream().filter(condition).count();
   }
 
   /**
    * 自テーブルを使うかどうか確かめきれない関数を、オーバーロード単位で求める<br>
    * 自テーブルかそのビューを使うと分かったオーバーロード（{@code matched}）は含めない
    */
-  private List<UnverifiedFunction> unverified(
-      List<FunctionOverloads> inDatabase, Set<FunctionEntry> matched) {
+  private static List<UnverifiedFunction> unverified(
+      Map<FunctionEntry, Insight> insights, Set<FunctionEntry> matched) {
     final List<UnverifiedFunction> found = new ArrayList<>();
-    for (final FunctionOverloads function : inDatabase) {
-      for (final FunctionEntry overload : function.overloads()) {
-        if (!matched.contains(overload)) {
-          reasonOf(overload)
-              .ifPresent(
-                  reason ->
-                      found.add(
-                          new UnverifiedFunction(function.key(), overload.arguments(), reason)));
-        }
-      }
-    }
+    insights.forEach(
+        (overload, insight) -> {
+          if (!matched.contains(overload)) {
+            insight
+                .unverifiedReason()
+                .ifPresent(
+                    reason ->
+                        found.add(
+                            new UnverifiedFunction(overload.key(), overload.arguments(), reason)));
+          }
+        });
     found.sort(
         Comparator.comparing(UnverifiedFunction::reason)
             .thenComparing(UnverifiedFunction::function, ObjectKey.ORDER)
             .thenComparing(UnverifiedFunction::arguments));
     return found;
-  }
-
-  /**
-   * オーバーロードの参考情報から、確かめきれない理由を求める<br>
-   * 参考情報が無い・古い場合は空。関数を1つずつ読んでも対処にならず（出力し直す）、全関数が該当しうるため、件数（{@link FunctionCoverage}）だけで伝える
-   */
-  private Optional<UnverifiedFunction.Reason> reasonOf(FunctionEntry overload) {
-    final Optional<FunctionTableUsageEntry> usage = usages.find(overload);
-    if (usage.isEmpty()) {
-      return Optional.empty();
-    }
-    if (!usage.get().status().equals(FunctionTableUsageEntry.ANALYZED)) {
-      return Optional.of(UnverifiedFunction.Reason.UNSUPPORTED);
-    }
-    if (!usage.get().dynamicSql().isEmpty()) {
-      return Optional.of(UnverifiedFunction.Reason.DYNAMIC_SQL);
-    }
-    return usage.get().incomplete()
-        ? Optional.of(UnverifiedFunction.Reason.INCOMPLETE)
-        : Optional.empty();
   }
 
   /** デフォルト値の{@code nextval}で使うシーケンスを、シーケンスの順に求める */
@@ -374,6 +344,44 @@ final class ImpactAnalyzer {
 
   /** 関数が対象を使っている、という結果と、その元になったオーバーロードの一致 */
   private record FoundUse(FunctionUse use, List<OverloadMatch> matches) {}
+
+  /**
+   * オーバーロード1つの参考情報の状態（{@link FunctionCoverage}の数え方と、確かめきれない理由の元）
+   *
+   * @param usage 参考情報。{@code freshness}が{@code CURRENT}の場合だけ持ち、それ以外はnull
+   */
+  private record Insight(FunctionTableUsages.Freshness freshness, FunctionTableUsageEntry usage) {
+
+    boolean analyzed() {
+      return usage != null && usage.status().equals(FunctionTableUsageEntry.ANALYZED);
+    }
+
+    boolean unsupported() {
+      return usage != null && !analyzed();
+    }
+
+    boolean hasDynamicSql() {
+      return analyzed() && !usage.dynamicSql().isEmpty();
+    }
+
+    boolean incomplete() {
+      return analyzed() && usage.incomplete();
+    }
+
+    /**
+     * 定義本体を読めば確かめられる理由（{@link UnverifiedFunction.Reason}の順で先のもの）<br>
+     * 参考情報が無い・古い場合は空。関数を1つずつ読んでも対処にならず（出力し直す）、全関数が該当しうるため、件数（{@link FunctionCoverage}）だけで伝える
+     */
+    Optional<UnverifiedFunction.Reason> unverifiedReason() {
+      if (hasDynamicSql()) {
+        return Optional.of(UnverifiedFunction.Reason.DYNAMIC_SQL);
+      }
+      if (incomplete()) {
+        return Optional.of(UnverifiedFunction.Reason.INCOMPLETE);
+      }
+      return unsupported() ? Optional.of(UnverifiedFunction.Reason.UNSUPPORTED) : Optional.empty();
+    }
+  }
 
   /** オーバーロード1つが対象のテーブルを使っている、という一致 */
   private record OverloadMatch(
