@@ -243,14 +243,14 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <header>
   <p class="eyebrow">dbxray / mcp-server</p>
   <h1>mcp-server 読解ガイド</h1>
-  <p class="lead">cliが出力したスキーマのスナップショット（JSON Lines）を起動時にメモリへ読み込み、AIから呼べる17個の読み取り専用ツールと、利用者が会話に添付できるテーブル定義のリソースとして、標準入出力で公開するサーバーです。DBには接続しません。このガイドは、MCPとSDKの事前知識から始めて、ソースごとの役割と繋がりまでを順に説明します。</p>
+  <p class="lead">cliが出力したスキーマのスナップショット（JSON Lines）を起動時にメモリへ読み込み、AIから呼べる18個の読み取り専用ツールと、利用者が会話に添付できるテーブル定義のリソースとして、標準入出力で公開するサーバーです。DBには接続しません。このガイドは、MCPとSDKの事前知識から始めて、ソースごとの役割と繋がりまでを順に説明します。</p>
   <ul class="facts">
-    <li><b>約5.5k 行</b>main配下のJava（空行・コメントを含む目安）</li>
-    <li><b>17 ツール</b>すべて読み取り専用。ほかに全テーブルをリソースとして公開</li>
+    <li><b>約7.1k 行</b>main配下のJava（空行・コメントを含む目安）</li>
+    <li><b>18 ツール</b>すべて読み取り専用。ほかに全テーブルをリソースとして公開</li>
     <li><b>mcp-core 2.0.1</b>MCP Java SDK。JSONはJackson 2系</li>
     <li><b>stdio</b>MCPクライアントが子プロセスとして起動</li>
   </ul>
-  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114までを含む）を読んで作成し、MCPサーバーの<code>SchemaCatalog</code>の窓口への分割と<code>ArchitectureTest</code>の追加に合わせて更新。さらに、cliの<code>--preview</code>が出力する関数の利用テーブル（Issue #134・PR #137）に合わせて、<code>get_function</code>の<code>tableUsage</code>の分を追記しています（7.10節）。JSONの例は、ビルドしたjarに<code>docs/sample/postgres/output/snapshot</code>を読ませて実際に採取した応答です（長いものは省略）。</p>
+  <p class="small muted">mainブランチ（<code>0bb6bdd</code>。PR #114までを含む）を読んで作成し、MCPサーバーの<code>SchemaCatalog</code>の窓口への分割と<code>ArchitectureTest</code>の追加に合わせて更新。さらに、cliの<code>--preview</code>が出力する関数の利用テーブル（Issue #134・PR #137）に合わせて、<code>get_function</code>の<code>tableUsage</code>の分を追記しています（7.10節）。その後、中間テーブルと多対多の関係（<code>erRole</code>・<code>manyToMany</code>。PR #155）と、構造の似たテーブルを探す<code>find_similar_tables</code>（PR #156）を追記し、サンプルのDBに足した履歴テーブル<code>employee_history</code>に合わせて例を採り直しています（7.11節・7.12節）。JSONの例は、ビルドしたjarに<code>docs/sample/postgres/output/snapshot</code>を読ませて実際に採取した応答です（長いものは省略）。</p>
 </header>
 
 <!-- ============================================================ -->
@@ -307,7 +307,7 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
 
 <figure>
   <div class="fig-scroll">
-    <svg viewBox="0 0 760 400" role="img" aria-label="initialize要求と応答、initialized通知、tools/listで17個のツール定義（resources/listでリソースの一覧）、tools/callで結果、最後にstdinを閉じて終了する流れのシーケンス図" style="min-width: 640px">
+    <svg viewBox="0 0 760 400" role="img" aria-label="initialize要求と応答、initialized通知、tools/listで18個のツール定義（resources/listでリソースの一覧）、tools/callで結果、最後にstdinを閉じて終了する流れのシーケンス図" style="min-width: 640px">
       <defs>
         <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill"/></marker>
         <marker id="f2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
@@ -337,7 +337,7 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
       <line x1="122" y1="192" x2="636" y2="192" class="d-line" marker-end="url(#f2a)"/>
       <text x="380" y="184" text-anchor="middle" class="d-t">tools/list（resources/list）</text>
       <line x1="638" y1="224" x2="124" y2="224" class="d-line-acc d-dash" marker-end="url(#f2b)"/>
-      <text x="380" y="216" text-anchor="middle" class="d-t-acc">17個のツール定義（リソースならテーブルの数だけのURI・name）</text>
+      <text x="380" y="216" text-anchor="middle" class="d-t-acc">18個のツール定義（リソースならテーブルの数だけのURI・name）</text>
 
       <line x1="122" y1="270" x2="636" y2="270" class="d-line" marker-end="url(#f2a)"/>
       <text x="380" y="262" text-anchor="middle" class="d-t">tools/call {name, arguments}（resources/read {uri}）</text>
@@ -560,12 +560,13 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <text x="510" y="166" text-anchor="middle" class="d-t-m">*Catalog・RelationGraph</text>
       <text x="510" y="186" text-anchor="middle" class="d-t-m">SearchQuery・Lookup</text>
       <text x="510" y="206" text-anchor="middle" class="d-t">各種Entry（record）</text>
+      <text x="510" y="226" text-anchor="middle" class="d-t-m">JunctionTables ほか</text>
       <text x="510" y="244" text-anchor="middle" class="d-t-acc">SDK・JSONに依存しない</text>
 
       <rect x="660" y="100" width="160" height="160" rx="6" class="d-box"/>
       <text x="740" y="122" text-anchor="middle" class="d-t-s">mcp.tool</text>
       <text x="740" y="146" text-anchor="middle" class="d-t-ms" font-weight="600">TableDefinitionTools</text>
-      <text x="740" y="166" text-anchor="middle" class="d-t">10の *Tools</text>
+      <text x="740" y="166" text-anchor="middle" class="d-t">11の *Tools</text>
       <text x="740" y="186" text-anchor="middle" class="d-t-m">ToolArguments</text>
       <text x="740" y="206" text-anchor="middle" class="d-t">ObjectResolver ほか</text>
       <text x="740" y="232" text-anchor="middle" class="d-t-ms">…Resources</text>
@@ -602,7 +603,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
     <tr><td><code>mcp</code>（直下）</td><td>入口。起動引数の検証、読み込みの呼び出し、SDKの起動</td></tr>
     <tr><td><code>mcp.snapshot</code></td><td><code>snapshot/</code>のJSON Linesを読み、<code>SchemaCatalog</code>を組み立てる</td></tr>
     <tr><td><code>mcp.insight</code></td><td><code>insights/</code>の観点（viewpoints.json）と、関数が利用しているテーブル（<code>{スキーマ}/functionTableUsages.json</code>。cliの<code>--preview</code>）を読む</td></tr>
-    <tr><td><code>mcp.catalog</code></td><td>メモリ上の全オブジェクトと、検索・名前の解決・関連のたどり・相互参照・関連のまとまり・ER図の範囲</td></tr>
+    <tr><td><code>mcp.catalog</code></td><td>メモリ上の全オブジェクトと、検索・名前の解決・関連のたどり・相互参照・関連のまとまり・ER図の範囲・中間テーブルの判定・構造の似たテーブルの探索</td></tr>
     <tr><td><code>mcp.tool</code></td><td>MCPのツールとリソースの定義。引数を読み、catalogに聞き、結果をJSON（ER図はMermaid）にする</td></tr>
   </tbody>
 </table>
@@ -612,14 +613,15 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <p>上から順に読むと、外側（起動とMCP）から内側（ルール）へ進めます。</p>
 <ol class="steps">
   <li><div><code>McpServerMain</code>：何をどの順で組み立てるか。<code>INSTRUCTIONS</code>でツールの全体像もつかめます。</div></li>
-  <li><div><code>TableDefinitionTools</code>：ツールクラス10の並び＝クライアントに見える順。</div></li>
+  <li><div><code>TableDefinitionTools</code>：ツールクラス11の並び＝クライアントに見える順。</div></li>
   <li><div><code>ToolSpecifications.readOnlyTool</code>：全ツール共通の包み。引数の誤りが<code>isError</code>になる場所です。</div></li>
   <li><div><code>SchemaTools</code>：小さなツールクラスで「型」をつかみ、続けて一番大きい<code>TableTools</code>。<code>get_table</code>の結果の加工は<code>TableOutputBuilder</code>に分かれています。</div></li>
   <li><div><code>ToolArguments</code>・<code>ObjectResolver</code>・<code>Page</code>：ツールクラスが共通で使う部品。</div></li>
-  <li><div><code>SchemaCatalog</code>：組み立てと、関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>）の一覧です。続けて<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>の公開メソッドを見ると、ツールから見たcatalogの全機能がつかめます。</div></li>
+  <li><div><code>SchemaCatalog</code>：組み立てと、関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>・<code>junctions()</code>）の一覧です。続けて<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>の公開メソッドを見ると、ツールから見たcatalogの全機能がつかめます。</div></li>
   <li><div><code>TableFilter</code>・<code>SearchQuery</code>・<code>RelationGraph</code>：テーブルの絞り込み、点数づけ、幅優先探索。7章の図と合わせて読むと速いです。</div></li>
   <li><div><code>SnapshotDirectoryReader</code>：ファイルからEntryができるまで。6章参照。</div></li>
   <li><div><code>DiagramTools</code>・<code>MermaidErDiagram</code>、<code>TableDefinitionResources</code>：ツールの型から外れる2つ。結果にMermaidの記述を入れるER図（7.9節）と、AIではなく利用者が選ぶリソース（1章）です。</div></li>
+  <li><div><code>JunctionDetector</code>・<code>SimilarTableFinder</code>：スナップショットに無い値を導く、後から足された2つの推測。中間テーブルの判定（7.11節）と、構造の似たテーブルの探索（7.12節）です。</div></li>
 </ol>
 
 <!-- ============================================================ -->
@@ -631,7 +633,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><div><strong>参考情報の読み込み</strong>：<code>InsightsDirectoryReader</code>の<code>readViewpoints</code>（観点）と<code>readFunctionTableUsages</code>（関数の利用テーブル。cliを<code>--preview</code>で実行した場合だけある。7.10節）。<code>--snapshot</code>の<em>親の兄弟</em>の<code>insights/</code>を自分で求めて読みます。ディレクトリ・ファイルが無ければ0件で、誤りにはしません。</div></li>
   <li><div><strong>スナップショットの読み込み</strong>：<code>SnapshotDirectoryReader.read</code>が<code>SchemaCatalog</code>を返します。ディレクトリが無い、<code>database.json</code>が1つも無い、新しすぎる<code>formatVersion</code>、JSONとして読めない行、<code>schema</code>・<code>name</code>の無い行は誤りです（メッセージにファイル名と行番号が入ります）。</div></li>
   <li><div><strong>参考情報の合成</strong>：<code>catalog.withViewpoints(viewpoints).withFunctionTableUsages(functionTableUsages)</code>。<code>SchemaCatalog</code>は不変なので、観点・関数の利用テーブルを加えた新しいインスタンスを作ります。</div></li>
-  <li><div><strong>読み込み件数の表示</strong>：標準エラーへ<code>[info]:14テーブルを読み込みました。 [snapshot=…]</code>。</div></li>
+  <li><div><strong>読み込み件数の表示</strong>：標準エラーへ<code>[info]:15テーブルを読み込みました。 [snapshot=…]</code>。</div></li>
   <li><div><strong>SDKの起動</strong>：<code>start(catalog)</code>。2章のBuilderでツールとリソース（全テーブル分）を登録して組み立て、<code>build()</code>した時点で標準入力の待ち受けが始まり、<code>main</code>は戻ります。</div></li>
 </ol>
 <p class="small muted">I/Oの失敗（<code>UncheckedIOException</code>）は利用者が直せる誤りではないため捕まえません。スタックトレースが標準エラーに出て、終了コードは1になります。</p>
@@ -728,11 +730,14 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
     <tr><td><code>sections: "foreignKeys,triggers"</code>（型はarray）</td><td><span class="tag sdk">SDK</span> 型</td><td>isError <code>… /sections: string found, array expected</code></td></tr>
     <tr><td><code>get_table</code>に<code>foo: 1</code></td><td><span class="tag sdk">SDK</span> <code>additionalProperties:false</code></td><td>isError <code>… property 'foo' is not defined in the schema …</code></td></tr>
     <tr><td><code>get_related_tables</code>に<code>depth: 4</code></td><td><span class="tag sdk">SDK</span> <code>maximum: 3</code></td><td>isError <code>… /depth: must have a maximum value of 3</code></td></tr>
+    <tr><td><code>list_tables</code>に<code>erRole: "subtype"</code></td><td><span class="tag sdk">SDK</span> <code>enum</code></td><td>isError <code>… /erRole: does not have a value in the enumeration ["junction"]</code></td></tr>
     <tr><td><code>table: "employe"</code></td><td><span class="tag own">自前</span> <code>ObjectResolver</code></td><td>isError <code>テーブルemployeが見つかりません。名前の似たテーブル: …</code></td></tr>
     <tr><td>同名テーブルが複数スキーマにある</td><td><span class="tag own">自前</span> <code>ObjectResolver</code></td><td>isError <code>テーブルxが複数あります。schema（DBが異なる場合はdatabase）を指定してください。候補: …</code></td></tr>
     <tr><td><code>table</code>を2件＋<code>columns</code></td><td><span class="tag own">自前</span> <code>TableTools.getTable</code></td><td>isError <code>引数columnsは、tableを1件指定した場合だけ使えます。</code></td></tr>
     <tr><td><code>columns</code>に存在しないカラム</td><td><span class="tag own">自前</span> <code>TableOutputBuilder</code></td><td>isError <code>テーブルsample.employeeにカラムxがありません。カラム: …</code></td></tr>
     <tr><td><code>viewpoint</code>に未知のid</td><td><span class="tag own">自前</span> <code>ViewpointResolver</code></td><td>isError <code>観点xが見つかりません。観点: personnel, project, …</code></td></tr>
+    <tr><td><code>find_similar_tables</code>に<code>table</code>と<code>columns</code>の両方（どちらも無い場合も）</td><td><span class="tag own">自前</span> <code>SimilarTableTools</code></td><td>isError <code>引数tableとcolumnsは、どちらか一方を指定してください。</code></td></tr>
+    <tr><td><code>find_similar_tables</code>の<code>table</code>が複数スキーマにある</td><td><span class="tag own">自前</span> <code>ObjectResolver</code>（案内を差し替え）</td><td>isError <code>テーブルxが複数あります。tableをスキーマ名.テーブル名の形（DBが異なる場合はdatabaseも）で指定してください。候補: …</code></td></tr>
     <tr><td><code>get_er_diagram</code>に<code>table</code>と<code>viewpoint</code>の両方（どちらも無い場合も）</td><td><span class="tag own">自前</span> <code>DiagramTools</code></td><td>isError <code>引数tableとviewpointは、どちらか一方を指定してください。</code></td></tr>
     <tr><td><code>get_er_diagram</code>に<code>viewpoint</code>と<code>depth</code></td><td><span class="tag own">自前</span> <code>DiagramTools</code></td><td>isError <code>引数depthは、tableを指定した場合だけ使えます。</code></td></tr>
     <tr><td><code>get_er_diagram</code>で描くテーブルが80件超</td><td><span class="tag own">自前</span> <code>DiagramTools.render</code></td><td>isError <code>図に描くテーブルがn件となり、上限（80件）を超えます。…</code></td></tr>
@@ -798,6 +803,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><code>get_table</code>の<code>sections</code>で削れるのは<code>TableSection</code>のenumに並ぶ9項目（<code>columns</code>・<code>indexes</code>・<code>constraints</code>・<code>foreignKeys</code>・<code>logicalRelations</code>・<code>triggers</code>・<code>definition</code>・<code>referencedTables</code>・<code>referencedByViews</code>）だけです。それ以外（<code>name</code>・<code>logicalName</code>・<code>partitionKey</code>や将来の項目）は常に残ります。</li>
   <li>観点（<code>viewpoints</code>）はスナップショットの項目ではないため、<code>get_table</code>の結果に後から足されます。<code>sections</code>での絞り込みの対象外です。</li>
   <li>関数が利用しているテーブル（<code>tableUsage</code>）も、スナップショットの項目ではなく、参考情報から<code>get_function</code>の結果に後から足されます。cliを<code>--preview</code>で実行して参考情報がある場合だけで、定義本体のハッシュが一致するときに限ります（7.10節）。</li>
+  <li>中間テーブルの区分（<code>erRole</code>）・つなぐテーブル（<code>junctionOf</code>）・多対多の相手（<code>manyToMany</code>）も、スナップショットの項目ではなく、主キー・外部キーの構成から組み立て時に導いた値を<code>get_table</code>の結果に後から足します（7.11節）。観点と同じく<code>sections</code>での絞り込みの対象外で、該当すれば常に返します。</li>
   <li>テーブルのリソースの中身は、<code>get_table</code>と同じ<code>TableOutputBuilder</code>で組み立てます（<code>sections</code>・<code>columns</code>の絞り込み無し）。<code>get_table</code>の結果に項目を足せば、リソースにも同じ項目が載ります。</li>
   <li>テーブルを参照しているビュー（<code>referencedByViews</code>）もスナップショットの項目ではなく、他のビューの<code>referencedTables</code>から逆引きして後から足します（7.5節）。こちらは<code>TableSection</code>に入っているため、<code>sections</code>で選べます。</li>
 </ul>
@@ -830,7 +836,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 
 <!-- ============================================================ -->
 <h2 id="logic"><span class="n">7</span>catalogの中心ロジック</h2>
-<p>catalogの各窓口（<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>）は全オブジェクトを<code>List</code>で持ち、要求のたびに先頭から絞り込みます。あらかじめ作る索引は、<code>RelationGraph</code>の「参照先・参照元」の2つの<code>Map</code>と、そこから求めたテーブルごとの関連の数（<code>RelationCounts</code>）だけです。スナップショットは数百テーブル規模なので、線形の走査で十分という割り切りです。</p>
+<p>catalogの各窓口（<code>TableCatalog</code>・<code>ObjectCatalog</code>・<code>ViewpointCatalog</code>）は全オブジェクトを<code>List</code>で持ち、要求のたびに先頭から絞り込みます。あらかじめ作る索引は、<code>RelationGraph</code>の「参照先・参照元」の2つの<code>Map</code>とそこから求めたテーブルごとの関連の数（<code>RelationCounts</code>）、<code>JunctionTables</code>の中間テーブルの判定結果と多対多の相手（7.11節）、<code>SimilarTableFinder</code>の正規化したカラム名とDBごとのカラム名の数（7.12節）だけです。どれも呼び出しのたびに求め直すと重い、またはスナップショットだけで決まる値です。スナップショットは数百テーブル規模なので、線形の走査で十分という割り切りです。</p>
 
 <h3>7.1 名前の解決（get_* と関連ツールの入口）</h3>
 <ol class="steps">
@@ -862,13 +868,14 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   </tbody>
 </table>
 </div>
-<p>サンプルで<code>従業員</code>を検索すると、<code>employee</code>（論理名「従業員」の完全一致で80点）が先、<code>department</code>（説明に「従業員」を含み8点）が後になります。</p>
-<pre><code>{"total":2,"tables":[
+<p>サンプルで<code>従業員</code>を検索すると、<code>employee</code>（論理名「従業員」の完全一致で80点）、<code>employee_history</code>（論理名「従業員履歴」の部分一致で30点）、<code>department</code>（説明に「従業員」を含み8点）の順になります。</p>
+<pre><code>{"total":3,"tables":[
   {"database":"testdb","schema":"sample","name":"employee","logicalName":"従業員","type":"table",
    "matchedIn":["logicalName","column:employee_id","column:employee_code","column:employee_name","column:manager_id"]},
+  {"database":"testdb","schema":"sample","name":"employee_history","logicalName":"従業員履歴","type":"table","matchedIn":["logicalName"]},
   {"database":"testdb","schema":"sample","name":"department","type":"table","description":"社内の組織単位を…","matchedIn":["description"]}]}</code></pre>
 <p class="small muted"><code>total</code>は<code>limit</code>で切る前の件数です。</p>
-<p>一覧・検索の対象の絞り込み（DB・スキーマ・区分・観点）は、ツール側で<code>TableFilter</code>として1回組み立ててから<code>TableCatalog</code>へ渡し、catalogは各テーブルを<code>matches</code>で問い合わせるだけです。絞り込みは検索と並べ替えより前に行うため、観点を指定しても総数と<code>limit</code>が正しくなります。区分の値（<code>table</code>・<code>view</code>・<code>materialized_view</code>）は<code>TableType</code>の1か所にあり、<code>list_tables</code>の入力スキーマの<code>enum</code>もここから作ります。</p>
+<p>一覧・検索の対象の絞り込み（DB・スキーマ・区分・観点・ER上の区分）は、ツール側で<code>TableFilter</code>として1回組み立ててから<code>TableCatalog</code>へ渡し、catalogは各テーブルを<code>matches</code>で問い合わせるだけです。絞り込みは検索と並べ替えより前に行うため、観点・中間テーブルを指定しても総数と<code>limit</code>が正しくなります。中間テーブルだけに絞る条件（<code>withJunctionsOnly</code>）は、判定結果の窓口<code>JunctionTables</code>を受け取って問い合わせます。区分の値（<code>table</code>・<code>view</code>・<code>materialized_view</code>）は<code>TableType</code>の1か所にあり、<code>list_tables</code>の入力スキーマの<code>enum</code>もここから作ります。</p>
 
 <h3>7.3 カラムの逆引き（ColumnQuery・find_columns）</h3>
 <p>強さは「物理名の完全一致 4 ＞ 論理名の完全一致 3 ＞ 物理名の前方一致 2 ＞ 物理名か論理名の部分一致 1」です。<code>match: exact</code>（既定）では3以上だけが残ります。各カラムには、そのカラムが外部キー・論理リレーションで指している先（複合キーなら同じ位置の相手カラム）を<code>references</code>として添えます。</p>
@@ -891,6 +898,7 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <line x1="450" y1="270" x2="450" y2="188" class="d-line-muted d-dash" marker-end="url(#f6a)"/>
       <text x="458" y="236" class="d-t-s">論理リレーション</text>
       <line x1="610" y1="270" x2="508" y2="188" class="d-line-muted" marker-end="url(#f6a)"/>
+      <line x1="770" y1="270" x2="523" y2="183" class="d-line-muted" marker-end="url(#f6a)"/>
       <line x1="150" y1="287" x2="193" y2="287" class="d-line-muted" marker-end="url(#f6a)"/>
       <!-- 経路の辺 -->
       <line x1="150" y1="167" x2="192" y2="167" class="d-line-acc" marker-end="url(#f6c)"/>
@@ -919,6 +927,8 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <text x="450" y="292" text-anchor="middle" class="d-t-m">audit_log</text>
       <rect x="565" y="270" width="140" height="34" rx="6" class="d-box"/>
       <text x="635" y="292" text-anchor="middle" class="d-t-m">employee_profile</text>
+      <rect x="750" y="270" width="140" height="34" rx="6" class="d-box"/>
+      <text x="820" y="292" text-anchor="middle" class="d-t-m">employee_history</text>
       <rect x="10" y="270" width="140" height="34" rx="6" class="d-box-dash"/>
       <text x="80" y="292" text-anchor="middle" class="d-t-m">shipment</text>
       <rect x="195" y="270" width="140" height="34" rx="6" class="d-box-dash"/>
@@ -935,9 +945,10 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
       <circle cx="705" cy="40" r="9" class="d-badge"/><text x="705" y="43.5" text-anchor="middle" class="d-t-badge">3</text>
       <circle cx="520" cy="270" r="9" class="d-badge"/><text x="520" y="273.5" text-anchor="middle" class="d-t-badge">3</text>
       <circle cx="705" cy="270" r="9" class="d-badge"/><text x="705" y="273.5" text-anchor="middle" class="d-t-badge">3</text>
+      <circle cx="890" cy="270" r="9" class="d-badge"/><text x="890" y="273.5" text-anchor="middle" class="d-t-badge">3</text>
     </svg>
   </div>
-  <figcaption><b>図6 サンプル（docs/sample/postgres）の関連と、find_join_path(attendance_note → project) の結果。</b>矢印は参照元→参照先、破線は論理リレーションです。丸の数字は<code>attendance_note</code>からの距離（幅優先探索の段）。<code>find_join_path</code>は向きを問わずたどるため、3段目の<code>employee ← project_assignment</code>は矢印と逆に進みます。2つのビュー（<code>employee_directory_view</code>・<code>project_summary_mv</code>）は関連を持たないので描いていません。</figcaption>
+  <figcaption><b>図6 サンプル（docs/sample/postgres）の関連と、find_join_path(attendance_note → project) の結果。</b>矢印は参照元→参照先、破線は論理リレーションです。丸の数字は<code>attendance_note</code>からの距離（幅優先探索の段）。<code>find_join_path</code>は向きを問わずたどるため、3段目の<code>employee ← project_assignment</code>は矢印と逆に進みます。3つのビュー（<code>attendance_monthly_view</code>・<code>employee_directory_view</code>・<code>project_summary_mv</code>）は関連を持たないので描いていません。</figcaption>
 </figure>
 
 <div class="pair">
@@ -966,9 +977,9 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   "joins":[ {"from":"sample.attendance_note","fromColumns":["attendance_id","work_date"],"to":"sample.attendance",…}, … ]}]}</code></pre>
 <p>組み立て時には、テーブルごとの関連の数（<code>RelationCounts</code>）も1回だけ求めます。<code>list_tables</code>が各行に添え、<code>orderBy</code>での並べ替えに使います。どれも自己参照とスナップショットに無いテーブルを除き、同じテーブルとの複数の関連は1つと数えます。</p>
 <ul>
-  <li><code>incoming</code>：自テーブルを参照しているテーブルの数。多いほど中心のマスタ（サンプルの<code>employee</code>は4）。</li>
+  <li><code>incoming</code>：自テーブルを参照しているテーブルの数。多いほど中心のマスタ（サンプルの<code>employee</code>は5）。</li>
   <li><code>outgoing</code>：自テーブルが参照しているテーブルの数。多いほどトランザクションや中間テーブル（<code>project_assignment</code>は2）。</li>
-  <li><code>impact</code>：参照元を<code>RelationCounts.IMPACT_DEPTH</code>（3）段まで幅優先でたどって届くテーブルの数（変更の影響範囲）。被参照の少ない根っこのマスタも拾える（<code>department</code>は被参照1だが<code>employee</code>経由で6）。段数を無制限にすると、大きなDBでは共通のマスタ経由で大半のテーブルに届いて差が出なくなるため打ち切る。</li>
+  <li><code>impact</code>：参照元を<code>RelationCounts.IMPACT_DEPTH</code>（3）段まで幅優先でたどって届くテーブルの数（変更の影響範囲）。被参照の少ない根っこのマスタも拾える（<code>department</code>は被参照1だが<code>employee</code>経由で7）。段数を無制限にすると、大きなDBでは共通のマスタ経由で大半のテーブルに届いて差が出なくなるため打ち切る。</li>
 </ul>
 <p class="small muted"><code>joins</code>の各要素の<code>from</code>・<code>to</code>は関連そのものの参照元・参照先で、たどる向きとは限りません。AIがJOINの条件を書くときは<code>fromColumns</code>と<code>toColumns</code>を同じ位置同士で結びます。グラフの頂点の照合は<code>ObjectKey</code>の<code>equals</code>（大文字小文字を区別する）で、cliが同じ表記で出力する前提に立っています。</p>
 
@@ -1012,7 +1023,9 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <p><strong>参照しているビューの逆引き。</strong><code>get_table</code>の<code>referencedByViews</code>も、逆向きの情報を呼び出しのたびに求める相互参照です。ただし、cliがDBの依存関係から取得した参照先（ビューの<code>referencedTables</code>。スキーマ名・名前）が構造化されて届くため、文字列の切り出しは要りません。<code>viewsReferencing</code>は、全テーブルのうち<code>referencedTables</code>に調べたいテーブルの<code>ObjectKey</code>を含むものをキー順に返します。比較は<code>ObjectKey</code>の<code>equals</code>（大文字小文字を区別する）で、関連のグラフと同じくcliが同じ表記で出力する前提です。サンプルで<code>employee</code>を引いた結果です（<code>sections</code>で絞っています）。</p>
 <pre><code>{"schema":"sample","name":"employee","logicalName":"従業員","type":"table",
  "referencedByViews":[{"schema":"sample","name":"employee_directory_view","type":"view"}],
- "viewpoints":[{"id":"personnel","name":"人事管理"},{"id":"project","name":"プロジェクト管理"}]}</code></pre>
+ "viewpoints":[{"id":"personnel","name":"人事管理"},{"id":"project","name":"プロジェクト管理"}],
+ "manyToMany":[{"table":"sample.project","via":"sample.project_assignment"}]}</code></pre>
+<p class="small muted">末尾の<code>manyToMany</code>は、<code>sections</code>に関わらず足される多対多の相手です（7.11節）。</p>
 <p class="small muted">ビューの側の<code>referencedTables</code>には、出力対象外のスキーマのテーブルも事実として残ります（サンプルの<code>attendance_monthly_view</code>は<code>sample_archive.department</code>を参照）。スナップショットに無いテーブルは<code>get_table</code>で引けないため、逆引きの結果にも現れません。</p>
 
 <h3>7.6 関数のオーバーロードと定義本体</h3>
@@ -1034,17 +1047,18 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
   <li><div><strong>大きすぎれば分け直す</strong>：<code>maxClusterSize</code>（既定30）を超えるまとまりは、被参照の最も多いテーブルを<strong>ハブ</strong>として除き、残りを連結成分に分け直します。これを繰り返します。ただし、そのテーブルの被参照が<code>TableClusters.HUB_MIN_INCOMING</code>（3）未満なら、一続きの関連を切るだけになるため分けずに残します。</div></li>
   <li><div><strong>ハブだけとつながるテーブルを寄せる</strong>：ハブを除いて1テーブルだけになったものは、被参照の最も多い隣のハブごとに1つのまとまりへ集めます。</div></li>
 </ol>
-<p>まとまりはテーブルの多い順、同数なら代表（被参照の最も多いテーブル）の順に並べます。サンプルで<code>maxClusterSize: 4</code>にすると、<code>employee</code>（被参照4）がハブとして除かれ、9テーブルのまとまりが3つに分かれます。</p>
+<p>まとまりはテーブルの多い順、同数なら代表（被参照の最も多いテーブル）の順に並べます。サンプルで<code>maxClusterSize: 4</code>にすると、<code>employee</code>（被参照5）がハブとして除かれ、10テーブルのまとまりが3つに分かれます。</p>
 <pre><code>{"total":4,"unrelatedTables":3,
- "hubs":[{"database":"testdb","name":"sample.employee","logicalName":"従業員","incoming":4}],
+ "hubs":[{"database":"testdb","name":"sample.employee","logicalName":"従業員","incoming":5}],
  "clusters":[
-  {"database":"testdb","representative":"sample.department","size":4,
-   "tables":[{"name":"sample.department"},{"name":"sample.parking_spot"},{"name":"sample.audit_log"},{"name":"sample.employee_profile"}],
+  {"database":"testdb","representative":"sample.department","size":5,
+   "tables":[{"name":"sample.department"},{"name":"sample.parking_spot"},{"name":"sample.audit_log"},
+             {"name":"sample.employee_history","logicalName":"従業員履歴"},{"name":"sample.employee_profile"}],
    "hubs":["sample.employee"],"viewpoints":["personnel"]},
   {"database":"testdb","representative":"sample.attendance","size":2,…,"hubs":["sample.employee"]},
   {"database":"testdb","representative":"sample.project","size":2,…,"hubs":["sample.employee"],"viewpoints":["project"]},
   {"database":"testdb","representative":"sample.warehouse_zone","size":2,…,"viewpoints":["logistics"]}]}</code></pre>
-<p class="small muted">最初のまとまりの4テーブルは互いに関連を持たず、どれもハブの<code>employee</code>とだけつながっているため、5の手順で寄せられたものです。既定の<code>maxClusterSize</code>（30）では分け直さず、<code>employee</code>を代表とする9テーブルと、<code>warehouse_zone</code>・<code>shipment</code>の2つになります。結果の<code>viewpoints</code>は、まとまりのテーブルを1つでも含む観点です。</p>
+<p class="small muted">最初のまとまりの5テーブルは互いに関連を持たず、どれもハブの<code>employee</code>とだけつながっているため、5の手順で寄せられたものです。既定の<code>maxClusterSize</code>（30）では分け直さず、<code>employee</code>を代表とする10テーブルと、<code>warehouse_zone</code>・<code>shipment</code>の2つになります。結果の<code>viewpoints</code>は、まとまりのテーブルを1つでも含む観点です。</p>
 
 <h3>7.9 ER図の範囲と記法（DiagramScope・MermaidErDiagram・get_er_diagram）</h3>
 <p><code>get_er_diagram</code>は2段に分かれます。catalogが<strong>何を描くか</strong>（<code>DiagramScope</code>：テーブル・関連・スナップショットに無いテーブル）を決め、toolの<code>MermaidErDiagram</code>が<strong>どう書くか</strong>（Mermaidの<code>erDiagram</code>の文字列）を受け持ちます。catalogにMermaidの知識を持ち込まないための分け方です。</p>
@@ -1082,16 +1096,18 @@ McpServer.sync(<span class="k">new</span> StdioServerTransportProvider(jsonMappe
 <p>サンプルで観点<code>personnel</code>を描いた実際の結果です。<code>employee</code>の自己参照（<code>manager_id</code>）も描かれ、<code>employee_profile.employee_id</code>は主キーかつ外部キーなので<code>PK, FK</code>になります。</p>
 <pre><code><span class="c">← get_er_diagram(viewpoint: personnel) の text（mermaidは改行を戻して表示）</span>
 {"viewpoint":"personnel","mermaid":"…",
- "tables":["sample.department","sample.employee","sample.employee_profile","sample.parking_spot"]}
+ "tables":["sample.department","sample.employee","sample.employee_history","sample.employee_profile","sample.parking_spot"]}
 
 erDiagram
     sample_department["department"]
     sample_employee["employee（従業員）"]
+    sample_employee_history["employee_history（従業員履歴）"]
     sample_employee_profile["employee_profile"]
     sample_parking_spot["parking_spot"]
     sample_department ||--o{ sample_employee : "employee_department_id_fkey"
     sample_employee |o--o{ sample_employee : "employee_manager_id_fkey"
     sample_parking_spot |o--o| sample_employee : "employee_parking_spot_id_fkey"
+    sample_employee ||--o{ sample_employee_history : "employee_history_employee_id_fkey"
     sample_employee ||--o| sample_employee_profile : "employee_profile_employee_id_fkey"
     sample_department {
         integer department_id PK
@@ -1101,6 +1117,9 @@ erDiagram
         integer department_id FK "所属部署ID"
         integer manager_id FK "上長の従業員ID"
         integer parking_spot_id FK "駐車場ID"
+    }
+    sample_employee_history {
+        integer employee_id FK
     }
     sample_employee_profile {
         integer employee_id PK, FK
@@ -1185,11 +1204,171 @@ erDiagram
                 "schemaCandidates":["sample"],"operations":"R"}],
      "dynamicSql":["EXECUTE"]}}]}</code></pre>
 
+<h3>7.11 中間テーブルと多対多（JunctionDetector・JunctionTables・erRole・manyToMany）</h3>
+<p>多対多の関係は、DBには「中間テーブルからの2本の外部キー」という形でしか現れません。AIが<code>project</code>と<code>employee</code>の関係を知るには、<code>project_assignment</code>を見つけて2本の外部キーを読む必要があります。そこで、主キー・外部キーの構成から<strong>中間テーブル</strong>を機械的に判定し、テーブルの<strong>ER上の区分</strong>（<code>erRole: junction</code>）と、中間テーブルを介した<strong>多対多の相手</strong>（<code>manyToMany</code>）として返します。ClusterDetector（7.8節）と同じく、DBの事実ではなく推測です。</p>
+
+<figure>
+  <div class="fig-scroll">
+    <svg viewBox="0 0 900 250" role="img" aria-label="サンプルの3つのテーブル。project_assignmentは主キーの2列をemployeeとprojectへの2本の外部キーが過不足なく覆うため中間テーブル。employee_profileは主キーを覆う外部キーが1対1のため数えず、中間テーブルではない。shipmentは複合外部キーの列が主キーに含まれないため、中間テーブルではない。" style="min-width: 760px">
+      <defs>
+        <marker id="f8a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
+        <marker id="f8m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-muted"/></marker>
+      </defs>
+      <!-- 1: project_assignment -->
+      <rect x="10" y="10" width="280" height="230" rx="8" class="d-box-acc"/>
+      <text x="26" y="34" class="d-t-m" font-weight="600">project_assignment</text>
+      <text x="26" y="54" class="d-t-s">主キー（PK）の列</text>
+      <rect x="26" y="64" width="118" height="30" rx="4" class="d-box"/>
+      <text x="85" y="84" text-anchor="middle" class="d-t-ms">project_id</text>
+      <rect x="156" y="64" width="118" height="30" rx="4" class="d-box"/>
+      <text x="215" y="84" text-anchor="middle" class="d-t-ms">employee_id</text>
+      <line x1="85" y1="96" x2="85" y2="134" class="d-line-acc" marker-end="url(#f8a)"/>
+      <line x1="215" y1="96" x2="215" y2="134" class="d-line-acc" marker-end="url(#f8a)"/>
+      <rect x="26" y="136" width="118" height="30" rx="4" class="d-box-soft"/>
+      <text x="85" y="156" text-anchor="middle" class="d-t-ms">project</text>
+      <rect x="156" y="136" width="118" height="30" rx="4" class="d-box-soft"/>
+      <text x="215" y="156" text-anchor="middle" class="d-t-ms">employee</text>
+      <text x="26" y="192" class="d-t-acc">中間テーブル（erRole: junction）</text>
+      <text x="26" y="212" class="d-t-s">1対多の外部キー2本でPKを過不足なく覆い、</text>
+      <text x="26" y="228" class="d-t-s">どちらを外しても覆えなくなる</text>
+
+      <!-- 2: employee_profile -->
+      <rect x="310" y="10" width="280" height="230" rx="8" class="d-box"/>
+      <text x="326" y="34" class="d-t-m" font-weight="600">employee_profile</text>
+      <text x="326" y="54" class="d-t-s">主キー（PK）の列</text>
+      <rect x="326" y="64" width="248" height="30" rx="4" class="d-box"/>
+      <text x="450" y="84" text-anchor="middle" class="d-t-ms">employee_id</text>
+      <line x1="450" y1="96" x2="450" y2="134" class="d-line-muted d-dash" marker-end="url(#f8m)"/>
+      <text x="460" y="120" class="d-t-s">ONE_TO_ONE</text>
+      <rect x="326" y="136" width="248" height="30" rx="4" class="d-box-soft"/>
+      <text x="450" y="156" text-anchor="middle" class="d-t-ms">employee</text>
+      <text x="326" y="192" class="d-t">中間テーブルではない</text>
+      <text x="326" y="212" class="d-t-s">1対1の関連は数えないため、残る関連は0本</text>
+      <text x="326" y="228" class="d-t-s">（1対1の拡張テーブル）</text>
+
+      <!-- 3: shipment -->
+      <rect x="610" y="10" width="280" height="230" rx="8" class="d-box"/>
+      <text x="626" y="34" class="d-t-m" font-weight="600">shipment</text>
+      <text x="626" y="54" class="d-t-s">主キー（PK）の列 ／ PK以外の列</text>
+      <rect x="626" y="64" width="100" height="38" rx="4" class="d-box"/>
+      <text x="676" y="88" text-anchor="middle" class="d-t-ms">shipment_id</text>
+      <rect x="736" y="64" width="138" height="38" rx="4" class="d-box-dash"/>
+      <text x="805" y="80" text-anchor="middle" class="d-t-ms">warehouse_code</text>
+      <text x="805" y="96" text-anchor="middle" class="d-t-ms">zone_code</text>
+      <line x1="805" y1="104" x2="805" y2="134" class="d-line-muted d-dash" marker-end="url(#f8m)"/>
+      <rect x="736" y="136" width="138" height="30" rx="4" class="d-box-soft"/>
+      <text x="805" y="156" text-anchor="middle" class="d-t-ms">warehouse_zone</text>
+      <text x="626" y="192" class="d-t">中間テーブルではない</text>
+      <text x="626" y="212" class="d-t-s">複合外部キーの列がPKに含まれず、</text>
+      <text x="626" y="228" class="d-t-s">PKを覆う関連の候補にならない</text>
+    </svg>
+  </div>
+  <figcaption><b>図8 サンプルの3つのテーブルの判定。</b>候補になるのは、参照元の列がすべて主キーに含まれる関連だけです。<code>SampleSnapshotContractTest</code>が、サンプルで中間テーブルと判定されるのは<code>project_assignment</code>だけであることを確かめています。</figcaption>
+</figure>
+
+<p><code>JunctionDetector.detect</code>は1テーブルについて次の順に判定します。</p>
+<ol class="steps">
+  <li><div><strong>区分が<code>table</code>のテーブルだけ</strong>を対象にする（ビュー・マテリアライズドビューは外す）。</div></li>
+  <li><div><strong>候補を集める</strong>：参照元の列がすべて主キーに含まれる関連（<code>RelationGraph.outgoing</code>。外部キー、論理リレーションの順）を集める。同じ列の組の関連は1本とみなし、先に現れる外部キーを残す。そのうえで、多重度が<code>ONE_TO_ONE</code>・<code>OPTIONAL_ONE_TO_ONE</code>の関連（<code>Relation.isOneToOne</code>）を外す。列名は大文字小文字を区別せずに比べる。</div></li>
+  <li><div><strong>候補が多すぎれば諦める</strong>：候補が<code>MAX_CANDIDATES</code>（12）を超えると判定しない。組み合わせを総当たりするため、2のべき乗で増えるのを抑える。</div></li>
+  <li><div><strong>組み合わせを総当たりする</strong>：主キーの列を<strong>過不足なく覆い</strong>、かつ<strong>どの関連にも他の関連に無い列がある</strong>（外すと覆えなくなる）組み合わせのうち、関連の数が最も多いものを採る。同数なら候補の並びで先のもの。</div></li>
+  <li><div><strong>2本以上なら中間テーブル</strong>：採った組み合わせが<code>MIN_LINKS</code>（2）本以上なら、<code>JunctionTable</code>（テーブルと構成する関連）を返す。</div></li>
+</ol>
+<p>この「外すと覆えなくなる組み合わせのうち最も多いもの」という決め方で、次のような形も扱えます。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>形</th><th>判定</th><th>理由</th></tr></thead>
+  <tbody>
+    <tr><td>主キー以外の列（<code>role</code>・<code>assigned_at</code>等の属性）がある</td><td>中間テーブル</td><td>主キー以外の列は問わない</td></tr>
+    <tr><td>テナントIDを含む複合キー（<code>(tenant_id, a_id)</code>→A、<code>(tenant_id, b_id)</code>→B）</td><td>中間テーブル</td><td>関連が列を共有していても、それぞれに自分だけの列（<code>a_id</code>・<code>b_id</code>）がある</td></tr>
+    <tr><td>主キーに含まれる余分な関連（テナントだけを指す近道の外部キー等）</td><td>中間テーブル（余分な関連は構成に入らない）</td><td>余分な関連を足すと「外すと覆えなくなる」を満たさない</td></tr>
+    <tr><td>同じテーブルを2本の外部キーで参照する（社員の上司・部下の組等）</td><td>中間テーブル（自己多対多）</td><td><code>manyToMany</code>の相手は自分自身になる</td></tr>
+    <tr><td>3つ以上の親を持つ</td><td>中間テーブル</td><td>親どうしがすべて互いの多対多の相手になる</td></tr>
+    <tr><td>1対1の拡張テーブル（<code>employee_profile</code>）</td><td>中間テーブルではない</td><td>1対1の関連は、同じ列の組をまとめた後で数えない</td></tr>
+    <tr><td>サロゲートキー＋一意索引（<code>id</code>を主キーにし、<code>(a_id, b_id)</code>を一意索引で守る）</td><td>中間テーブルではない</td><td>スナップショットの索引は列が構造化されていないため、主キーでしか判定しない</td></tr>
+    <tr><td>主キーに収まる関連が12本を超える</td><td>判定しない</td><td><code>MAX_CANDIDATES</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p><code>JunctionTables</code>は、<code>SchemaCatalog.of</code>の組み立て時に全テーブルを1回だけ判定し、結果を2つの<code>Map</code>に持ちます。主キー・外部キーの構成から導ける値なので、スナップショットには入れません（<code>RelationCounts</code>と同じ考え方）。</p>
+<ul>
+  <li><code>find(table)</code>・<code>roleOf(table)</code>：中間テーブルの構成と区分。<code>list_tables</code>・<code>search_tables</code>の各行の<code>erRole</code>、<code>erRole</code>引数での絞り込み（<code>TableFilter.withJunctionsOnly</code>）、<code>get_table</code>の<code>erRole</code>・<code>junctionOf</code>に使います。<code>junctionOf</code>（<code>JunctionTable.parents</code>）には、スナップショットに無い親も残します。</li>
+  <li><code>manyToMany(table)</code>：中間テーブルごとに、つなぐ親どうしを互いの相手として集めたもの（相手・中間テーブルの順）。<strong>スナップショットに無い親は、起点にも相手にもしません</strong>（<code>get_table</code>で引けないため）。自己多対多は、テーブルではなく関連の位置で比べて、自分自身を相手にします。</li>
+</ul>
+<p><code>TableOutputBuilder</code>は、<code>manyToMany</code>を<code>MAX_MANY_TO_MANY</code>（20）件までにし、超えると全体の件数を<code>manyToManyTotal</code>で示します。ほぼすべての中間テーブルの親になる共通のテーブル（テナント等）の結果が膨らむのを防ぐためです。サンプルの実際の結果です（<code>sections</code>で絞っています）。</p>
+<pre><code><span class="c">← get_table(table: project_assignment, sections: [foreignKeys]) の text（foreignKeysは省略）</span>
+{"schema":"sample","name":"project_assignment","type":"table","foreignKeys":[…],
+ "viewpoints":[{"id":"project","name":"プロジェクト管理"}],
+ "erRole":"junction","junctionOf":["sample.employee","sample.project"]}
+
+<span class="c">← get_table(table: project, sections: [columns], columns: [project_id]) の text（columnsは省略）</span>
+{"schema":"sample","name":"project","logicalName":"プロジェクト","type":"table","columns":[…],
+ "viewpoints":[{"id":"project","name":"プロジェクト管理"}],
+ "manyToMany":[{"table":"sample.employee","via":"sample.project_assignment"}]}
+
+<span class="c">← list_tables(erRole: junction) の text</span>
+{"total":1,"tables":[{"database":"testdb","schema":"sample","name":"project_assignment","type":"table",
+  "erRole":"junction","incoming":0,"outgoing":2,"impact":0}]}</code></pre>
+<p class="small muted">区分の値は<code>ErRole</code>のenumにあり、<code>list_tables</code>・<code>search_tables</code>の入力スキーマの<code>enum</code>もここから作ります。今の値は<code>junction</code>だけで、通常のテーブルは区分を持ちません（<code>erRole</code>の項目ごと出ません）。</p>
+
+<h3>7.12 構造の似たテーブル（SimilarTableFinder・find_similar_tables）</h3>
+<p>新しいテーブルを作る前に同じ目的の既存テーブルが無いか確かめる、履歴・バックアップ・複製のテーブルを見つける、といった用途のためのツールです。比べるのは<strong>カラム名の集合だけ</strong>で、説明文の近さのような意味の類似は扱いません（呼び出したAIが<code>get_table</code>で判断します）。基準は既存のテーブル（<code>table</code>）か、設計中のカラム名の並び（<code>columns</code>）のどちらか一方で、<code>SimilarTableQuery.ofTable</code>・<code>ofColumns</code>が条件を組み立てます。</p>
+<ol class="steps">
+  <li><div><strong>比べる相手</strong>：範囲（<code>TableFilter</code>。DB・スキーマ・観点）内の、区分が<code>table</code>のテーブル。基準自身は除く。<code>table</code>を指定した場合は、基準と同じDBに限る。</div></li>
+  <li><div><strong>カラム名を正規化する</strong>：NFKC＋小文字（<code>TextValues.normalize</code>）。正規化で同じ名前になるカラムは先のものを使う。相手のテーブルの正規化は、<code>TableCatalog</code>の組み立て時に<code>SimilarTableFinder</code>が1回だけ行う。</div></li>
+  <li><div><strong>重みを付ける</strong>：カラム名ごとに<code>ln((N+1) / そのカラム名を持つテーブルの数)</code>。Nと数は、範囲の<strong>DBの区分が<code>table</code>の全テーブル（基準自身を除く）</strong>で数える。範囲内のどのテーブルも持たないカラム名は、1テーブルだけが持つ場合と同じ重みにする。</div></li>
+  <li><div><strong>重み付きJaccard係数</strong>：共通のカラムの重みの合計 ÷（共通＋基準にだけある＋相手にだけある カラムの重みの合計）を百分率にする。カラムが同じ場合（<code>identical</code>）だけを100とし、それ以外は丸めても99にする。</div></li>
+  <li><div><strong>下限で絞り、並べる</strong>：共通のカラム数が<code>minShared</code>（既定3）以上、類似度が<code>minSimilarity</code>（既定50）以上のものを、類似度の高い順・共通のカラムの多い順・名前の順に並べ、<code>limit</code>件を返す。</div></li>
+</ol>
+<div class="note key">
+  <p class="note-title">なぜ重みを付け、なぜDB全体で数えるのか</p>
+  <p>全テーブルが<code>id</code>・<code>created_at</code>・<code>updated_at</code>を持つDBでは、重みを付けないと、汎用のカラムを共有しているだけのテーブルが似ていると判定されます。持つテーブルが多いカラム名ほど重みを下げて、類似の根拠にならないようにしています（N+1で割るのは、全テーブルが持つカラム名でも重みが0にならないようにするため）。</p>
+  <p>重みを探す範囲（スキーマ・観点）で数えると、範囲を絞るほどテーブルが減り、汎用のカラムの重みが下がらなくなります。そのため範囲によらずDB全体で数えます。基準自身を数えないのは、<code>table</code>で指定した場合と、同じカラムを<code>columns</code>で指定した場合の重みを揃えるためです。DBのテーブル数が少ないと効きが弱いのは避けられません。</p>
+</div>
+<p>サンプルで<code>employee</code>を基準にした場合の計算です。区分が<code>table</code>のテーブルは12あり、基準を除くとN=11です。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>カラム名</th><th>持つテーブルの数</th><th>重み ln(12/数)</th><th>基準（employee）</th><th>相手（employee_history）</th></tr></thead>
+  <tbody>
+    <tr><td><code>employee_id</code></td><td class="num">4</td><td class="num">1.10</td><td>○</td><td>○</td></tr>
+    <tr><td><code>department_id</code>・<code>parking_spot_id</code></td><td class="num">2</td><td class="num">1.79</td><td>○</td><td>○</td></tr>
+    <tr><td><code>employee_code</code>・<code>employee_name</code>・<code>manager_id</code>・<code>status</code>・<code>salary</code>・<code>profile</code>・<code>hired_date</code>・<code>updated_at</code></td><td class="num">1</td><td class="num">2.48</td><td>○</td><td>○</td></tr>
+    <tr><td><code>history_id</code>・<code>valid_from</code>・<code>valid_to</code></td><td class="num">1</td><td class="num">2.48</td><td class="muted">—</td><td>○</td></tr>
+  </tbody>
+</table>
+</div>
+<p>共通の11カラムの重みは1.10＋1.79×2＋2.48×8≒24.56、相手にだけある3カラムは2.48×3≒7.46で、類似度は24.56÷(24.56＋7.46)≒77%です。基準にだけあるカラムが無く、相手にだけあるカラムがあるので、種別は<code>superset</code>（相手が基準の全カラムを持ち、追加がある。履歴・拡張の疑い）になります。</p>
+<pre><code><span class="c">← find_similar_tables(table: employee) の text</span>
+{"base":"sample.employee","total":1,"tables":[{"database":"testdb","name":"sample.employee_history","logicalName":"従業員履歴",
+  "similarity":77,"kind":"superset","sharedColumns":11,"onlyInOther":["history_id","valid_from","valid_to"],
+  "typeMismatches":[{"column":"employee_name","base":"character varying(50)","other":"character varying(100)","difference":"size"}],
+  "relatedToBase":true}]}
+
+<span class="c">← find_similar_tables(columns: [attendance_id, work_date, note, employee_id]) の text</span>
+{"total":1,"tables":[{"database":"testdb","name":"sample.attendance_note","similarity":64,"kind":"overlap","sharedColumns":3,
+  "onlyInBase":["employee_id"],"onlyInOther":["note_id"]}]}
+
+<span class="c">← find_similar_tables(columns: [attendance_id, work_date]) の text（基準のカラムがminSharedに満たない）</span>
+{"total":0,"message":"基準のカラムは2個で、minShared（3）に満たないため、条件を満たすテーブルはありません。minSharedを2以下にしてください。"}</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>結果の項目</th><th>求め方</th></tr></thead>
+  <tbody>
+    <tr><td><code>kind</code></td><td><code>SimilarityKind.of</code>。閾値を使わず、基準にだけある・相手にだけあるカラムの有無だけで決める。<code>identical</code>（どちらも無い）・<code>superset</code>（相手にだけある）・<code>subset</code>（基準にだけある）・<code>overlap</code>（どちらもある）</td></tr>
+    <tr><td><code>onlyInBase</code>・<code>onlyInOther</code></td><td>元のカラム名を、それぞれのテーブルでの並び順で。<code>MAX_LISTED_COLUMNS</code>（20）件までにし、省いた数を<code>onlyInBaseOmitted</code>・<code>onlyInOtherOmitted</code>で示す</td></tr>
+    <tr><td><code>typeMismatches</code></td><td><code>table</code>を指定した場合だけ（<code>columns</code>には型が無い）。<code>ColumnType.parse</code>で型の表記を括弧の外（名前）と内（長さ・精度）に分け、名前が違えば<code>type</code>、長さ・精度だけが違えば<code>size</code>。<code>timestamp(6) without time zone</code>のように括弧が途中に入る表記も、括弧の外を名前とみなす。大文字小文字・全角半角・空白だけの違いは違いとしない</td></tr>
+    <tr><td><code>relatedToBase</code></td><td>基準と外部キー・論理リレーションで直接つながる（<code>RelationGraph.adjacentTables</code>）なら<code>true</code>。除かずに印を付けるのは、履歴・拡張のテーブルは基準を参照していることが多く、除くと見つけたいテーブルが消えるため。親子は互いのキーを持つため似て見えることもある</td></tr>
+    <tr><td><code>message</code></td><td>条件を満たすテーブルが無い場合だけ。基準のカラムが<code>minShared</code>に満たなければ下げる値を、それ以外は<code>minShared</code>・<code>minSimilarity</code>を小さくする方法を示す</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small muted"><code>table</code>を指定した場合、引数<code>schema</code>は探す範囲の絞り込みに使い、基準の特定には使いません。そのため、同名のテーブルが複数のスキーマにあるときは<code>スキーマ名.テーブル名</code>の形で指定させます。<code>ObjectResolver.resolve</code>には、複数に当てはまる場合の案内（<code>ambiguityHint</code>）を差し替えられる形があり、<code>SimilarTableTools</code>はそれを使ってこの形を案内します。</p>
+
 <!-- ============================================================ -->
 <h2 id="tools"><span class="n">8</span>ツールとソースの対応</h2>
 
 <h3>ツールクラスの型</h3>
-<p>10のツールクラスはすべて同じ形をしています。1つ読めば残りは差分を見るだけです。</p>
+<p>11のツールクラスはすべて同じ形をしています。1つ読めば残りは差分を見るだけです。</p>
 <pre><code><span class="k">final class</span> XxxTools {
   <span class="k">static final</span> String GET_XXX = <span class="k">"get_xxx"</span>;      <span class="c">// ツール名。他クラスの案内文からも参照される</span>
   <span class="k">private final</span> SchemaCatalog catalog;
@@ -1209,7 +1388,7 @@ erDiagram
   <span class="k">record</span> GetXxxOutput(…) {}  <span class="c">// コンポーネント名がそのまま結果のJSONのキー</span>
 }</code></pre>
 
-<h3>17ツールの対応表</h3>
+<h3>18ツールの対応表</h3>
 <div class="table-wrap">
 <table>
   <thead><tr><th>ツール</th><th>ハンドラ</th><th>catalogへの問い合わせ</th><th>結果</th></tr></thead>
@@ -1217,10 +1396,11 @@ erDiagram
     <tr><td><code>list_schemas</code></td><td><code>SchemaTools#listSchemas</code></td><td><code>schemas()</code> → <code>SchemaSummary</code></td><td><code>ListSchemasOutput</code></td></tr>
     <tr><td><code>list_viewpoints</code></td><td><code>ViewpointTools#listViewpoints</code></td><td><code>viewpoints().list(scope)</code></td><td><code>ListViewpointsOutput</code></td></tr>
     <tr><td><code>list_table_clusters</code></td><td><code>ClusterTools#listTableClusters</code></td><td><code>tableClusters(scope, maxClusterSize, excludeViewpointTables)</code>・<code>viewpoints().list</code></td><td><code>ListTableClustersOutput</code></td></tr>
-    <tr><td><code>search_tables</code></td><td><code>TableTools#searchTables</code></td><td><code>SearchQuery.of</code>・<code>TableFilter</code>（<code>viewpoints().find</code>）→ <code>tables().search</code></td><td><code>SearchTablesOutput</code></td></tr>
-    <tr><td><code>list_tables</code></td><td><code>TableTools#listTables</code></td><td><code>TableFilter</code>（区分は<code>TableType</code>）・<code>TableOrder</code> → <code>tables().list</code>・<code>relations().counts</code></td><td><code>ListTablesOutput</code></td></tr>
-    <tr><td><code>get_table</code></td><td><code>TableTools#getTable</code></td><td><code>tables().lookup</code>（件数分）→ <code>TableOutputBuilder</code>（<code>tables().viewsReferencing</code>・<code>viewpoints().containing</code>）</td><td>元の1行を加工（複数なら<code>GetTableOutput</code>）</td></tr>
+    <tr><td><code>search_tables</code></td><td><code>TableTools#searchTables</code></td><td><code>SearchQuery.of</code>・<code>TableFilter</code>（<code>viewpoints().find</code>・<code>junctions()</code>）→ <code>tables().search</code>・<code>junctions().roleOf</code></td><td><code>SearchTablesOutput</code></td></tr>
+    <tr><td><code>list_tables</code></td><td><code>TableTools#listTables</code></td><td><code>TableFilter</code>（区分は<code>TableType</code>、ER上の区分は<code>ErRole</code>）・<code>TableOrder</code> → <code>tables().list</code>・<code>relations().counts</code>・<code>junctions().roleOf</code></td><td><code>ListTablesOutput</code></td></tr>
+    <tr><td><code>get_table</code></td><td><code>TableTools#getTable</code></td><td><code>tables().lookup</code>（件数分）→ <code>TableOutputBuilder</code>（<code>tables().viewsReferencing</code>・<code>viewpoints().containing</code>・<code>junctions().find</code>・<code>junctions().manyToMany</code>）</td><td>元の1行を加工（複数なら<code>GetTableOutput</code>）</td></tr>
     <tr><td><code>find_columns</code></td><td><code>TableTools#findColumns</code></td><td><code>ColumnQuery.of</code> → <code>tables().findColumns</code></td><td><code>FindColumnsOutput</code></td></tr>
+    <tr><td><code>find_similar_tables</code></td><td><code>SimilarTableTools#findSimilarTables</code></td><td><code>SimilarTableQuery.ofTable</code>（<code>tables().lookup</code>）か<code>ofColumns</code>・<code>TableFilter</code> → <code>tables().findSimilar</code></td><td><code>FindSimilarTablesOutput</code></td></tr>
     <tr><td><code>get_related_tables</code></td><td><code>RelationTools#getRelatedTables</code></td><td><code>tables().lookup</code> → <code>relations().relatedTables</code></td><td><code>RelatedTablesOutput</code></td></tr>
     <tr><td><code>find_join_path</code></td><td><code>RelationTools#findJoinPath</code></td><td><code>tables().lookup</code>×2 → <code>relations().joinPaths</code></td><td><code>JoinPathOutput</code></td></tr>
     <tr><td><code>get_er_diagram</code></td><td><code>DiagramTools#getErDiagram</code></td><td><code>tables().lookup</code> → <code>relations().relatedTables</code>（<code>table</code>）か、<code>viewpoints().find</code> → <code>relations().among</code>（<code>viewpoint</code>）→ <code>MermaidErDiagram.render</code></td><td><code>ErDiagramOutput</code></td></tr>
@@ -1248,6 +1428,11 @@ erDiagram
     <tr><td><code>list_tables</code>の<code>limit</code></td><td class="num">100</td><td class="num">500</td><td><code>Page.DEFAULT_LIMIT</code>・<code>MAX_LIMIT</code></td></tr>
     <tr><td><code>find_columns</code>の<code>limit</code></td><td class="num">50</td><td class="num">500</td><td><code>TableTools</code></td></tr>
     <tr><td><code>get_table</code>の<code>table</code>の件数</td><td class="num muted">—</td><td class="num">10</td><td><code>TableTools.MAX_TABLES</code></td></tr>
+    <tr><td><code>get_table</code>の<code>manyToMany</code></td><td class="num muted">—</td><td class="num">20</td><td><code>TableOutputBuilder.MAX_MANY_TO_MANY</code>（超えたら<code>manyToManyTotal</code>）</td></tr>
+    <tr><td><code>find_similar_tables</code>の<code>limit</code></td><td class="num">10</td><td class="num">50</td><td><code>SimilarTableTools</code></td></tr>
+    <tr><td><code>find_similar_tables</code>の<code>columns</code>の件数</td><td class="num muted">—</td><td class="num">100</td><td><code>SimilarTableTools.MAX_COLUMNS</code></td></tr>
+    <tr><td><code>find_similar_tables</code>の<code>minShared</code>・<code>minSimilarity</code></td><td class="num">3・50</td><td class="num">20・100</td><td><code>SimilarTableTools</code>（下限1・10）</td></tr>
+    <tr><td><code>find_similar_tables</code>の<code>onlyInBase</code>・<code>onlyInOther</code></td><td class="num muted">—</td><td class="num">20</td><td><code>SimilarTableTools.MAX_LISTED_COLUMNS</code>（超えたら<code>…Omitted</code>）</td></tr>
     <tr><td><code>get_related_tables</code>の<code>depth</code></td><td class="num">1</td><td class="num">3</td><td><code>RelationTools.MAX_DEPTH</code></td></tr>
     <tr><td><code>find_join_path</code>の<code>maxLength</code></td><td class="num">4</td><td class="num">6</td><td><code>RelationTools</code></td></tr>
     <tr><td><code>find_join_path</code>の<code>limit</code></td><td class="num">5</td><td class="num">20</td><td><code>RelationTools</code></td></tr>
@@ -1256,6 +1441,7 @@ erDiagram
     <tr><td><code>list_functions</code>・<code>list_sequences</code>・<code>list_types</code>・<code>list_triggers</code>の<code>limit</code></td><td class="num">100</td><td class="num">500</td><td><code>Page.DEFAULT_LIMIT</code>・<code>MAX_LIMIT</code></td></tr>
     <tr><td><code>get_function</code>の定義本体</td><td class="num muted">—</td><td class="num">4,000字</td><td><code>FunctionTools.MAX_DEFINITION_LENGTH</code></td></tr>
     <tr><td>見つからないときの候補</td><td class="num muted">—</td><td class="num">5</td><td><code>ObjectCatalog.MAX_SUGGESTIONS</code></td></tr>
+    <tr><td>中間テーブルの判定で主キーに収まる関連</td><td class="num muted">—</td><td class="num">12</td><td><code>JunctionDetector.MAX_CANDIDATES</code>（超えたら判定しない）</td></tr>
   </tbody>
 </table>
 </div>
@@ -1285,12 +1471,20 @@ erDiagram
     <tr><td class="file">package-info ×2</td><td>各パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.catalog：中心のロジック</td></tr>
-    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>）だけを持つ。<code>withViewpoints</code>・<code>withFunctionTableUsages</code>で観点・関数の利用テーブルを差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>SchemaSummary.summarize</code></td></tr>
-    <tr><td class="file">TableCatalog</td><td>テーブル（ビューを含む）の一覧（関連の数での並べ替えを含む）・検索・名前の解決・カラムの逆引き・トリガーの一覧と、テーブルを走査して求める相互参照（参照しているビュー・関数を実行するトリガー・シーケンスや型を使うカラム）</td><td>← <code>SchemaCatalog.tables()</code>／→ <code>RelationGraph</code>・<code>SearchQuery</code>・<code>ColumnQuery</code>・<code>SqlNames</code></td></tr>
+    <tr><td class="file">SchemaCatalog</td><td>全オブジェクトを保持する不変クラス。関心ごとの窓口（<code>tables()</code>・<code>functions()</code>・<code>sequences()</code>・<code>types()</code>・<code>viewpoints()</code>・<code>functionTableUsages()</code>・<code>relations()</code>・<code>junctions()</code>）を返し、自身は複数の窓口にまたがる処理（<code>schemas</code>・<code>tableClusters</code>）だけを持つ。<code>withViewpoints</code>・<code>withFunctionTableUsages</code>で観点・関数の利用テーブルを差し替えた新インスタンスを返す</td><td>← 全ツールクラス・Reader／→ 各窓口・<code>ClusterDetector</code>・<code>SchemaSummary.summarize</code>（組み立て時に<code>JunctionTables</code>も作る）</td></tr>
+    <tr><td class="file">TableCatalog</td><td>テーブル（ビューを含む）の一覧（関連の数での並べ替えを含む）・検索・名前の解決・カラムの逆引き・構造の似たテーブルの探索（<code>findSimilar</code>）・トリガーの一覧と、テーブルを走査して求める相互参照（参照しているビュー・関数を実行するトリガー・シーケンスや型を使うカラム）</td><td>← <code>SchemaCatalog.tables()</code>／→ <code>RelationGraph</code>・<code>SearchQuery</code>・<code>ColumnQuery</code>・<code>SimilarTableFinder</code>・<code>SqlNames</code></td></tr>
     <tr><td class="file">ObjectCatalog</td><td>関数（<code>FunctionOverloads</code>）・シーケンス・型に共通の、名前の順の一覧（<code>list</code>）と名前の解決（<code>lookup</code>。見つからなければ部分一致の候補）。テーブルの解決もここの汎用メソッドを使う。種類に固有の条件（型の種別）はツール側で絞る</td><td>← <code>SchemaCatalog</code>の<code>functions()</code>等・<code>TableCatalog</code></td></tr>
     <tr><td class="file">ViewpointCatalog</td><td>観点の一覧・idでの解決と、テーブルが所属する観点の逆引き（<code>containing</code>）</td><td>← <code>SchemaCatalog.viewpoints()</code></td></tr>
     <tr><td class="file">FunctionTableUsages</td><td>関数・プロシージャが利用しているテーブルの参考情報を、スナップショットの関数（<code>FunctionEntry</code>）から引く窓口。キー（DB名・スキーマ名・名前）と引数で識別し、定義本体のハッシュが異なる古い参考情報は返さない（7.10節）</td><td>← <code>SchemaCatalog.functionTableUsages()</code>・<code>FunctionTools</code></td></tr>
-    <tr><td class="file">RelationGraph</td><td>関連のグラフ。<code>outgoing</code>・<code>incoming</code>の索引、テーブルごとの関連の数（<code>counts</code>）、向きを問わず隣り合うテーブル（<code>adjacentTables</code>）、幅優先の<code>relatedTables</code>、指定したテーブル同士の関連（<code>among</code>）、全最短経路の<code>joinPaths</code>。公開クラスで、ツールは<code>SchemaCatalog.relations()</code>から直接呼ぶ</td><td>← 関連を扱うツール・<code>TableCatalog</code>・<code>ClusterDetector</code></td></tr>
+    <tr><td class="file">RelationGraph</td><td>関連のグラフ。<code>outgoing</code>・<code>incoming</code>の索引、テーブルごとの関連の数（<code>counts</code>）、向きを問わず隣り合うテーブル（<code>adjacentTables</code>）、幅優先の<code>relatedTables</code>、指定したテーブル同士の関連（<code>among</code>）、全最短経路の<code>joinPaths</code>。公開クラスで、ツールは<code>SchemaCatalog.relations()</code>から直接呼ぶ</td><td>← 関連を扱うツール・<code>TableCatalog</code>・<code>ClusterDetector</code>・<code>JunctionTables</code></td></tr>
+    <tr><td class="file">JunctionTables</td><td>中間テーブルの判定結果と、中間テーブルを介した多対多の関係の窓口。組み立て時に全テーブルを1回だけ判定し、<code>find</code>・<code>roleOf</code>・<code>manyToMany</code>で引く。スナップショットに無い親は多対多の相手にしない（7.11節）</td><td>← <code>SchemaCatalog.junctions()</code>・<code>TableFilter</code>・<code>TableTools</code>・<code>TableOutputBuilder</code>／→ <code>JunctionDetector</code>・<code>RelationGraph.outgoing</code></td></tr>
+    <tr><td class="file">JunctionDetector</td><td>1テーブルが中間テーブルか判定する規則だけを持つ。主キーに収まる関連を候補にし（同じ列の組は外部キーを優先して1本、1対1は除く）、主キーを過不足なく覆い、外すと覆えなくなる組み合わせのうち最も関連の多いものを総当たりで探す。候補の上限<code>MAX_CANDIDATES</code>（12）</td><td>← <code>JunctionTables</code>（パッケージプライベート）</td></tr>
+    <tr><td class="file">JunctionTable<br>ManyToMany<br>ErRole</td><td>中間テーブルと構成する関連（<code>parents()</code>でつなぐテーブル）／多対多の相手と中間テーブルの組／ER上の区分のenum（<code>junction</code>。入力スキーマの<code>enum</code>の元）</td><td>← <code>JunctionTables</code>・<code>TableOutputBuilder</code>・<code>TableTools</code></td></tr>
+    <tr><td class="file">SimilarTableFinder</td><td>構造（カラム名）の似たテーブルの探索。組み立て時に比べる相手（区分が<code>table</code>）のカラム名を正規化し、DBごとのカラム名の数を求めておく。重み<code>ln((N+1)/数)</code>の重み付きJaccard係数で比べ、類似度の高い順に並べる（7.12節）</td><td>← <code>TableCatalog.findSimilar</code>（パッケージプライベート）</td></tr>
+    <tr><td class="file">SimilarTableQuery</td><td>探す条件（基準のカラム・基準のテーブル・<code>minShared</code>・<code>minSimilarity</code>）。<code>ofTable</code>・<code>ofColumns</code>で組み立てる。正規化した名前が重なるカラムは先のものだけを残す</td><td>← <code>SimilarTableTools</code>／→ <code>SimilarTableFinder</code></td></tr>
+    <tr><td class="file">SimilarTables<br>SimilarTable</td><td>探した結果（総数と、件数の上限までのテーブル）と、1テーブル分（類似度・種別・共通のカラム数・片方にだけあるカラム・型の違い<code>TypeMismatch</code>・<code>relatedToBase</code>）。型の違いの程度は<code>TypeDifference</code>（<code>type</code>・<code>size</code>）</td><td>← <code>SimilarTableFinder</code>／→ <code>SimilarTableTools</code></td></tr>
+    <tr><td class="file">SimilarityKind</td><td>基準と相手のカラム名の集合の関係（<code>identical</code>・<code>superset</code>・<code>subset</code>・<code>overlap</code>）。閾値を使わず、片方にだけあるカラムの有無で決める</td><td>← <code>SimilarTableFinder</code></td></tr>
+    <tr><td class="file">ColumnType</td><td>型の表記を、括弧の外（名前）と内（長さ・精度）に分ける。括弧の対応が崩れた表記も例外にしない</td><td>← <code>SimilarTable.TypeMismatch</code></td></tr>
     <tr><td class="file">ClusterDetector</td><td>関連のまとまりの推測。連結成分に分け、上限を超えるまとまりは被参照の最も多いテーブル（<code>HUB_MIN_INCOMING</code>以上）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルはハブごとに寄せる</td><td>← <code>SchemaCatalog.tableClusters</code>（パッケージプライベート）／→ <code>RelationGraph</code></td></tr>
     <tr><td class="file">TableClusters<br>TableCluster</td><td>まとまりを求めた結果（まとまり・ハブ・関連の無いテーブルの数、ハブの下限<code>HUB_MIN_INCOMING</code>）と、1つのまとまり（先頭が代表のテーブル）</td><td>← <code>ClusterDetector</code>／→ <code>ClusterTools</code></td></tr>
     <tr><td class="file">DiagramScope</td><td>ER図に描くテーブル・関連・スナップショットに無いテーブル。<code>nodes()</code>で箱として描くテーブル（関連の参照先で無いものを含む）を返す。<code>of(RelatedTables)</code>で関連をたどった結果から作る（7.9節）</td><td>← <code>RelationGraph.among</code>・<code>DiagramTools</code>／→ <code>MermaidErDiagram</code></td></tr>
@@ -1303,7 +1497,7 @@ erDiagram
     <tr><td class="file">ObjectReference</td><td>AIが渡した名前の指定。<code>スキーマ.名前</code>の分割</td><td>← <code>ObjectResolver</code>・<code>TableTools</code></td></tr>
     <tr><td class="file">Lookup</td><td>名前の解決結果の封印インタフェース（<code>Found</code>・<code>Ambiguous</code>・<code>NotFound</code>）</td><td>← <code>ObjectCatalog</code>・<code>TableCatalog</code>／→ <code>ObjectResolver</code></td></tr>
     <tr><td class="file">SearchScope</td><td>DB・スキーマでの絞り込み（空文字＝絞らない、大文字小文字を区別しない）。観点用にDB名だけで比べる<code>matchesDatabase</code>も持つ</td><td>← <code>ToolArguments.scope()</code></td></tr>
-    <tr><td class="file">TableFilter</td><td>テーブルの一覧・検索の絞り込み（DB・スキーマ・区分・観点）。1回組み立てて<code>matches</code>で問い合わせる</td><td>← <code>TableTools</code>／→ <code>TableCatalog.list</code>・<code>search</code></td></tr>
+    <tr><td class="file">TableFilter</td><td>テーブルの一覧・検索の絞り込み（DB・スキーマ・区分・観点・中間テーブル）。1回組み立てて<code>matches</code>で問い合わせる。重みをDB全体で数えるための<code>matchesDatabase</code>も持つ</td><td>← <code>TableTools</code>・<code>SimilarTableTools</code>／→ <code>TableCatalog.list</code>・<code>search</code>・<code>findSimilar</code></td></tr>
     <tr><td class="file">TableType</td><td>テーブルの区分（table・view・materialized_view）。未知の値は空として扱う</td><td>← <code>TableFilter</code>・<code>SchemaSummary.summarize</code>・<code>TableTools</code>の入力スキーマ</td></tr>
     <tr><td class="file">NameFilter</td><td>関数・シーケンス・型の一覧を名前の部分一致で絞る</td><td>← 関数・シーケンス・型のツール</td></tr>
     <tr><td class="file">MatchMode</td><td><code>EXACT</code>・<code>PARTIAL</code>（<code>find_columns</code>の<code>match</code>）</td><td>← <code>ColumnQuery</code></td></tr>
@@ -1318,7 +1512,7 @@ erDiagram
     <tr><td class="file">TypeEntry</td><td><code>types.jsonl</code>の1行（種別）</td><td>← <code>TypeTools</code></td></tr>
     <tr><td class="file">ViewpointEntry</td><td>観点（id・表示名・説明・所属テーブル）。<code>SchemaObject</code>ではない。所属の判定は<code>contains</code></td><td>← <code>InsightsDirectoryReader</code>・<code>ViewpointCatalog</code>・<code>ViewpointResolver</code>・<code>ViewpointTools</code></td></tr>
     <tr><td class="file">FunctionTableUsageEntry</td><td>関数1つ分の参考情報（キー・引数・<code>definitionHash</code>・状態・<code>UsedTable</code>の列・動的SQL・<code>incomplete</code>・<code>overloadsMerged</code>）。<code>SchemaObject</code>ではない</td><td>← <code>InsightsDirectoryReader</code>・<code>FunctionTableUsages</code>・<code>FunctionTools</code></td></tr>
-    <tr><td class="file">Relation</td><td>グラフの辺（参照元・参照先・カラム・由来・多重度・名前）。<code>otherSide</code>で反対側</td><td>← <code>RelationGraph</code>／→ 結果の<code>RelationOutput</code></td></tr>
+    <tr><td class="file">Relation</td><td>グラフの辺（参照元・参照先・カラム・由来・多重度・名前）。<code>otherSide</code>で反対側、<code>isOneToOne</code>で1対1か</td><td>← <code>RelationGraph</code>／→ 結果の<code>RelationOutput</code></td></tr>
     <tr><td class="file">RelationKind</td><td><code>FOREIGN_KEY</code>・<code>LOGICAL_RELATION</code></td><td>← <code>Relation</code>・<code>ColumnHit</code></td></tr>
     <tr><td class="file">Direction</td><td>たどる向き（<code>OUTGOING</code>・<code>INCOMING</code>・<code>BOTH</code>）</td><td>← <code>RelationTools</code>・<code>RelationGraph</code></td></tr>
     <tr><td class="file">RelationCounts</td><td>テーブルの関連の数（<code>incoming</code>・<code>outgoing</code>・<code>impact</code>）と、影響範囲をたどる段数の上限<code>IMPACT_DEPTH</code></td><td>← <code>RelationGraph</code>／→ <code>TableTools</code>の<code>ListTablesOutput</code></td></tr>
@@ -1332,11 +1526,11 @@ erDiagram
     <tr><td class="file">package-info</td><td>パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">mcp.tool：MCPのツール</td></tr>
-    <tr><td class="file">TableDefinitionTools</td><td>10のツールクラスの<code>specifications()</code>を並べてSDKへ渡す。並び順がクライアントに見える順</td><td>← <code>McpServerMain</code>／→ 各<code>*Tools</code></td></tr>
+    <tr><td class="file">TableDefinitionTools</td><td>11のツールクラスの<code>specifications()</code>を並べてSDKへ渡す。並び順がクライアントに見える順</td><td>← <code>McpServerMain</code>／→ 各<code>*Tools</code></td></tr>
     <tr><td class="file">ToolSpecifications</td><td><code>readOnlyTool</code>（全ツールの包み・注釈・<code>isError</code>への変換）と、<code>inputSchema</code>の部品（<code>objectSchema</code>・<code>stringProperty</code>等）</td><td>← 全<code>*Tools</code></td></tr>
     <tr><td class="file">ToolArguments</td><td>引数の読み取りと、入力スキーマで表せない検証。文字列は前後の空白を除く、リストは配列を受ける（文字列も許す<code>table</code>ではカンマ区切りも）、選択肢は完全一致で照合する。型・範囲・<code>enum</code>・未知の引数はSDKに任せる</td><td>← 全<code>*Tools</code>・<code>Page</code>・<code>ObjectResolver</code></td></tr>
     <tr><td class="file">InvalidToolArgumentException</td><td>入力スキーマで表せない引数の誤り（空・件数・見つからない名前等）。メッセージはAIへの直し方の指示</td><td>→ <code>readOnlyTool</code>が<code>isError</code>に変換</td></tr>
-    <tr><td class="file">ObjectResolver</td><td>名前→オブジェクト1つ。<code>Lookup</code>の3通りを文言に変える</td><td>← 名前を受けるツール／→ 各窓口の<code>lookup</code></td></tr>
+    <tr><td class="file">ObjectResolver</td><td>名前→オブジェクト1つ。<code>Lookup</code>の3通りを文言に変える。複数に当てはまる場合の案内を差し替えられる形もある（<code>find_similar_tables</code>が使う）</td><td>← 名前を受けるツール／→ 各窓口の<code>lookup</code></td></tr>
     <tr><td class="file">ViewpointResolver</td><td>引数<code>viewpoint</code>（観点のid）→観点1つ。見つからなければ宣言済みのidを並べた文言で<code>InvalidToolArgumentException</code></td><td>← <code>TableTools</code>・<code>DiagramTools</code>／→ <code>viewpoints().find</code>・<code>viewpoints().list</code></td></tr>
     <tr><td class="file">ToolResults</td><td>結果のJSON化（<code>NON_EMPTY</code>）、元の1行の読み込み、<code>usedByColumns</code>の追加</td><td>← 全<code>*Tools</code></td></tr>
     <tr><td class="file">Page</td><td><code>offset</code>・<code>limit</code>の読み取り・スキーマ（上限は<code>maximum</code>）・切り出し・<code>nextOffset</code>。一覧の件数の既定値・上限の定数</td><td>← 一覧系のツール</td></tr>
@@ -1344,8 +1538,9 @@ erDiagram
     <tr><td class="file">SchemaTools</td><td><code>list_schemas</code>。DBごとにDBMS種別・メジャーバージョン（不明なら出さない）を添える</td><td>→ <code>SchemaCatalog.schemas</code></td></tr>
     <tr><td class="file">ViewpointTools</td><td><code>list_viewpoints</code></td><td>→ <code>viewpoints().list</code></td></tr>
     <tr><td class="file">ClusterTools</td><td><code>list_table_clusters</code>。まとまりごとに、テーブル（100件まで）・ハブ・まとまりのテーブルを含む観点を添える</td><td>→ <code>tableClusters</code>・<code>viewpoints().list</code>・<code>relations().counts</code></td></tr>
-    <tr><td class="file">TableTools</td><td><code>search_tables</code>・<code>list_tables</code>・<code>get_table</code>・<code>find_columns</code>。引数から<code>TableFilter</code>・<code>TableOrder</code>を組み立てる、<code>get_table</code>の複数件の名前をまとめて解決する</td><td>→ 検索・一覧・解決のメソッド、<code>ViewpointResolver</code>・<code>TableOutputBuilder</code></td></tr>
-    <tr><td class="file">TableOutputBuilder</td><td><code>get_table</code>の1テーブル分の結果の組み立て。元の1行に<code>sections</code>・<code>columns</code>の絞り込み、参照しているビュー、所属する観点を反映する</td><td>← <code>TableTools</code>・<code>TableDefinitionResources</code>／→ <code>tables().viewsReferencing</code>・<code>viewpoints().containing</code></td></tr>
+    <tr><td class="file">TableTools</td><td><code>search_tables</code>・<code>list_tables</code>・<code>get_table</code>・<code>find_columns</code>。引数から<code>TableFilter</code>（<code>erRole</code>を含む）・<code>TableOrder</code>を組み立てる、一覧・検索の各行に<code>erRole</code>を添える、<code>get_table</code>の複数件の名前をまとめて解決する</td><td>→ 検索・一覧・解決のメソッド、<code>ViewpointResolver</code>・<code>TableOutputBuilder</code></td></tr>
+    <tr><td class="file">TableOutputBuilder</td><td><code>get_table</code>の1テーブル分の結果の組み立て。元の1行に<code>sections</code>・<code>columns</code>の絞り込み、参照しているビュー、所属する観点、ER上の区分（<code>erRole</code>・<code>junctionOf</code>）と多対多の相手（<code>manyToMany</code>。上限<code>MAX_MANY_TO_MANY</code>）を反映する</td><td>← <code>TableTools</code>・<code>TableDefinitionResources</code>／→ <code>tables().viewsReferencing</code>・<code>viewpoints().containing</code>・<code>junctions()</code></td></tr>
+    <tr><td class="file">SimilarTableTools</td><td><code>find_similar_tables</code>。<code>table</code>と<code>columns</code>のどちらか一方を受け、基準を解決して範囲（<code>table</code>なら基準と同じDB）を組み立てる。片方にだけあるカラムは20件までにし、該当なしのときは条件のゆるめ方を<code>message</code>で示す</td><td>→ <code>tables().lookup</code>・<code>tables().findSimilar</code>・<code>ObjectResolver</code>・<code>ViewpointResolver</code></td></tr>
     <tr><td class="file">RelationTools</td><td><code>get_related_tables</code>・<code>find_join_path</code>。<code>kindName</code>で由来を<code>foreignKey</code>/<code>logicalRelation</code>に</td><td>→ <code>relations().relatedTables</code>・<code>relations().joinPaths</code></td></tr>
     <tr><td class="file">DiagramTools</td><td><code>get_er_diagram</code>。<code>table</code>と<code>viewpoint</code>のどちらか一方を受け、範囲を求めて<code>MermaidErDiagram</code>で書く。描くテーブルの上限<code>MAX_NODES</code>（80）</td><td>→ <code>relations().relatedTables</code>・<code>relations().among</code>・<code>ViewpointResolver</code>・<code>MermaidErDiagram</code></td></tr>
     <tr><td class="file">MermaidErDiagram</td><td><code>DiagramScope</code>からMermaidの<code>erDiagram</code>を組み立てる。表記はcliの<code>MermaidSupport</code>に揃え、DB由来の名前の識別子・表示名・型を無害化する（7.9節）</td><td>← <code>DiagramTools</code></td></tr>
@@ -1358,7 +1553,7 @@ erDiagram
     <tr><td class="file">package-info</td><td>パッケージの要旨</td><td class="muted">—</td></tr>
 
     <tr class="group"><td colspan="3">テスト（src/test）</td></tr>
-    <tr><td class="file">McpServerProcessTest</td><td>E2E。配布するjarを子プロセスで起動し、MCPクライアントから呼ぶ。ツールの並び、標準出力の汚れ、<code>immediateExecution</code>の回帰（ツール・リソースの両方）、SDKの入力スキーマの検証（型・範囲・未知の引数の拒否、<code>table</code>のカンマ区切り）、リソースの一覧・読み出し、起動失敗時の終了コード2</td><td>→ shadowJar・サンプルのスナップショット</td></tr>
+    <tr><td class="file">McpServerProcessTest</td><td>E2E。配布するjarを子プロセスで起動し、MCPクライアントから呼ぶ。ツールの並び、標準出力の汚れ、多対多・中間テーブル・構造の似たテーブルの結果と<code>erRole</code>の<code>enum</code>の検証、<code>immediateExecution</code>の回帰（ツール・リソースの両方）、SDKの入力スキーマの検証（型・範囲・未知の引数の拒否、<code>table</code>のカンマ区切り）、リソースの一覧・読み出し、起動失敗時の終了コード2</td><td>→ shadowJar・サンプルのスナップショット</td></tr>
     <tr><td class="file">ServerArgumentsTest</td><td>起動引数の解釈と誤り</td><td>→ <code>ServerArguments</code></td></tr>
     <tr><td class="file">ArchitectureTest</td><td>ArchUnitで構造の規約を検査する。パッケージの依存の向き（<code>tool → catalog ← snapshot</code>・<code>catalog ← insight</code>）、<code>catalog</code>がJDK以外に依存しないこと、標準出力（<code>System.out</code>等）へ書き込まないこと、cliのコードに依存しないこと</td><td>→ main配下の全クラス</td></tr>
     <tr><td class="file">TableCatalogTest</td><td>テーブルの検索・逆引き・解決・相互参照（参照しているビューを含む）</td><td>→ <code>TableCatalog</code></td></tr>
@@ -1366,15 +1561,18 @@ erDiagram
     <tr><td class="file">RelationGraphTest</td><td>関連のたどり・経路・関連の数・観点のER図の範囲</td><td>→ <code>RelationGraph</code></td></tr>
     <tr><td class="file">ViewpointCatalogTest</td><td>観点の一覧・解決・逆引きと、観点による絞り込み</td><td>→ <code>ViewpointCatalog</code></td></tr>
     <tr><td class="file">SchemaCatalogTest</td><td>スキーマごとの数・テーブルの一覧・関連のまとまり</td><td>→ <code>SchemaCatalog</code></td></tr>
+    <tr><td class="file">JunctionDetectorTest<br>JunctionTablesTest<br>JunctionFixtures</td><td>中間テーブルの判定（複合主キー・論理リレーション・同じ列の関連の統合・列を共有する関連・余分な関連・組み合わせの選び方・1対1の除外・候補数の上限）／多対多の相手（自己多対多・3つ以上の親・スナップショットに無い親）／テスト用の関連・テーブルの補助</td><td>→ <code>JunctionDetector</code>・<code>JunctionTables</code></td></tr>
+    <tr><td class="file">SimilarTableFinderTest<br>ColumnTypeTest</td><td>構造の似たテーブル（種別・汎用のカラムの重みとDB全体での数え方・基準自身を数えないこと・類似度の上限・下限・<code>relatedToBase</code>・ビューの除外・範囲・正規化・型の違い・並びと件数）／型の表記の分解</td><td>→ 各クラス</td></tr>
     <tr><td class="file">SearchQueryTest<br>SqlNamesTest</td><td>点数・AND・正規化／名前の取り出し</td><td>→ 各クラス</td></tr>
     <tr><td class="file">TestTables<br>TestCatalogs<br>Lookups</td><td>テスト用のテーブルのビルダー／テーブルだけから<code>SchemaCatalog</code>を組み立てる補助／<code>Lookup</code>から値を取り出す補助</td><td>← catalogのテスト</td></tr>
     <tr><td class="file">SnapshotDirectoryReaderTest</td><td>読み込みと起動時の誤り（ファイル名・行番号）、関数の定義本体のハッシュ</td><td>→ <code>SnapshotDirectoryReader</code></td></tr>
-    <tr><td class="file">SampleSnapshotContractTest</td><td>cliのベースライン<code>docs/sample/postgres/output/snapshot</code>を読む契約テスト。cliの形式変更への追従漏れを検知</td><td>→ ベースライン</td></tr>
+    <tr><td class="file">SampleSnapshotContractTest</td><td>cliのベースライン<code>docs/sample/postgres/output/snapshot</code>を読む契約テスト。cliの形式変更への追従漏れを検知。サンプルで中間テーブルと判定されるのが<code>project_assignment</code>だけであること、<code>employee_history</code>が<code>employee</code>の<code>superset</code>（型の違いは<code>size</code>）として見つかることも確かめる</td><td>→ ベースライン</td></tr>
     <tr><td class="file">InsightsDirectoryReaderTest</td><td>観点・関数の利用テーブルの読み込みと兄弟ディレクトリの解決（DB名・スキーマ名はファイルの中の値）</td><td>→ <code>InsightsDirectoryReader</code></td></tr>
     <tr><td class="file">SampleInsightsContractTest</td><td>ベースラインの観点と、スナップショットのテーブルのキーが一致すること</td><td>→ ベースライン</td></tr>
     <tr><td class="file">FunctionTableUsagesTest</td><td>参考情報と関数の対応付け（キー・引数・定義本体のハッシュ。ハッシュが異なる古い参考情報・ハッシュを持たない参考情報は返さない）</td><td>→ <code>FunctionTableUsages</code></td></tr>
     <tr><td class="file">SampleFunctionTableUsagesContractTest</td><td>cliの<code>--preview</code>の差分のベースライン（<code>docs/sample/postgres/output-preview</code>）の参考情報が読めて、スナップショットの関数（既定のベースライン）と対応付くことの契約テスト。cliのハッシュの求め方・形式の変更への追従漏れを検知</td><td>→ ベースライン</td></tr>
     <tr><td class="file">TableDefinitionToolsTest</td><td>全ツールの結果のJSON・エラー。<code>callHandler().apply(null, …)</code>で直接呼ぶため、SDKの入力検証は通らない</td><td>→ <code>TableDefinitionTools</code></td></tr>
+    <tr><td class="file">ErRoleToolsTest<br>SimilarTableToolsTest</td><td><code>erRole</code>・<code>junctionOf</code>・<code>manyToMany</code>（上限と<code>manyToManyTotal</code>を含む）と<code>erRole</code>での絞り込み／<code>find_similar_tables</code>の結果・引数の誤り・<code>message</code></td><td>→ <code>TableDefinitionTools</code></td></tr>
     <tr><td class="file">ToolArgumentsTest</td><td>引数の読み取り（空白・型・カンマ区切り・列挙）</td><td>→ <code>ToolArguments</code></td></tr>
     <tr><td class="file">MermaidErDiagramTest</td><td>DB由来の名前（記号・二重引用符・改行）の無害化と、識別子が重なったときの連番</td><td>→ <code>MermaidErDiagram</code></td></tr>
     <tr><td class="file">SampleErDiagramContractTest</td><td>観点のER図が、cliの観点ページ（ベースライン）のER図と同じ記述になることの契約テスト。表記のずれを検知</td><td>→ ベースライン</td></tr>
@@ -1414,6 +1612,14 @@ erDiagram
   <li>プレビューの機能なので、互換性の対象外です。<code>tableUsage</code>の説明（ツールの説明）に、参考値であることと、候補のスキーマに決めつけないことを書き続けます。</li>
 </ul>
 
+<h3>中間テーブルの判定・構造の類似の規則を変えるとき</h3>
+<ul>
+  <li>どちらも判定・計算の規則は<code>catalog</code>の1クラス（<code>JunctionDetector</code>・<code>SimilarTableFinder</code>）にあり、結果を表すrecord（<code>JunctionTable</code>・<code>SimilarTable</code>）は規則を持ちません。規則を変えたら<code>JunctionDetectorTest</code>・<code>SimilarTableFinderTest</code>に場合を足します（カバレッジ基準の対象）。</li>
+  <li>サンプルでの判定・結果は<code>SampleSnapshotContractTest</code>が確かめています。サンプルのDDLにテーブルを足すと、中間テーブルの判定・多対多の相手・類似の結果が変わることがあるため、このテストとガイドの例を見直します（<code>employee_history</code>を足したときは、検索・関連の数・まとまり・ER図の例が変わった）。</li>
+  <li>判定の条件・結果の項目はツールの説明（<code>TableTools</code>・<code>SimilarTableTools</code>）と<code>docs/usage/mcp-server.md</code>にも書いてあるため、合わせて直します。どちらもスナップショットに入れない導出した値なので、cliの形式は変わりません。</li>
+  <li>中間テーブル以外のER上の区分を足すときは、<code>ErRole</code>に値を足します。入力スキーマの<code>enum</code>はここから作られ、<code>TableTools.tableFilter</code>の<code>switch</code>が網羅していないとコンパイルが通りません。</li>
+</ul>
+
 <h3>ER図の表記・リソースを変えるとき</h3>
 <ul>
   <li><strong>ER図の表記</strong>（多重度の端点・線種・箱のカラム・エスケープ）は、cliの<code>MermaidSupport</code>とmcp-serverの<code>MermaidErDiagram</code>の両方にあります。片方だけを変えると<code>SampleErDiagramContractTest</code>が失敗します。cliを変えたらベースラインを出し直してから、こちらを追従させます。</li>
@@ -1439,6 +1645,9 @@ erDiagram
   <dt>定義本体のハッシュ（definitionHash）</dt><dd>定義本体のSHA-256（小文字の16進）。参考情報が、今のスナップショットと同じ定義本体から抽出したものかを照らすために使う。</dd>
   <dt>プレビューの機能</dt><dd>cliの<code>--preview</code>を付けたときだけ動く、精度・出力の形を固めている途中の機能。出力は互換性の対象外。</dd>
   <dt>スキーマが決まらない名前</dt><dd>スキーマ修飾が無く、定義からは決まらないテーブル名。<code>schemaResolution</code>（<code>search_path</code>・<code>current_user</code>・<code>synonym</code>）と、候補のスキーマ（<code>schemaCandidates</code>）で返す。</dd>
+  <dt>中間テーブル（junction）・ER上の区分（erRole）</dt><dd>多対多をつなぐテーブル。主キーの列を、外すと覆えなくなる2本以上の外部キー・論理リレーションで過不足なく覆えるテーブルを、mcp-serverが機械的に判定する（推測）。<code>erRole: junction</code>で表し、通常のテーブルは区分を持たない。</dd>
+  <dt>多対多（manyToMany）</dt><dd>中間テーブルを介してつながる2つのテーブルの関係。<code>get_table</code>が相手のテーブルと中間テーブル（<code>via</code>）の組で返す。</dd>
+  <dt>構造の似たテーブル・類似度</dt><dd>カラム名の集合が似ているテーブル（<code>find_similar_tables</code>）。類似度は、汎用のカラムほど重みを下げた重み付きJaccard係数（%）で、100はカラムが同じ場合だけ。意味の類似ではない。</dd>
   <dt>関連のまとまり（cluster）・ハブ</dt><dd>関連のつながりだけから推測したテーブルの組（<code>list_table_clusters</code>）。人が宣言する観点とは別物。ハブは、大きなまとまりを分けるために除いた、多くのテーブルから参照される共通のテーブル。</dd>
   <dt>外部キー（foreignKey）</dt><dd>DBに実在する制約。関連の由来の1つ。</dd>
   <dt>論理リレーション（logicalRelation）</dt><dd>DBに制約は無いが、サイドカーYAMLで宣言された関連。グラフでは外部キーと同じ辺として扱う。</dd>
