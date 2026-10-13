@@ -24,7 +24,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `mcp`（直下） | `McpServerMain` | エントリーポイント。起動引数の検証とスナップショット・参考情報の読み込みの後、stdioのトランスポートでサーバーを起動する |
 | | `ServerArguments` | 起動引数（`--snapshot=<ディレクトリ>`）の解釈と検証 |
 | | `UserCorrectableException` | 利用者が起動引数・スナップショットを見直せば解消する失敗。起動時に標準エラーへ出して終了コード2で終了する |
-| `mcp.catalog` | `SchemaCatalog` | 全オブジェクトを保持し、関心ごとの窓口（`tables()`・`functions()`・`sequences()`・`types()`・`viewpoints()`・`relations()`）を返す。自身が持つのは複数の窓口にまたがる処理（スキーマごとの数・テーブルのまとまり）だけ。観点（`ViewpointEntry`）は`withViewpoints`で組み立て後に合成する |
+| `mcp.catalog` | `SchemaCatalog` | 全オブジェクトを保持し、関心ごとの窓口（`tables()`・`functions()`・`sequences()`・`types()`・`viewpoints()`・`relations()`・`junctions()`）を返す。自身が持つのは複数の窓口にまたがる処理（スキーマごとの数・テーブルのまとまり）だけ。観点（`ViewpointEntry`）は`withViewpoints`で組み立て後に合成する |
 | | `TableCatalog` | テーブル（ビューを含む）の検索・一覧・名前の解決、カラムの逆引き、トリガーの一覧と、テーブルを走査して求める相互参照（テーブルを参照するビュー、関数を実行するトリガー、シーケンス・型を使うカラム） |
 | | `ObjectCatalog` | 関数（`FunctionOverloads`）・シーケンス・ユーザー定義型に共通の、一覧と名前の解決（見つからない場合の候補を含む）。種類を足しても`SchemaCatalog`にメソッドは増えない。型の種別での絞り込み等、種類に固有の条件はツール側で行う |
 | | `ViewpointCatalog` | 観点の一覧・識別子での解決と、テーブルから所属する観点の逆引き（`containing`） |
@@ -34,6 +34,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | | `RelationGraph` | テーブルを頂点、関連（外部キー・論理リレーション）を辺とするグラフ。被参照側の逆引きの索引を持ち、関連の数・関連のたどり・指定したテーブル同士の関連（観点のER図）・最短のJOIN経路の探索を担う。ツールは`SchemaCatalog#relations`から直接呼ぶ |
 | | `Relation`・`RelatedTables`・`JoinPath`・`JoinPaths` | テーブル間の関連と、幅優先でたどった結果・2つのテーブルをつなぐ最短経路 |
 | | `DiagramScope` | ER図に描くテーブルと関連（関連をたどった結果、または観点の所属テーブル同士の関連） |
+| | `JunctionTables`・`JunctionTable`・`JunctionDetector`・`ManyToMany`・`ErRole` | テーブルのER上の区分（中間テーブル）と、中間テーブルを介した多対多の関係（`SchemaCatalog#junctions`）。区分が`table`で、主キーの列を過不足なく覆う2本以上の外部キー（論理リレーションを含む）の組み合わせがあり、そのどの関連も外すと覆えなくなるテーブルを中間テーブルとする（`JunctionDetector`が候補の組み合わせを総当たりで探す。`ClusterDetector`と同じく判定の規則だけを持ち、`JunctionTable`は結果を表すだけ）。主キーに含まれるだけの余分な関連（近道の外部キー）があっても、複数の関連が列を共有していても（テナントIDを含む複合キー）、構成する関連を取り出せる。組み合わせが複数あれば関連の数が最も多いもの、同数なら関連の並びで先のものを採る。主キー以外の列（属性）・他のテーブルからの被参照は問わず、同じ列の組の関連は1本とみなして外部キーを優先する。参照先1行に対して参照元が高々1行の関連（多重度が`ONE_TO_ONE`・`OPTIONAL_ONE_TO_ONE`）は、同じ列の組をまとめた後で、構成する関連に数えない。主キーに収まる関連が12本（`JunctionDetector.MAX_CANDIDATES`）を超えるテーブルは判定しない。親がスナップショットに無い関連は、多対多の相手にしない（中間テーブルの判定は変えず、`junctionOf`には親として残す）。主キー・外部キーの構成から導出できる値のため、スナップショットには入れず、組み立て時に1回だけ求める（`RelationGraph`の関連の数と同じ）。スナップショットの索引は列が構造化されていないため、一意索引で判定する形（サロゲートキー＋一意索引の中間テーブル）は対象外 |
 | | `ClusterDetector`・`TableClusters`・`TableCluster` | 関連のつながりだけから推測するテーブルのまとまり（`list_table_clusters`の元）。連結成分を1つのまとまりとし、上限を超えるまとまりは被参照の最も多いテーブル（`TableClusters.HUB_MIN_INCOMING`以上から参照される共通のマスタ）をハブとして除いて分け直す。ハブとの間にしか関連の無いテーブルは、被参照の最も多いハブごとにまとめる。呼び出しのたびに求める（範囲・上限が引数で変わるため） |
 | | `SqlNames`・`TableColumn` | カラムの型・デフォルト値（`nextval`）・トリガーの関数名に現れるオブジェクトの名前の判定（相互参照に使う）と、カラムとそれを持つテーブル |
 | | `TableEntry`・`ColumnEntry`・`RelationEntry`・`TriggerEntry`・`ObjectKey`・`DatabaseEntry` | スナップショットの1行のうち、検索・一覧・逆引き・関連のたどりに使う項目 |
@@ -47,7 +48,7 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `mcp.insight` | `InsightsDirectoryReader` | 参考情報のディレクトリ（`{DB名}/viewpoints.json`・`{DB名}/{スキーマ名}/functionTableUsages.json`）を読み込み`ViewpointEntry`・`FunctionTableUsageEntry`のリストを組み立てる。渡されたスナップショットのディレクトリの親の兄弟を自前で求めるため、起動引数は増えない。ディレクトリ・ファイルが無い場合は0件とする |
 | `mcp.tool` | `TableDefinitionTools` | MCPサーバーへ登録するツールの一覧。ツールは関心ごとのクラス（`SchemaTools`・`ViewpointTools`・`ClusterTools`・`TableTools`・`RelationTools`・`DiagramTools`・`FunctionTools`・`SequenceTools`・`TypeTools`・`TriggerTools`）に分けて定義する |
 | | `ToolSpecifications`・`ToolResults`・`ObjectResolver`・`Page` | ツールの定義の組み立て、結果のJSON化、名前の解決とエラーの文言、一覧の範囲（`offset`・`limit`と、一覧の件数の既定値・上限） |
-| | `TableOutputBuilder` | `get_table`の1テーブル分の結果の組み立て（スナップショットの1行に、`sections`・`columns`の絞り込みと、参照しているビュー・所属する観点を反映する） |
+| | `TableOutputBuilder` | `get_table`の1テーブル分の結果の組み立て（スナップショットの1行に、`sections`・`columns`の絞り込みと、参照しているビュー・所属する観点・ER上の区分と多対多を反映する） |
 | | `MermaidErDiagram` | `get_er_diagram`のMermaid記法の組み立て。表記・エスケープはcliの`MermaidSupport`に揃える（cliのコードには依存できないため、同じ規則をmcp-server側にも持つ。ずれは`SampleErDiagramContractTest`で検知する） |
 | | `ViewpointResolver` | 引数`viewpoint`（観点のid）の解決と、見つからない場合のエラーの文言 |
 | | `ToolArguments` | ツールの引数の読み取りと、入力スキーマで表せない検証（型・範囲・`enum`・未知の引数はSDKが入力スキーマで検証するため、選択肢は完全一致で照合する）。誤りは`InvalidToolArgumentException`としてツールのエラー（`isError`）で返す |
@@ -60,9 +61,9 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 | `list_schemas` | なし | DB（DBMS種別・メジャーバージョン。古いcliのスナップショットでは省く）ごとのスキーマと、スキーマごとのオブジェクトの数 |
 | `list_viewpoints` | `database`（任意） | 観点（業務ドメイン別にテーブルをまとめる切り口。参考情報）の識別子・表示名・説明・所属テーブル数 |
 | `list_table_clusters` | `schema`・`database`・`maxClusterSize`（2〜500、既定30）・`excludeViewpointTables`・`limit`・`offset`（任意） | 関連のつながりから推測したテーブルのまとまり（被参照の多い順のテーブル・代表のテーブル・まとまりが参照するハブ・まとまりのテーブルを含む観点）、まとまりを分けるために除いたハブ、関連の無いテーブルの数。推測であり観点ではないため、観点が未宣言の範囲の手がかりや`viewpoints:`の雛形に使う。`excludeViewpointTables`で観点に所属するテーブルを範囲から除ける。行数等の統計は使わない（実データに由来する値を扱わない方針。#78の⑮） |
-| `search_tables` | `query`、`schema`・`database`・`limit`・`viewpoint`（任意） | 一致したテーブルの概要（名前・論理名・区分・説明）と、一致した項目（`matchedIn`）。`viewpoint`（観点のid）を指定すると所属テーブルだけに絞り込む |
-| `list_tables` | `schema`・`database`・`type`・`includeDescription`・`limit`・`offset`・`viewpoint`・`orderBy`（任意） | テーブルの概要（名前・論理名・区分）と関連の数（`incoming`・`outgoing`・`impact`）の一覧。`viewpoint`で観点の所属テーブルだけに絞り込め、`orderBy`で関連の数の多い順に並べられる。関連の数は読み込み時に`RelationGraph`で1回求める（`impact`は参照元を3段までたどる。段数の上限は`RelationCounts.IMPACT_DEPTH`） |
-| `get_table` | `table`（配列も可。最大10件）、`schema`・`database`・`sections`・`columns`（任意） | スナップショットの1行（cliが項目を追加すれば、そのまま返る。ビューの参照先`referencedTables`を含む）に、テーブルを参照しているビュー（`referencedByViews`。ビューの`referencedTables`から逆引きする）と、テーブルが所属する観点（`viewpoints`。`id`・`name`を宣言順）を加えたもの。`sections`・`columns`で項目・カラムを絞れる（`viewpoints`は絞り込みの対象外で、所属する観点があれば常に返す）。`table`に配列を指定すると`{"tables":[...]}`でまとめて返す（`columns`は1件指定時のみ使える） |
+| `search_tables` | `query`、`schema`・`database`・`limit`・`viewpoint`・`erRole`（任意） | 一致したテーブルの概要（名前・論理名・区分・説明。中間テーブルには`erRole`）と、一致した項目（`matchedIn`）。`viewpoint`（観点のid）を指定すると所属テーブルだけに、`erRole`に`junction`を指定すると中間テーブルだけに絞り込む |
+| `list_tables` | `schema`・`database`・`type`・`includeDescription`・`limit`・`offset`・`viewpoint`・`orderBy`・`erRole`（任意） | テーブルの概要（名前・論理名・区分）と関連の数（`incoming`・`outgoing`・`impact`）の一覧。中間テーブルの行には`erRole`（`junction`）が付き、`erRole`引数で中間テーブルだけに絞り込める。`viewpoint`で観点の所属テーブルだけに絞り込め、`orderBy`で関連の数の多い順に並べられる。関連の数は読み込み時に`RelationGraph`で1回求める（`impact`は参照元を3段までたどる。段数の上限は`RelationCounts.IMPACT_DEPTH`） |
+| `get_table` | `table`（配列も可。最大10件）、`schema`・`database`・`sections`・`columns`（任意） | スナップショットの1行（cliが項目を追加すれば、そのまま返る。ビューの参照先`referencedTables`を含む）に、テーブルを参照しているビュー（`referencedByViews`。ビューの`referencedTables`から逆引きする）と、テーブルが所属する観点（`viewpoints`。`id`・`name`を宣言順）を加えたもの。`sections`・`columns`で項目・カラムを絞れる（`viewpoints`は絞り込みの対象外で、所属する観点があれば常に返す）。中間テーブルには`erRole`（`junction`）とつなぐテーブル（`junctionOf`。`スキーマ名.テーブル名`。スナップショットに含まれないテーブルも含む）を、中間テーブルを介して多対多の関係にあるテーブルには、相手のテーブルと中間テーブル（`manyToMany`。`table`・`via`。スナップショットにあるテーブルだけ）を加える（`viewpoints`と同じく導出した値で、`sections`では絞らず、該当すれば常に返す）。`manyToMany`は20件（`TableOutputBuilder.MAX_MANY_TO_MANY`）までで、超える場合は全体の件数を`manyToManyTotal`で示す（ほぼすべての中間テーブルの親になる共通のテーブル、例えばテナントで結果が膨らむのを防ぐ）。`table`に配列を指定すると`{"tables":[...]}`でまとめて返す（`columns`は1件指定時のみ使える） |
 | `find_columns` | `column`、`match`・`schema`・`database`・`limit`・`offset`（任意） | 当てはまったカラム（テーブル・型・PK・NOT NULL・デフォルト値・参照先） |
 | `get_related_tables` | `table`、`depth`（1〜3）・`direction`（outgoing/incoming/both）等（任意） | 関連（どのカラム同士か・外部キーか論理リレーションか・多重度・段数）と、関連に現れたテーブルの概要 |
 | `find_join_path` | `from`・`to`、`maxLength`（1〜6）・`limit`等（任意） | 2つのテーブルをつなぐ最短の経路（たどる順のテーブルと、各段の関連）。同じ長さの経路はすべて（`limit`まで）返す |
@@ -189,9 +190,9 @@ mcp-serverはcliのスナップショットのrecordを共有せず、読み込�
 
 | テスト | 対象 |
 |---|---|
-| `catalog`配下 | 検索の順位・AND・正規化、一覧、カラムの逆引き、名前の解決、相互参照、関連のたどり（向き・段数・自己参照・スナップショットに無い参照先）、JOIN経路の探索、関連のまとまり（ハブの除去・ハブとの間にしか関連の無いテーブルの寄せ方・範囲外との関連の扱い）、観点の一覧・解決・テーブルの絞り込み・テーブルからの逆引き |
+| `catalog`配下 | 検索の順位・AND・正規化、一覧、カラムの逆引き、名前の解決、相互参照、関連のたどり（向き・段数・自己参照・スナップショットに無い参照先）、JOIN経路の探索、関連のまとまり（ハブの除去・ハブとの間にしか関連の無いテーブルの寄せ方・範囲外との関連の扱い）、観点の一覧・解決・テーブルの絞り込み・テーブルからの逆引き、中間テーブルの判定（複合主キー・論理リレーション・同じ列の関連の統合・列を共有する関連・余分な関連・組み合わせの選び方・1対1の関連の除外・1対1の拡張や複合外部キー1本の除外・候補数の上限・自己多対多・3つ以上の親・スナップショットに無い親）と多対多の相手、ER上の区分での絞り込み |
 | `SnapshotDirectoryReaderTest` | 読み込みと、起動時の誤り（ファイル名・行番号を含むメッセージ） |
-| `SampleSnapshotContractTest` | ベースラインとの契約（上記） |
+| `SampleSnapshotContractTest` | ベースラインとの契約（上記）。サンプルの中間テーブル（`project_assignment`）だけが中間テーブルと判定され、`project`と`employee`が多対多の相手になること、1対1の拡張（`employee_profile`）・複合外部キー（`shipment`）は判定されないことも確かめる |
 | `SampleErDiagramContractTest` | 観点のER図が、cliの観点ページ（ベースライン）のER図と同じ記述になること（表記・エスケープのずれの検知） |
 | `InsightsDirectoryReaderTest` | 読み込み（兄弟ディレクトリの解決を含む）と、起動時の誤り |
 | `SampleInsightsContractTest` | ベースラインとの契約（観点の所属テーブルを含む。スナップショットのテーブルから所属する観点を逆引きできること＝両者のキーが一致すること） |

@@ -1,6 +1,8 @@
 package com.dbxray.mcp.tool;
 
 import com.dbxray.mcp.catalog.ColumnEntry;
+import com.dbxray.mcp.catalog.ErRole;
+import com.dbxray.mcp.catalog.ManyToMany;
 import com.dbxray.mcp.catalog.SchemaCatalog;
 import com.dbxray.mcp.catalog.TableEntry;
 import com.dbxray.mcp.catalog.ViewpointEntry;
@@ -18,9 +20,12 @@ import java.util.stream.Collectors;
 
 /**
  * {@code get_table}の1テーブル分の結果の組み立て<br>
- * スナップショットの1行に、{@code sections}・{@code columns}による絞り込みと、所属する観点を反映する
+ * スナップショットの1行に、{@code sections}・{@code columns}による絞り込みと、所属する観点・ER上の区分を反映する
  */
 final class TableOutputBuilder {
+
+  /** {@code manyToMany}に載せる相手の数の上限。ほぼすべての中間テーブルの親になる共通のテーブル（テナント等）の結果が、際限なく膨らむのを防ぐ */
+  static final int MAX_MANY_TO_MANY = 20;
 
   private final SchemaCatalog catalog;
 
@@ -57,6 +62,8 @@ final class TableOutputBuilder {
       addReferencingViews(output, table);
     }
     addViewpoints(output, table);
+    addJunction(output, table);
+    addManyToMany(output, table);
     return output;
   }
 
@@ -118,6 +125,46 @@ final class TableOutputBuilder {
               + table.columns().stream().map(ColumnEntry::name).collect(Collectors.joining(", ")));
     }
     return selected;
+  }
+
+  /**
+   * 中間テーブルの場合に、{@code erRole}とつなぐテーブル（{@code junctionOf}）を加える<br>
+   * {@code junctionOf}は、スナップショットに含まれないテーブルも含む。
+   * スナップショットの項目ではない（導出した値）ため{@code sections}では絞り込まず、該当すれば常に加える
+   */
+  private void addJunction(ObjectNode output, TableEntry table) {
+    catalog
+        .junctions()
+        .find(table)
+        .ifPresent(
+            junction -> {
+              output.put("erRole", ErRole.JUNCTION.value());
+              final ArrayNode parents = output.putArray("junctionOf");
+              junction.parents().forEach(parent -> parents.add(parent.qualifiedName()));
+            });
+  }
+
+  /**
+   * 中間テーブルを介して多対多の関係にあるテーブルがある場合に、相手のテーブルと中間テーブル（{@code manyToMany}）を加える<br>
+   * スナップショットにあるテーブルだけを相手にする。{@value #MAX_MANY_TO_MANY}件までとし、
+   * 超える場合は全体の件数を{@code manyToManyTotal}で示す。{@code sections}では絞り込まず、該当すれば常に加える
+   */
+  private void addManyToMany(ObjectNode output, TableEntry table) {
+    final List<ManyToMany> partners = catalog.junctions().manyToMany(table);
+    if (partners.isEmpty()) {
+      return;
+    }
+    final ArrayNode entries = output.putArray("manyToMany");
+    for (final ManyToMany partner :
+        partners.subList(0, Math.min(partners.size(), MAX_MANY_TO_MANY))) {
+      entries
+          .addObject()
+          .put("table", partner.table().qualifiedName())
+          .put("via", partner.via().qualifiedName());
+    }
+    if (partners.size() > MAX_MANY_TO_MANY) {
+      output.put("manyToManyTotal", partners.size());
+    }
   }
 
   /**

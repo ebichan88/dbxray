@@ -65,6 +65,11 @@ public final class TestTables {
     return this;
   }
 
+  /** 主キーを構成するカラム（複合主キーの場合は列の数だけ呼ぶ） */
+  public TestTables primaryKey(String name) {
+    return column(new ColumnEntry(name, null, "integer", true, true, null, null));
+  }
+
   /** 同じスキーマのテーブルへの1カラムの外部キー */
   public TestTables foreignKey(String column, String referenceTable, String referenceColumn) {
     foreignKeys.add(

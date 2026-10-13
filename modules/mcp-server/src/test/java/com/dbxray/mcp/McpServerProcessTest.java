@@ -104,6 +104,25 @@ class McpServerProcessTest {
       assertTrue(text(sections).contains("\"foreignKeys\""), text(sections));
       assertFalse(text(sections).contains("\"indexes\""), text(sections));
 
+      final CallToolResult manyToMany =
+          client.callTool(
+              CallToolRequest.builder("get_table").arguments(Map.of("table", "project")).build());
+      assertFalse(Boolean.TRUE.equals(manyToMany.isError()), () -> text(manyToMany));
+      assertTrue(
+          text(manyToMany)
+              .contains(
+                  "\"manyToMany\":[{\"table\":\"sample.employee\",\"via\":\"sample.project_assignment\"}]"),
+          text(manyToMany));
+
+      final CallToolResult junctions =
+          client.callTool(
+              CallToolRequest.builder("list_tables")
+                  .arguments(Map.of("erRole", "junction"))
+                  .build());
+      assertFalse(Boolean.TRUE.equals(junctions.isError()), () -> text(junctions));
+      assertTrue(text(junctions).contains("\"name\":\"project_assignment\""), text(junctions));
+      assertTrue(text(junctions).contains("\"erRole\":\"junction\""), text(junctions));
+
       final CallToolResult function =
           client.callTool(
               CallToolRequest.builder("get_function")
@@ -160,6 +179,14 @@ class McpServerProcessTest {
                   .build());
       assertTrue(outOfRange.isError());
       assertTrue(text(outOfRange).contains("/depth"), text(outOfRange));
+
+      final CallToolResult unknownErRole =
+          client.callTool(
+              CallToolRequest.builder("list_tables")
+                  .arguments(Map.of("erRole", "subtype"))
+                  .build());
+      assertTrue(unknownErRole.isError());
+      assertTrue(text(unknownErRole).contains("/erRole"), text(unknownErRole));
 
       final CallToolResult unknown =
           client.callTool(
