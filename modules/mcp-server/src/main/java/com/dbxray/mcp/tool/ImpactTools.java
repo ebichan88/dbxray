@@ -25,6 +25,7 @@ import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -153,7 +154,19 @@ final class ImpactTools {
       return Arrays.stream(values()).filter(section -> section.value.equals(value)).findFirst();
     }
 
-    /** セクションのリストの全要素（概要の各リストと同じ形） */
+    /**
+     * 全セクションのリストの全要素を、セクションの宣言順に求めるメソッド<br>
+     * 概要の各リストと{@code section}を指定した結果を同じ形にするため、要素への変換は{@link #items}だけで行う
+     */
+    static Map<Section, List<?>> itemsOf(TableImpact impact) {
+      final Map<Section, List<?>> items = new EnumMap<>(Section.class);
+      for (final Section section : values()) {
+        items.put(section, section.items(impact));
+      }
+      return items;
+    }
+
+    /** セクションのリストの全要素 */
     List<?> items(TableImpact impact) {
       return switch (this) {
         case DIRECT -> impact.directReferences().stream().map(DirectRef::of).toList();
@@ -198,26 +211,27 @@ final class ImpactTools {
           new DependsOn(
               impact.sequences().stream().map(SequenceRef::of).toList(),
               impact.types().stream().map(TypeRef::of).toList());
-      final List<More> more = more(impact);
+      final Map<Section, List<?>> items = Section.itemsOf(impact);
+      final List<More> more = more(items);
       return new GetImpactOutput(
           table.key().qualifiedName(),
           table.key().database(),
           table.type(),
-          Affected.of(impact),
+          Affected.of(items, impact.functions().coverage()),
           impact.sequences().isEmpty() && impact.types().isEmpty() ? null : dependsOn,
           more,
           notes(impact.functions().coverage(), !more.isEmpty()));
     }
 
     /** 上限で切り捨てたリストを、概要に並ぶ順に求める */
-    private static List<More> more(TableImpact impact) {
+    private static List<More> more(Map<Section, List<?>> items) {
       final List<More> more = new ArrayList<>();
-      for (final Section section : Section.values()) {
-        final int total = section.items(impact).size();
-        if (total > MAX_LISTED) {
-          more.add(new More(section.value(), total, MAX_LISTED));
-        }
-      }
+      items.forEach(
+          (section, all) -> {
+            if (all.size() > MAX_LISTED) {
+              more.add(new More(section.value(), all.size(), MAX_LISTED));
+            }
+          });
       return more;
     }
 
@@ -290,39 +304,36 @@ final class ImpactTools {
     }
   }
 
-  /** 影響を受けるもの */
-  record Affected(
-      ReferencedBy referencedBy,
-      List<ViewRef> views,
-      List<TriggerRef> triggers,
-      Functions functions) {
+  /**
+   * 影響を受けるもの
+   *
+   * @param views 要素は{@link ViewRef}
+   * @param triggers 要素は{@link TriggerRef}
+   */
+  record Affected(ReferencedBy referencedBy, List<?> views, List<?> triggers, Functions functions) {
 
-    static Affected of(TableImpact impact) {
+    static Affected of(Map<Section, List<?>> items, FunctionCoverage coverage) {
       return new Affected(
-          ReferencedBy.of(impact),
-          head(impact.views().stream().map(ViewRef::of).toList()),
-          head(impact.triggers().stream().map(TriggerRef::of).toList()),
-          Functions.of(impact));
+          ReferencedBy.of(items),
+          head(items.get(Section.VIEWS)),
+          head(items.get(Section.TRIGGERS)),
+          Functions.of(items, coverage));
     }
   }
 
   /**
    * 外部キー・論理リレーションで参照しているテーブル
    *
-   * @param direct 段1の関連。自己参照を含む
-   * @param indirect 段1に現れない、間接的な参照元
+   * @param direct 段1の関連（{@link DirectRef}）。自己参照を含む
+   * @param indirect 段1に現れない、間接的な参照元（{@link IndirectRef}）
    * @param indirectTotal {@code indirect}の総数（上限で切り捨てても、切り捨て前の数）。
    *     {@code list_tables}の{@code impact}と同じく、間接参照の広さの目安として常に示す
    */
-  record ReferencedBy(List<DirectRef> direct, List<IndirectRef> indirect, int indirectTotal) {
+  record ReferencedBy(List<?> direct, List<?> indirect, int indirectTotal) {
 
-    static ReferencedBy of(TableImpact impact) {
-      final List<IndirectRef> indirect =
-          impact.indirectReferences().stream().map(IndirectRef::of).toList();
-      return new ReferencedBy(
-          head(impact.directReferences().stream().map(DirectRef::of).toList()),
-          head(indirect),
-          indirect.size());
+    static ReferencedBy of(Map<Section, List<?>> items) {
+      final List<?> indirect = items.get(Section.INDIRECT);
+      return new ReferencedBy(head(items.get(Section.DIRECT)), head(indirect), indirect.size());
     }
   }
 
@@ -391,17 +402,18 @@ final class ImpactTools {
    * 自テーブルを使う関数・プロシージャ
    *
    * @param preview 常にtrue。cliの{@code --preview}の参考情報から求めた参考値で、互換性の約束の対象外であることを示す
-   * @param unverified 自テーブルを使うかどうか、定義本体を読む必要がある関数。{@code usages}に載ったオーバーロードを除く
+   * @param usages 自テーブルを使う関数（{@link Usage}）
+   * @param unverified 自テーブルを使うかどうか、定義本体を読む必要がある関数（{@link UnverifiedRef}）。
+   *     {@code usages}に載ったオーバーロードを除く
    */
-  record Functions(
-      boolean preview, Coverage coverage, List<Usage> usages, List<UnverifiedRef> unverified) {
+  record Functions(boolean preview, Coverage coverage, List<?> usages, List<?> unverified) {
 
-    static Functions of(TableImpact impact) {
+    static Functions of(Map<Section, List<?>> items, FunctionCoverage coverage) {
       return new Functions(
           true,
-          Coverage.of(impact.functions().coverage()),
-          head(impact.functions().usages().stream().map(Usage::of).toList()),
-          head(impact.functions().unverified().stream().map(UnverifiedRef::of).toList()));
+          Coverage.of(coverage),
+          head(items.get(Section.USAGES)),
+          head(items.get(Section.UNVERIFIED)));
     }
   }
 
