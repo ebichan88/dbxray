@@ -182,6 +182,8 @@ git tag -d v0.2.0
 タグに`-`を含む版（`v0.2.0-rc.1`等）はプレリリースになり、READMEが案内する最新版（`releases/latest`）には出ません。
 
 同じタグのpushで、[Pagesワークフロー](./.github/workflows/pages.yml)が、そのタグの時点の読解ガイド
-（`docs/architecture/*-guide.html`）とMCPサーバーのツール仕様（`docs/usage/mcp-server-spec.yaml`）を
-[GitHub Pages](https://ebichan88.github.io/dbxray/)に公開し直します（プレリリースのタグでは公開しません）。
+（`docs/architecture/*-guide.html`）とMCPサーバーのツール仕様（`docs/usage/mcp-server-spec.yaml`と、それをブラウザで読める形にする
+`.github/pages/mcp-server-spec.html`）を[GitHub Pages](https://ebichan88.github.io/dbxray/)に公開し直します（プレリリースのタグでは公開しません）。
 ガイドとツール仕様だけを公開し直したいときは、Actionsの画面からPagesワークフローを手動で実行し、公開するタグを指定します。
+ツール仕様の表示ページが読み込むライブラリ（`.github/pages/vendor/`のjs-yaml）はDependabotの対象外のため、更新は
+[vendor/README.md](./.github/pages/vendor/README.md)の手順で手で行います。

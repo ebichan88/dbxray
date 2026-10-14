@@ -164,8 +164,14 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
   文章は利用者向けに書き分ける。
 - 結果（`result`）・注意点（`notes`）の文章はテストの対象外。ツールは結果をJSONの文字列で返し、結果の形（`outputSchema`）を定義していないため、
   結果の項目は機械的に照合できない。
-- 仕様ファイルは、リリースのタグごとに読解ガイドと一緒にGitHub Pagesにも公開する（`.github/workflows/pages.yml`。URLは`https://ebichan88.github.io/dbxray/mcp-server-spec.yaml`）。
-  公開されるのは、このファイルを足した版以降の正式版のタグから。
+- 仕様ファイルは、リリースのタグごとに読解ガイドと一緒にGitHub Pagesにも公開する（`.github/workflows/pages.yml`）。
+  公開されるのは、このファイルを足した版以降の正式版のタグから。YAMLそのもの（`/mcp-server-spec.yaml`）と、
+  それをブラウザで読める形にした表示ページ（`/mcp-server-spec.html`）の両方を置く。
+  表示ページ（`.github/pages/mcp-server-spec.html`・`mcp-server-spec.js`）は、ページを開いたときに同じ場所のYAMLを`fetch`し、
+  js-yaml（`.github/pages/vendor/`に版を固定して置く。MIT）で読んで描画する静的なページで、ビルドは要らない。
+  YAMLの値は`textContent`でだけ入れ（`innerHTML`は使わない）、CSP（`<meta>`）で同じ場所のスクリプト以外の読み込み・通信を許さない。
+  表示ページは目次ページと同じく実行中のワークフローと同じ版のもので、YAMLだけがタグの時点のため、
+  仕様ファイルの項目を足しても、省略できる項目は無くても描画できるようにしておく。
 - 仕様ファイルは、`SampleSnapshotContractTest`等とは違い、ベースライン（cliの出力）ではなくコードの定義と照合する。テストのためだけに
   YAMLを読む依存（SnakeYAML。cliと同じ版）を`testImplementation`に足している。配布するjarには含まれない。
 
