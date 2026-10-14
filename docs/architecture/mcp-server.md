@@ -164,6 +164,8 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
   文章は利用者向けに書き分ける。
 - 結果（`result`）・注意点（`notes`）の文章はテストの対象外。ツールは結果をJSONの文字列で返し、結果の形（`outputSchema`）を定義していないため、
   結果の項目は機械的に照合できない。
+- 仕様ファイルは、リリースのタグごとに読解ガイドと一緒にGitHub Pagesにも公開する（`.github/workflows/pages.yml`。URLは`https://ebichan88.github.io/dbxray/mcp-server-spec.yaml`）。
+  公開されるのは、このファイルを足した版以降の正式版のタグから。
 - 仕様ファイルは、`SampleSnapshotContractTest`等とは違い、ベースライン（cliの出力）ではなくコードの定義と照合する。テストのためだけに
   YAMLを読む依存（SnakeYAML。cliと同じ版）を`testImplementation`に足している。配布するjarには含まれない。
 

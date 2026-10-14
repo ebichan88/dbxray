@@ -1,7 +1,8 @@
 name: Pages
 
-# v*タグ（v0.4.0等）のpushで、そのタグの時点の読解ガイド（docs/architecture/*-guide.html）をGitHub Pagesに公開する。
-# 公開するファイルはタグからそのまま取り出し、ページ上部にタグ名を差し込むため、タグの後のコミットは混ざらない。
+# v*タグ（v0.4.0等）のpushで、そのタグの時点の読解ガイド（docs/architecture/*-guide.html）と、
+# MCPサーバーのツール仕様（docs/usage/mcp-server-spec.yaml）をGitHub Pagesに公開する。
+# 公開するファイルはタグからそのまま取り出し、ガイドにはページ上部にタグ名を差し込むため、タグの後のコミットは混ざらない。
 # タグに「-」を含む版（v0.5.0-rc.1等）は公開しない（release.ymlのプレリリースと同じ扱い）。
 # このワークフローが無いタグ（v0.4.0以前）や公開し直したいときは、手動実行でタグを指定する
 on:
@@ -45,7 +46,9 @@ jobs:
         with:
           ref: refs/tags/${{ env.TAG }}
           path: tagged
-          sparse-checkout: docs/architecture
+          sparse-checkout: |
+            docs/architecture
+            docs/usage
 
       # タグ名の表示を差し込み、Pages上では開けない相対リンクのmd（domain-model.md等）を、同じタグのGitHub上のファイルに向け直す
       - name: Assemble the site
@@ -64,6 +67,12 @@ jobs:
             fi
           done
           sed -e "s|__TAG__|${TAG}|g" -e "s|__REPO_URL__|${repo_url}|g" .github/pages/index.html > site/index.html
+          # ツール仕様は、このファイルを足した版より前のタグには無い。無い場合は目次から外す
+          if [[ -f tagged/docs/usage/mcp-server-spec.yaml ]]; then
+            cp tagged/docs/usage/mcp-server-spec.yaml site/mcp-server-spec.yaml
+          else
+            sed -i '/<!--spec-->/d' site/index.html
+          fi
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
