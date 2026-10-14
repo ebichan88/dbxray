@@ -65,8 +65,7 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 
 ## クラウドのClaude Codeで使う
 
-Claude Code on the web（claude.ai/code・Claudeアプリ・デスクトップアプリのクラウドセッション）でも、標準入出力のまま使えます
-（HTTPで待ち受けるサーバーを別に立てる必要はありません）。
+Claude Code on the web（claude.ai/code・Claudeアプリ・デスクトップアプリのクラウドセッション）でも、標準入出力のまま使えます。
 クラウドのセッションは、リポジトリをcloneしたVMの中でClaude Codeが動くため、MCPサーバーもそのVMの中で子プロセスとして起動されます。
 VMはUbuntu 24.04のx86_64のため、使うのはLinux版のzip（`dbxray-linux.zip`）です。
 
