@@ -58,24 +58,26 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 
 ## ツール
 
+引数と結果の仕様は、利用者向けの[ツール](../usage/mcp-server.md#ツール)を正とする。ここには一覧と、実装の設計判断（クラス・定数・理由）を書く。
+
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
 | `list_schemas` | なし | DB（DBMS種別・メジャーバージョン。古いcliのスナップショットでは省く）ごとのスキーマと、スキーマごとのオブジェクトの数 |
-| `list_viewpoints` | `database`（任意） | 観点（業務ドメイン別にテーブルをまとめる切り口。参考情報）の識別子・表示名・説明・所属テーブル数 |
-| `list_table_clusters` | `schema`・`database`・`maxClusterSize`（2〜500、既定30）・`excludeViewpointTables`・`limit`・`offset`（任意） | 関連のつながりから推測したテーブルのまとまり（被参照の多い順のテーブル・代表のテーブル・まとまりが参照するハブ・まとまりのテーブルを含む観点）、まとまりを分けるために除いたハブ、関連の無いテーブルの数。推測であり観点ではないため、観点が未宣言の範囲の手がかりや`viewpoints:`の雛形に使う。`excludeViewpointTables`で観点に所属するテーブルを範囲から除ける。行数等の統計は使わない（実データに由来する値を扱わない方針。#78の⑮） |
-| `search_tables` | `query`、`schema`・`database`・`limit`・`viewpoint`・`erRole`（任意） | 一致したテーブルの概要（名前・論理名・区分・説明。中間テーブルには`erRole`）と、一致した項目（`matchedIn`）。`viewpoint`（観点のid）を指定すると所属テーブルだけに、`erRole`に`junction`を指定すると中間テーブルだけに絞り込む |
-| `list_tables` | `schema`・`database`・`type`・`includeDescription`・`limit`・`offset`・`viewpoint`・`orderBy`・`erRole`（任意） | テーブルの概要（名前・論理名・区分）と関連の数（`incoming`・`outgoing`・`impact`）の一覧。中間テーブルの行には`erRole`（`junction`）が付き、`erRole`引数で中間テーブルだけに絞り込める。`viewpoint`で観点の所属テーブルだけに絞り込め、`orderBy`で関連の数の多い順に並べられる。関連の数は読み込み時に`RelationGraph`で1回求める（`impact`は参照元を3段までたどる。段数の上限は`RelationCounts.IMPACT_DEPTH`） |
-| `get_table` | `table`（配列も可。最大10件）、`schema`・`database`・`sections`・`columns`（任意） | スナップショットの1行（cliが項目を追加すれば、そのまま返る。ビューの参照先`referencedTables`を含む）に、テーブルを参照しているビュー（`referencedByViews`。ビューの`referencedTables`から逆引きする）と、テーブルが所属する観点（`viewpoints`。`id`・`name`を宣言順）を加えたもの。`sections`・`columns`で項目・カラムを絞れる（`viewpoints`は絞り込みの対象外で、所属する観点があれば常に返す）。中間テーブルには`erRole`（`junction`）とつなぐテーブル（`junctionOf`。`スキーマ名.テーブル名`。スナップショットに含まれないテーブルも含む）を、中間テーブルを介して多対多の関係にあるテーブルには、相手のテーブルと中間テーブル（`manyToMany`。`table`・`via`。スナップショットにあるテーブルだけ）を加える（`viewpoints`と同じく導出した値で、`sections`では絞らず、該当すれば常に返す）。`manyToMany`は20件（`TableOutputBuilder.MAX_MANY_TO_MANY`）までで、超える場合は全体の件数を`manyToManyTotal`で示す（ほぼすべての中間テーブルの親になる共通のテーブル、例えばテナントで結果が膨らむのを防ぐ）。`table`に配列を指定すると`{"tables":[...]}`でまとめて返す（`columns`は1件指定時のみ使える） |
-| `find_columns` | `column`、`match`・`schema`・`database`・`limit`・`offset`（任意） | 当てはまったカラム（テーブル・型・PK・NOT NULL・デフォルト値・参照先） |
-| `find_similar_tables` | `table`か`columns`（どちらか一方）、`schema`・`database`・`viewpoint`・`minShared`・`minSimilarity`・`limit`（任意） | 構造が似ているテーブル（類似度・種別・共通のカラム数・基準にだけある／相手にだけあるカラム・型の違い・基準との直接の関連の有無）と、総数。`schema`・`viewpoint`はどちらの指定でも探す範囲の絞り込みに使い、`table`を指定した場合は基準と同じDBから探す（基準は`スキーマ名.テーブル名`と`database`で特定し、`schema`は使わない。複数に当てはまる場合のエラーは`ObjectResolver`に渡した案内でその形を示す）。`onlyInBase`・`onlyInOther`は`FindSimilarTablesOutput`の上限（20件）まで返し、省いた数を示す。条件を満たすテーブルが無い場合は`message`で条件のゆるめ方を示す（基準のカラム数が`minShared`に満たない場合は、下げる値を示す）。`table`と`columns`の指定の誤りは`DiagramTools`の`table`・`viewpoint`と同じく、ツールのエラーで返す |
-| `get_related_tables` | `table`、`depth`（1〜3）・`direction`（outgoing/incoming/both）等（任意） | 関連（どのカラム同士か・外部キーか論理リレーションか・多重度・段数）と、関連に現れたテーブルの概要 |
-| `find_join_path` | `from`・`to`、`maxLength`（1〜6）・`limit`等（任意） | 2つのテーブルをつなぐ最短の経路（たどる順のテーブルと、各段の関連）。同じ長さの経路はすべて（`limit`まで）返す |
-| `get_impact` | `table`、`schema`・`database`（任意） | 影響を受けるもの（`affected`: 参照元`referencedBy`の`direct`・`indirect`、ビュー`views`、トリガー`triggers`、関数`functions`）と、依存するもの（`dependsOn`: シーケンス・型）。向きが逆の情報を同じ階層に並べないよう、キーで分ける。`functions`は`preview: true`・`coverage`・`usages`・`unverified`を持ち、参考情報の参考値であることをJSONと説明で伝える。`section`なしの概要では、各リストを`ImpactTools.MAX_LISTED`（50件）までで返し、超えたリストは総数と続きの取り方を`more`だけで示す（間接参照の総数`indirectTotal`は、広さの目安として常に）。続きは同じツールに`section`（概要でそのリストを持つキーの名前。`direct`・`indirect`・`views`・`triggers`・`usages`・`unverified`）と`offset`・`limit`を指定して読む（結果は`section`・`total`・`nextOffset`・`items`。`items`の形は概要の各リストと同じ）。`offset`・`limit`は`section`なしではエラー（黙って無視しない）。並びは決定的（`direct`は参照元・種別・関連名、`indirect`・`views`は段数・`ObjectKey`、`usages`は関数のキー、`unverified`は理由・関数のキー・引数）。`unverified`は定義本体を読めば確かめられる関数（`dynamicSql`・`incomplete`・`unsupported`）だけで、参考情報が無い・古い関数は`coverage`と`notes`だけで伝える（出力し直すのが対処で、全関数が該当しうるため）。`notes`は固定文で、参考情報が無い・古い関数や、関数名を持たないトリガー（Oracle）、50件を超えて続きがあるリストがあれば、その対応も示す（関数が1つも無いDBでは、関数の参考値である旨は出さない）。ツールを分けず`section`の引数で続きを取る理由は、AIに見せるツールの数と説明の量を増やさず、`more`で次の呼び方を示せるため（`list_tables`等の`offset`・`nextOffset`と同じ作法） |
-| `get_er_diagram` | `table`か`viewpoint`（どちらか一方）、`depth`・`direction`（`table`のときだけ）等（任意） | ER図のMermaid記法（`erDiagram`）と、図に描いたテーブル。`table`は`get_related_tables`と同じ範囲を、`viewpoint`は所属テーブルと所属テーブル同士の関連（`RelationGraph#among`）を描く。描くテーブルは`DiagramTools.MAX_NODES`（cliの`erDiagramMaxNodes`の既定値）まで |
-| `list_functions`・`get_function` | `query`等（任意）／`function`、`includeDefinition`（任意） | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）。`get_function`はオーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。参考情報がある場合はオーバーロードごとに利用しているテーブル（`tableUsage`）も返す |
-| `list_sequences`・`get_sequence` | `query`等（任意）／`sequence` | シーケンスの名前・所有カラム／スナップショットの1行と、採番に使うカラム（`usedByColumns`） |
-| `list_types`・`get_type` | `query`・`category`等（任意）／`type` | ユーザー定義型の名前・種別／スナップショットの1行（ENUMの値の一覧等）と、型を使うカラム（`usedByColumns`） |
-| `list_triggers` | `schema`・`database`等（任意） | テーブルをまたいだトリガーの一覧（テーブル・タイミング・イベント・実行単位・関数） |
+| `list_viewpoints` | `database` | 観点（業務ドメイン別にテーブルをまとめる切り口。参考情報）の識別子・表示名・説明・所属テーブル数 |
+| `list_table_clusters` | `schema`・`database`・`maxClusterSize`・`excludeViewpointTables`・`limit`・`offset` | 関連のつながりから推測したテーブルのまとまり |
+| `search_tables` | `query`、`schema`・`database`・`limit`・`viewpoint`・`erRole` | 一致したテーブルの概要と、一致した項目（`matchedIn`） |
+| `list_tables` | `schema`・`database`・`type`・`includeDescription`・`limit`・`offset`・`viewpoint`・`orderBy`・`erRole` | テーブルの概要と関連の数（`incoming`・`outgoing`・`impact`） |
+| `get_table` | `table`（配列も可）、`schema`・`database`・`sections`・`columns` | スナップショットの1行に、導出した値（参照しているビュー・所属する観点・ER上の区分と多対多）を加えたもの |
+| `find_columns` | `column`、`match`・`schema`・`database`・`limit`・`offset` | 当てはまったカラム（テーブル・型・PK・NOT NULL・デフォルト値・参照先） |
+| `find_similar_tables` | `table`か`columns`、`schema`・`database`・`viewpoint`・`minShared`・`minSimilarity`・`limit` | 構造が似ているテーブルと総数 |
+| `get_related_tables` | `table`、`depth`・`direction`等 | 関連（どのカラム同士か・外部キーか論理リレーションか・多重度・段数）と、関連に現れたテーブルの概要 |
+| `find_join_path` | `from`・`to`、`maxLength`・`limit`等 | 2つのテーブルをつなぐ最短の経路（たどる順のテーブルと、各段の関連）。同じ長さの経路はすべて（`limit`まで）返す |
+| `get_impact` | `table`、`schema`・`database`・`section`・`offset`・`limit` | 影響を受けるもの（`affected`）と、依存するもの（`dependsOn`） |
+| `get_er_diagram` | `table`か`viewpoint`、`depth`・`direction`等 | ER図のMermaid記法（`erDiagram`）と、図に描いたテーブル |
+| `list_functions`・`get_function` | `query`等／`function`、`includeDefinition` | 関数・プロシージャのシグネチャ（種別・引数・戻り値・言語）。`get_function`は関数を実行するトリガーも返す |
+| `list_sequences`・`get_sequence` | `query`等／`sequence` | シーケンスの名前・所有カラム／スナップショットの1行と、採番に使うカラム（`usedByColumns`） |
+| `list_types`・`get_type` | `query`・`category`等／`type` | ユーザー定義型の名前・種別／スナップショットの1行（ENUMの値の一覧等）と、型を使うカラム（`usedByColumns`） |
+| `list_triggers` | `schema`・`database`等 | テーブルをまたいだトリガーの一覧（テーブル・タイミング・イベント・実行単位・関数） |
 
 - 結果はJSONの文字列で返す。値が無い項目（空文字・空リスト）は出力しない。
 - テーブル名は大文字小文字を区別しない。同名のテーブルが複数ある・見つからない場合は、候補を示すツールのエラーを返し、
@@ -95,6 +97,56 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
   カンマ区切りの文字列も受け付ける（配列を文字列にして渡すMCPクライアントがあるため）。型が配列だけの引数（`sections`・`columns`）に
   文字列を渡すと、SDKが入力スキーマの検証で拒否する。単一の文字列（カンマを含まない）は1件の配列として読む。
 - 全ツールに`title`（短い日本語の表示名）を付ける。MCPクライアントのツール一覧・許可の確認画面での表示に使われる。
+
+### ツールごとの設計メモ
+
+#### `list_table_clusters`
+
+* 推測であり観点ではないため、観点が未宣言の範囲の手がかりや`viewpoints:`の雛形に使う。`excludeViewpointTables`で観点に所属するテーブルを範囲から除ける。
+* 返すもの: 関連のつながりから推測したテーブルのまとまり（被参照の多い順のテーブル・代表のテーブル・まとまりが参照するハブ・まとまりのテーブルを含む観点）、まとまりを分けるために除いたハブ、関連の無いテーブルの数。`maxClusterSize`は2〜500（既定30）。
+* 行数等の統計は使わない（実データに由来する値を扱わない方針。#78の⑮）。
+
+#### `search_tables`・`list_tables`
+
+* `search_tables`は`viewpoint`（観点のid）を指定すると所属テーブルだけに、`erRole`に`junction`を指定すると中間テーブルだけに絞り込む。中間テーブルの概要には`erRole`が付く。
+* `list_tables`の中間テーブルの行には`erRole`（`junction`）が付き、`erRole`引数で中間テーブルだけに絞り込める。`viewpoint`で観点の所属テーブルだけに絞り込め、`orderBy`で関連の数の多い順に並べられる。
+* 関連の数は読み込み時に`RelationGraph`で1回求める（`impact`は参照元を3段までたどる。段数の上限は`RelationCounts.IMPACT_DEPTH`）。
+
+#### `get_table`
+
+* スナップショットの1行（cliが項目を追加すれば、そのまま返る。ビューの参照先`referencedTables`を含む）に、テーブルを参照しているビュー（`referencedByViews`。ビューの`referencedTables`から逆引きする）と、テーブルが所属する観点（`viewpoints`。`id`・`name`を宣言順）を加える。
+* `sections`・`columns`で項目・カラムを絞れる（`viewpoints`は絞り込みの対象外で、所属する観点があれば常に返す）。
+* 中間テーブルには`erRole`（`junction`）とつなぐテーブル（`junctionOf`。`スキーマ名.テーブル名`。スナップショットに含まれないテーブルも含む）を、中間テーブルを介して多対多の関係にあるテーブルには、相手のテーブルと中間テーブル（`manyToMany`。`table`・`via`。スナップショットにあるテーブルだけ）を加える（`viewpoints`と同じく導出した値で、`sections`では絞らず、該当すれば常に返す）。
+* `manyToMany`は20件（`TableOutputBuilder.MAX_MANY_TO_MANY`）までで、超える場合は全体の件数を`manyToManyTotal`で示す（ほぼすべての中間テーブルの親になる共通のテーブル、例えばテナントで結果が膨らむのを防ぐ）。
+* `table`に配列を指定すると`{"tables":[...]}`でまとめて返す（`columns`は1件指定時のみ使える）。
+
+#### `find_similar_tables`
+
+* `schema`・`viewpoint`はどちらの指定でも探す範囲の絞り込みに使い、`table`を指定した場合は基準と同じDBから探す（基準は`スキーマ名.テーブル名`と`database`で特定し、`schema`は使わない。複数に当てはまる場合のエラーは`ObjectResolver`に渡した案内でその形を示す）。
+* 返すもの: 類似度・種別・共通のカラム数・基準にだけある／相手にだけあるカラム・型の違い・基準との直接の関連の有無。`onlyInBase`・`onlyInOther`は`FindSimilarTablesOutput`の上限（20件）まで返し、省いた数を示す。
+* 条件を満たすテーブルが無い場合は`message`で条件のゆるめ方を示す（基準のカラム数が`minShared`に満たない場合は、下げる値を示す）。
+* `table`と`columns`の指定の誤りは`DiagramTools`の`table`・`viewpoint`と同じく、ツールのエラーで返す。
+
+#### `get_impact`
+
+* 向きが逆の情報を同じ階層に並べないよう、キーで分ける（影響を受けるもの`affected`: 参照元`referencedBy`の`direct`・`indirect`、ビュー`views`、トリガー`triggers`、関数`functions`／依存するもの`dependsOn`: シーケンス・型）。
+* `functions`は`preview: true`・`coverage`・`usages`・`unverified`を持ち、参考情報の参考値であることをJSONと説明で伝える。
+* `section`なしの概要では、各リストを`ImpactTools.MAX_LISTED`（50件）までで返し、超えたリストは総数と続きの取り方を`more`だけで示す（間接参照の総数`indirectTotal`は、広さの目安として常に）。
+* 続きは同じツールに`section`（概要でそのリストを持つキーの名前。`direct`・`indirect`・`views`・`triggers`・`usages`・`unverified`）と`offset`・`limit`を指定して読む（結果は`section`・`total`・`nextOffset`・`items`。`items`の形は概要の各リストと同じ）。`offset`・`limit`は`section`なしではエラー（黙って無視しない）。
+* 並びは決定的（`direct`は参照元・種別・関連名、`indirect`・`views`は段数・`ObjectKey`、`usages`は関数のキー、`unverified`は理由・関数のキー・引数）。
+* `unverified`は定義本体を読めば確かめられる関数（`dynamicSql`・`incomplete`・`unsupported`）だけで、参考情報が無い・古い関数は`coverage`と`notes`だけで伝える（出力し直すのが対処で、全関数が該当しうるため）。
+* `notes`は固定文で、参考情報が無い・古い関数や、関数名を持たないトリガー（Oracle）、50件を超えて続きがあるリストがあれば、その対応も示す（関数が1つも無いDBでは、関数の参考値である旨は出さない）。
+* ツールを分けず`section`の引数で続きを取る理由は、AIに見せるツールの数と説明の量を増やさず、`more`で次の呼び方を示せるため（`list_tables`等の`offset`・`nextOffset`と同じ作法）。
+
+#### `get_er_diagram`
+
+* `table`は`get_related_tables`と同じ範囲を、`viewpoint`は所属テーブルと所属テーブル同士の関連（`RelationGraph#among`）を描く。`depth`・`direction`は`table`のときだけ使える。
+* 描くテーブルは`DiagramTools.MAX_NODES`（cliの`erDiagramMaxNodes`の既定値）まで。
+
+#### `get_function`
+
+* オーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。
+* 参考情報がある場合はオーバーロードごとに利用しているテーブル（`tableUsage`）も返す。
 
 ## リソース
 
