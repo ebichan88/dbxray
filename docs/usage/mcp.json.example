@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dbxray": {
+      "command": "${DBXRAY_HOME}/runtime/bin/java",
+      "args": ["-jar", "${DBXRAY_HOME}/mcp/dbxray-mcp.jar", "--snapshot=${SCHEMA_SNAPSHOT_DIR}"]
+    }
+  }
+}

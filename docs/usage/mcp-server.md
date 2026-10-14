@@ -59,6 +59,8 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 }
 ```
 
+この内容は、zipの`docs/usage/mcp.json.example`にも入っています。アプリのリポジトリのルートに`.mcp.json`としてコピーして使えます。
+
 他のMCPクライアントでも、`command`に同梱のjava、`args`に上記の引数を指定すれば利用できます。
 
 ## クラウドのClaude Codeで使う
@@ -75,7 +77,7 @@ VMはUbuntu 24.04のx86_64のため、使うのはLinux版のzip（`dbxray-linux
    そのため、テーブル定義書を別のリポジトリで管理している場合は、アプリのリポジトリにも`snapshot/`を置いてください
    （観点や`--preview`の出力を使う場合は、`snapshot/`と同じ階層の`insights/`も置きます）。
 2. **クラウド環境（セッションの実行環境の設定）に、セットアップスクリプトと環境変数を設定する。**
-3. **アプリのリポジトリに`.mcp.json`をコミットする。** 上の`.mcp.json`の例のまま使えます。
+3. **アプリのリポジトリに`.mcp.json`をコミットする。** 上の`.mcp.json`の例（`docs/usage/mcp.json.example`）のまま使えます。
 
 ### セットアップスクリプト
 
