@@ -58,7 +58,8 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 
 ## ツール
 
-引数と結果の仕様は、利用者向けの[ツール](../usage/mcp-server.md#ツール)を正とする。ここには一覧と、実装の設計判断（クラス・定数・理由）を書く。
+引数と結果の仕様は、利用者向けの仕様ファイル[mcp-server-spec.yaml](../usage/mcp-server-spec.yaml)を正とする（概要は[mcp-server.md](../usage/mcp-server.md#ツール)）。
+ここには一覧と、実装の設計判断（クラス・定数・理由）を書く。仕様ファイルの保ち方は[利用者向けの仕様ファイル](#利用者向けの仕様ファイル)を参照。
 
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
@@ -147,6 +148,24 @@ cliのアーキテクチャ（[overview.md](./overview.md)）とは独立して�
 
 * オーバーロードをまとめ、関数を実行するトリガーも返す。`includeDefinition`指定時は定義本体も返す（オーバーロードの本体が同じ場合は1つにまとめ、長い場合は切り詰める）。
 * 参考情報がある場合はオーバーロードごとに利用しているテーブル（`tableUsage`）も返す。
+
+### 利用者向けの仕様ファイル
+
+ツールの引数・結果・注意点の詳細は、利用者向けに`docs/usage/mcp-server-spec.yaml`で管理する（`mcp-server.md`は概要の一覧だけ）。
+
+- 構成は、サーバーの共通事項（`conventions`）、複数のツールで共通の引数（`commonParameters`。ツールからは`ref`で参照する）、
+  ツールごとの定義（`title`・`summary`・`parameters`・`result`・`notes`・`examples`）。MCPが`tools/list`で返す入力スキーマ（JSON Schema）と同じ観点
+  （名前・型・必須・範囲`min`/`max`・列挙値`enum`・既定値`default`）で引数を表す。
+- 引数の名前・型・必須・範囲・列挙値と、数値・真偽値の既定値は、`ToolSpecContractTest`が実際のツール定義（`TableDefinitionTools#specifications`の入力スキーマ）と
+  照合する。ツールの引数を変えたら、同じ変更で仕様ファイルを更新する。数値・真偽値の既定値は、入力スキーマの`description`にある`既定N`と照合する
+  （文字列の既定値は照合しない）。`ToolSpecContractTest`は、概要の文書（`mcp-server.md`）に全ツールの名前が載っていることも確かめる。
+- コードから仕様ファイルを生成せず、人が書いて照合する形にした。入力スキーマの`description`はAIに渡すための文で、1つの文が長く、
+  結果の読み方まで詰め込んでいるため（例: `get_impact`）、そのまま利用者向けの仕様にすると読みにくい。引数の構造はテストで一致を保ち、
+  文章は利用者向けに書き分ける。
+- 結果（`result`）・注意点（`notes`）の文章はテストの対象外。ツールは結果をJSONの文字列で返し、結果の形（`outputSchema`）を定義していないため、
+  結果の項目は機械的に照合できない。
+- 仕様ファイルは、`SampleSnapshotContractTest`等とは違い、ベースライン（cliの出力）ではなくコードの定義と照合する。テストのためだけに
+  YAMLを読む依存（SnakeYAML。cliと同じ版）を`testImplementation`に足している。配布するjarには含まれない。
 
 ## リソース
 
@@ -250,6 +269,7 @@ mcp-serverはcliのスナップショットのrecordを共有せず、読み込�
 | `SnapshotDirectoryReaderTest` | 読み込みと、起動時の誤り（ファイル名・行番号を含むメッセージ） |
 | `SampleSnapshotContractTest` | ベースラインとの契約（上記）。サンプルの中間テーブル（`project_assignment`）だけが中間テーブルと判定され、`project`と`employee`が多対多の相手になること、1対1の拡張（`employee_profile`）・複合外部キー（`shipment`）は判定されないことも確かめる。カラム名から構造の似たテーブル（`attendance_note`）を探せることと、外部キーでつながるテーブル（`attendance`）を除かずに印を付けること、`employee`を参照する履歴テーブル（`employee_history`）を`superset`として返し、桁数だけの型の違いを`size`として返すことも確かめる |
 | `SampleErDiagramContractTest` | 観点のER図が、cliの観点ページ（ベースライン）のER図と同じ記述になること（表記・エスケープのずれの検知） |
+| `ToolSpecContractTest` | 利用者向けの仕様ファイル（`docs/usage/mcp-server-spec.yaml`）の引数が、実際のツール定義の入力スキーマ（名前・型・必須・範囲・列挙値・数値と真偽値の既定値）と一致すること、全ツールに説明があること、概要の文書（`mcp-server.md`）に全ツールが載っていること |
 | `InsightsDirectoryReaderTest` | 読み込み（兄弟ディレクトリの解決を含む）と、起動時の誤り |
 | `SampleInsightsContractTest` | ベースラインとの契約（観点の所属テーブルを含む。スナップショットのテーブルから所属する観点を逆引きできること＝両者のキーが一致すること） |
 | `tool`配下 | ツールの結果のJSON・エラー・引数の検証（`get_impact`の上限・`more`・`section`のページング・`offset`のみの指定を含む）、リソースの一覧（名前・説明・URI・表示用文字列の制御文字の除去）と読み出し |
