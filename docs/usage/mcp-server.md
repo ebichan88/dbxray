@@ -65,6 +65,7 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 
 AIは、全体像をつかむ → 探す → 定義を見る の順に呼び出します（使い分けは、サーバーが初期化時にAIへ伝えます）。
 ここでは一覧だけを示します。引数・結果・注意点の詳細は、仕様ファイル[mcp-server-spec.yaml](./mcp-server-spec.yaml)にあります。
+ブラウザで読みやすい表示（ツールの絞り込み付き）は、[GitHub Pages](https://ebichan88.github.io/dbxray/mcp-server-spec.html)で読めます（最新の正式版の時点のもの）。
 
 | 目的 | ツール | 内容 | 主な引数 |
 |---|---|---|---|
