@@ -1,0 +1,380 @@
+# dbxray MCPサーバーのツール仕様（利用者向け）
+#
+# ツールの概要と使い方は mcp-server.md を参照。このファイルは、各ツールの引数・結果・注意点の詳細を定義する。
+#
+# 引数（parameters）の名前・型・必須・範囲（min / max）・列挙値（enum）・数値と真偽値の既定値（default）は、
+# 実際のツール定義（MCPの tools/list が返す入力スキーマ）と ToolSpecContractTest が照合する。
+# 食い違うとテストが失敗するため、ツールの引数を変えたら同じ変更でこのファイルを更新する。
+# 結果（result）・注意点（notes）の文章はテストの対象外で、人が保つ。
+#
+# 引数の項目
+#   name        引数名
+#   ref         commonParameters の共通の引数を使う（name 以降の項目をそこから引く）
+#   type        string / integer / boolean / string[]（文字列の配列）/ string|string[]（文字列か、文字列の配列）
+#   required    必須か（省略時は false）
+#   enum        指定できる値（string[] の場合は要素の値）
+#   min / max   integer の範囲
+#   default     省略時の値
+#   description 内容
+
+server: dbxray
+
+compatibility: "ツール名・引数・結果の項目の削除・改名・意味の変更は、互換性を壊す変更として扱う（CONTRIBUTING.mdの「互換性を約束する範囲」）。項目の追加は互換。"
+
+conventions:
+  - "すべてのツールは読み取り専用で、DBには接続しない。スナップショット（と参考情報）のファイルだけを読む。"
+  - "結果はJSONの文字列で返す。値が無い項目（空文字・空リスト）は出力しない。"
+  - "テーブル名は大文字小文字を区別しない。スキーマ名.テーブル名の形でも指定できる。"
+  - "同名のオブジェクトが複数のスキーマにある場合・見つからない場合は、候補を示すエラー（isError）を返す。AIが引数を直して呼び直す。"
+  - "未知の引数・範囲外の値・型の誤りは、既定値へ置き換えずにエラー（isError）を返す。"
+  - "一覧を返すツールは、limit・offset で範囲を指定する。続きがあれば結果の nextOffset を返すので、次の offset に指定して読み進める。"
+  - "viewpoint に存在しない観点のidを指定した場合は、宣言されている観点を示すエラーを返す。"
+  - "target.objects で出力対象から外した種別（関数・シーケンス・型等）は0件になる。"
+  - "関数・プロシージャの定義本体は、AIのコンテキストを圧迫するため既定では返さない（get_function の includeDefinition で返す）。"
+
+commonParameters:
+  database:
+    {name: database, type: string, description: "DB名。スナップショットに複数のDBがあり、同名のオブジェクトを区別したい場合だけ指定する"}
+  schemaFilter:
+    {name: schema, type: string, description: "スキーマ名。指定したスキーマのものだけに絞り込む"}
+  schemaOfObject:
+    {name: schema, type: string, description: "スキーマ名。同名のものが複数のスキーマにある場合に指定する"}
+  offset:
+    {name: offset, type: integer, min: 0, default: 0, description: "先頭から読み飛ばす件数。続きは前回の結果の nextOffset を指定する"}
+  nameQuery:
+    {name: query, type: string, description: "名前の一部で絞り込む（大文字小文字を区別しない）"}
+  viewpoint:
+    {name: viewpoint, type: string, description: "観点のid（list_viewpoints で確認できる）。その観点の所属テーブルだけに絞り込む"}
+  erRole:
+    {name: erRole, type: string, enum: [junction], description: "ER上の区分で絞り込む。junction は多対多をつなぐ中間テーブル"}
+
+tools:
+  - name: list_schemas
+    title: スキーマ一覧
+    summary: "DB・スキーマと、種類ごとのオブジェクトの数を返す。最初に全体像をつかむときに使う。"
+    parameters: []
+    result:
+      summary: "スナップショットに含まれるDB（DBMS種別・メジャーバージョン）・スキーマと、スキーマごとのテーブル・ビュー・マテリアライズドビュー・関数（プロシージャを含む）とそのうちのプロシージャ・シーケンス・ユーザー定義型・トリガーの数。数え方は定義書のREADMEの集計と同じ。"
+    notes:
+      - "メジャーバージョンは、書けるSQL（構文・関数）を判断するときに使う。古いcliのスナップショットでは、DBMS種別・メジャーバージョンを省く。"
+
+  - name: list_viewpoints
+    title: 観点一覧
+    summary: "観点（業務ドメイン別にテーブルをまとめる切り口）の一覧を返す。"
+    parameters:
+      - {ref: database}
+    result:
+      summary: "観点の識別子・表示名・説明・所属テーブル数。観点は参考情報（cliの insights）で宣言する。"
+    notes:
+      - "識別子は、list_tables・search_tables・find_similar_tables・get_er_diagram の viewpoint 引数に指定する。テーブルが所属する観点は get_table で分かる。"
+
+  - name: list_table_clusters
+    title: 関連のまとまり
+    summary: "外部キー・論理リレーションのつながりから推測した、テーブルのまとまりを返す。"
+    parameters:
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: maxClusterSize, type: integer, min: 2, max: 500, default: 30, description: "まとまりのテーブル数の上限。小さくすると細かく分かれる。ハブを除いても分けられない場合は超えることがある"}
+      - {name: excludeViewpointTables, type: boolean, default: false, description: "true にすると、いずれかの観点に所属するテーブルを除き、観点が未宣言の範囲だけでまとまりを求める"}
+      - {name: limit, type: integer, min: 1, max: 100, default: 20, description: "返すまとまりの件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "まとまりの一覧。各まとまりは、被参照の多い順のテーブル（先頭が代表のテーブル。1つのまとまりにつき100件まで）・まとまりが参照するハブ・まとまりのテーブルを含む観点を持つ。まとまりを分けるために除いたハブと、どのテーブルとも関連を持たないテーブルの数（unrelatedTables）も返す。"
+    notes:
+      - "関連のつながりだけから求めた推測で、人が宣言した観点ではありません。観点が未宣言の範囲の手がかりや、観点（viewpoints:）を宣言する雛形に使います。宣言済みの観点があれば、そちらを優先してください。"
+      - "まとまりが maxClusterSize を超える間は、被参照の最も多いテーブル（3テーブル以上から参照される共通のマスタ）をハブとして除いて分け直します。ハブとの間にしか関連の無いテーブルは、被参照の最も多いハブごとにまとめます。"
+      - "関連が少ないDB（FK制約が無く、論理リレーションも未宣言）では、ほとんどのテーブルが関連の無いテーブルになります。"
+
+  - name: search_tables
+    title: テーブル検索
+    summary: "キーワードでテーブルを検索する。テーブル名が分からないときに最初に使う。"
+    parameters:
+      - {name: query, type: string, required: true, description: "検索語（例: 従業員、user_id、受注 明細）。空白区切りの複数語は、すべてを含むものだけを返す"}
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 100, default: 20, description: "返す件数の上限"}
+      - {ref: viewpoint}
+      - {ref: erRole}
+    result:
+      summary: "一致したテーブルの概要（名前・論理名・区分・説明）を、一致の強い順に返す。一致した項目（matchedIn）も付く。多対多をつなぐ中間テーブルには erRole（junction）が付く。"
+    notes:
+      - "テーブル名・論理名・説明・カラム名・カラムの論理名を部分一致で探します。"
+
+  - name: list_tables
+    title: テーブル一覧
+    summary: "テーブル（ビューを含む）の一覧を、関連の数付きで返す。絞り込み・並べ替えができる。"
+    parameters:
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: type, type: string, enum: [table, view, materialized_view], description: "区分で絞り込む"}
+      - {name: includeDescription, type: boolean, default: false, description: "テーブルの説明も返す"}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "返す件数の上限"}
+      - {ref: offset}
+      - {ref: viewpoint}
+      - {name: orderBy, type: string, enum: [name, incoming, outgoing, impact], default: name, description: "並べ方。name は DB名・スキーマ名・テーブル名の順。incoming・outgoing・impact はその数の多い順（同数は名前の順。関連の無いテーブルも0として含む）"}
+      - {ref: erRole}
+    result:
+      summary: "テーブルの名前・論理名・区分と、関連の数（incoming・outgoing・impact）。中間テーブルの行には erRole（junction）が付く。"
+      fields:
+        incoming: "外部キー・論理リレーションで自テーブルを参照しているテーブルの数"
+        outgoing: "自テーブルが参照しているテーブルの数"
+        impact: "参照元を3段までたどって届くテーブルの数（変更の影響範囲）"
+    notes:
+      - "関連の数では、自己参照とスナップショットに含まれないテーブルは数えません。"
+      - "どこから読むか迷う場合は、orderBy で関連の多い（中心となる）テーブルから並べます。キーワードで探す場合は search_tables を使います。"
+
+  - name: get_table
+    title: テーブル定義取得
+    summary: "テーブル（ビューを含む）の定義を返す。"
+    parameters:
+      - {name: table, type: "string|string[]", required: true, description: "テーブル名。配列で複数指定できる（最大10件）。複数指定した場合は、結果が tables 配列にまとめられる"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+      - {name: sections, type: "string[]", enum: [columns, indexes, constraints, foreignKeys, logicalRelations, triggers, definition, referencedTables, referencedByViews], description: "返す項目を絞り込む（未指定の場合はすべて）。テーブル名・論理名・区分・説明・備考・所属する観点・ER上の区分は常に返す"}
+      - {name: columns, type: "string[]", description: "返すカラムの名前を絞り込む（大文字小文字を区別しない）。sections に関わらず、指定したカラムを返す。table を複数指定した場合は使えない"}
+    result:
+      summary: "スナップショットの1行（カラム・インデックス・制約・外部キー・論理リレーション・トリガー・説明・備考等）に、次の導出した値を加えたもの。"
+      fields:
+        referencedTables: "ビューが参照するテーブル"
+        referencedByViews: "テーブルを参照しているビュー"
+        viewpoints: "テーブルが所属する観点（id・name。宣言順）"
+        erRole: "多対多をつなぐ中間テーブルの場合は junction"
+        junctionOf: "中間テーブルがつなぐテーブル（スキーマ名.テーブル名）。スナップショットに含まれないテーブルも含む"
+        manyToMany: "中間テーブルを介して多対多の関係にある相手のテーブル（table）と中間テーブル（via）。スナップショットにあるテーブルだけで、20件まで"
+        manyToManyTotal: "manyToMany が20件を超える場合の、全体の件数"
+    notes:
+      - "triggers は、Oracleの場合は本体のPL/SQL（body）も含みます。"
+      - "viewpoints・erRole・junctionOf・manyToMany は、sections を指定しても、該当すれば常に返します。"
+      - "JOINの条件は find_join_path で調べます。"
+      - "中間テーブルの判定は、スナップショットの主キー・外部キーの構成から機械的に求めた推測です。区分が table で、主キーの列を過不足なく覆う2本以上の外部キー（論理リレーションを含む）の組み合わせがあり、そのどの外部キーも外すと覆えなくなるテーブルを、中間テーブルとします。主キー以外の列の有無・他のテーブルからの被参照は問いません。テナントIDのように複数の外部キーが列を共有していてもかまいません。"
+      - "参照先1行に対して参照元が高々1行の外部キー（1対1）は、中間テーブルを構成する外部キーに数えません。主キーとは別に一意索引で組を守る形（id＋一意索引）は判定しません。"
+
+  - name: find_columns
+    title: カラム逆引き
+    summary: "カラム名から、そのカラムを持つテーブルを逆引きする。"
+    parameters:
+      - {name: column, type: string, required: true, description: "カラムの物理名または論理名（例: employee_id、従業員ID）"}
+      - {name: match, type: string, enum: [exact, partial], default: exact, description: "exact は完全一致、partial は部分一致"}
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 500, default: 50, description: "返す件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "当てはまったカラムを持つテーブルと、カラムの型・PK・NOT NULL・デフォルト値、外部キー・論理リレーションの参照先。"
+    notes:
+      - "同じ意味のカラムがどのテーブルにあるか、型が揃っているかを調べるときに使います。"
+
+  - name: find_similar_tables
+    title: 構造の似たテーブル検索
+    summary: "カラム名の構造が似たテーブルを探す。新しいテーブルを作る前の重複の確認や、履歴・バックアップ・複製のテーブルの発見に使う。"
+    parameters:
+      - {name: table, type: string, description: "基準にする既存のテーブル名。同名のテーブルが複数のスキーマにある場合は、スキーマ名.テーブル名の形で指定する。columns とどちらか一方を指定する"}
+      - {name: columns, type: "string|string[]", description: "基準にする、設計中のテーブルのカラム名（物理名。大文字小文字を区別しない。最大100件）。table とどちらか一方を指定する"}
+      - {name: schema, type: string, description: "探す範囲をスキーマ名で絞り込む（基準のテーブルの特定には使わない）"}
+      - {ref: database}
+      - {ref: viewpoint}
+      - {name: minShared, type: integer, min: 1, max: 20, default: 3, description: "共通のカラム数の下限。小さなテーブルの偶然の一致を除く"}
+      - {name: minSimilarity, type: integer, min: 10, max: 100, default: 50, description: "類似度（%）の下限。見つからないときは小さくする"}
+      - {name: limit, type: integer, min: 1, max: 50, default: 10, description: "返す件数の上限"}
+    result:
+      summary: "構造が似ているテーブルと総数。条件を満たすテーブルが無い場合は、minShared・minSimilarity を小さくする方法を message で示す。"
+      fields:
+        similarity: "類似度（%）。100はカラムが同じ場合だけ"
+        kind: "種別。identical はカラムが同じ、superset は相手が基準の全カラムを持ち追加がある、subset は相手が基準の一部だけ、overlap はそれ以外"
+        sharedColumns: "共通のカラム数"
+        onlyInBase: "基準にだけあるカラム（20件まで。省いた数は onlyInBaseOmitted）"
+        onlyInOther: "相手にだけあるカラム（20件まで。省いた数は onlyInOtherOmitted）"
+        typeMismatches: "同名で型の異なるカラム（table を指定した場合だけ）。difference は、型が異なる場合は type、長さ・精度等だけが異なる場合は size"
+        relatedToBase: "基準と外部キー・論理リレーションで直接つながるテーブルの印（table を指定した場合だけ）"
+    notes:
+      - "table と columns は、どちらか一方を指定します。table は同じDBから探し、別のDBのテーブルは含めません。schema・viewpoint は、table を指定した場合も探す範囲の絞り込みに使います。"
+      - "類似度は、カラム名（大文字小文字・全角半角を区別しない）の集合を比べた構造の類似で、同じ意味のテーブルとは限りません。get_table で説明・定義を見て判断してください。"
+      - "多くのテーブルが持つ id・created_at のような汎用のカラムは、持つテーブルが多いほど重みを下げて数えます。重みは、schema・viewpoint で範囲を絞っても、範囲のDBの全テーブルで数えます。DBのテーブルが少ない場合は、汎用のカラムの重みが十分に下がりません。"
+      - "比べる相手は区分が table のテーブルです。基準と外部キー・論理リレーションで直接つながるテーブルも含め、relatedToBase で区別します（親子は互いのキーを持つため似て見えることがあり、履歴・拡張のテーブルは基準を参照していることが多いため）。"
+
+  - name: get_related_tables
+    title: 関連テーブル取得
+    summary: "外部キーと論理リレーションをたどり、つながるテーブルを返す。"
+    parameters:
+      - {name: table, type: string, required: true, description: "起点のテーブル名"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+      - {name: depth, type: integer, min: 1, max: 3, default: 1, description: "たどる段数"}
+      - {name: direction, type: string, enum: [outgoing, incoming, both], default: both, description: "outgoing は参照先へ、incoming は参照元へ、both は両方"}
+    result:
+      summary: "関連（どのカラム同士でつながるか・外部キーか論理リレーションか・多重度 cardinality・段数）と、関連に現れたテーブルの概要。"
+    notes:
+      - "JOINの条件（どのカラム同士でつながるか）を調べるときに使います。参照される側（被参照）からもたどれます。"
+      - "cardinality は、参照先（to）1行に対する参照元（from）の行数を表します（例: ONE_TO_MANY）。"
+
+  - name: find_join_path
+    title: JOIN経路探索
+    summary: "2つのテーブルをつなぐ最短のJOIN経路を返す。"
+    parameters:
+      - {name: from, type: string, required: true, description: "始点のテーブル名。スキーマ名.テーブル名の形でもよい"}
+      - {name: to, type: string, required: true, description: "終点のテーブル名。スキーマ名.テーブル名の形でもよい"}
+      - {ref: database}
+      - {name: maxLength, type: integer, min: 1, max: 6, default: 4, description: "経路の関連の数の上限"}
+      - {name: limit, type: integer, min: 1, max: 20, default: 5, description: "返す経路の数の上限"}
+    result:
+      summary: "経路（たどる順のテーブルと、各段でどのカラム同士でつながるか）。同じ長さの経路が複数ある場合は、すべて（limit まで）返す。"
+    notes:
+      - "外部キーと論理リレーションを、向きを問わずたどります。直接の関連が無いテーブル同士をJOINするときに使います。"
+
+  - name: get_impact
+    title: 影響範囲調査
+    summary: "テーブルを変更・削除したときの影響範囲（参照しているテーブル・ビュー・トリガー・関数と、依存するシーケンス・型）を1回で返す。"
+    parameters:
+      - {name: table, type: string, required: true, description: "テーブル名。ビュー・マテリアライズドビューも指定できる"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+      - {name: section, type: string, enum: [direct, indirect, views, triggers, usages, unverified], description: "続きを取りたいリスト（概要の同じ名前のリスト）。省略すると全体の概要を返す"}
+      - {name: offset, type: integer, min: 0, default: 0, description: "section を指定した場合の、先頭から読み飛ばす件数。続きは前回の結果の nextOffset を指定する"}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "section を指定した場合の、1ページの件数"}
+    result:
+      summary: "影響を受けるもの（affected）と、自テーブルが依存するもの（dependsOn）。section を指定しない場合は概要で、各リストは50件までを決まった順で返す。"
+      fields:
+        affected.referencedBy.direct: "外部キー・論理リレーションで参照しているテーブル（段1の関連。自己参照を含む）。カラム・種別・多重度を付ける"
+        affected.referencedBy.indirect: "3段までの間接参照。段数と経由したテーブルを付ける"
+        affected.referencedBy.indirectTotal: "間接参照の総数。リストが50件を超えなくても、常に返す"
+        affected.views: "参照しているビュー・マテリアライズドビュー。ビューを参照するビューも含み、via で経由したビューを示す"
+        affected.triggers: "自テーブルのトリガー"
+        affected.functions: "自テーブル、またはそのビューを使う関数・プロシージャ（notes を参照）"
+        dependsOn: "自テーブルが依存するもの。カラムのデフォルト値の nextval が使うシーケンスと、カラムの型に使われているユーザー定義型"
+        more: "50件を超えたリストの、総数と続きの取り方（section・total・nextOffset）"
+    notes:
+      - "影響範囲を調べるときは、最初に section なしで呼びます。詳細は get_related_tables・get_function・get_table で調べます。"
+      - "50件を超えたリストは、同じ table に section と offset（と limit）を指定して読み進めます。結果は section・total・nextOffset・items で、items の形は概要の各リストと同じです。offset・limit は section を指定した場合だけ使えます。"
+      - "ビュー・関数の影響はテーブル単位です（ビューや関数がどのカラムを使うかは、スナップショットに含まれません）。dependsOn は影響を受けるものではなく、自テーブルが使うものです。シーケンスは nextval のデフォルト値から拾うため、IDENTITY列等で採番するシーケンスは含みません。"
+      - "affected.functions は、cliの --preview で出力した参考情報（functionTableUsages.json）から求めた参考値で、互換性の約束の対象外です（結果の functions.preview: true、notes、ツールの説明でも伝えます）。載っていなくても使われていないとは限りません。動的SQL・呼び出している関数の中・出力対象外のテーブルの参照は含みません。"
+      - "functions.usages の1行は、関数と経路（自テーブルか、使っているビューか）の組です。操作C・R・U・Dと、関数を実行するトリガー（calledByTriggers）を付けます。自テーブルとビューの両方を使う関数は2行になり、more の総数もこの行数です。同名のオーバーロードは1行にまとめ、overloads に一致したオーバーロードの引数を示します。"
+      - "スキーマが決まらない名前（search_path 等）でしか一致しなかった関数は、match: possible で示し、確定扱いにしません。確定で一致したオーバーロードと、候補でだけ一致したオーバーロードが混ざる関数は、possible にならず、候補のオーバーロードの操作も operations に含みます（確定の操作のように見えます）。関数がテーブルを参照するビューを使っている場合も拾い、via に使っているビューを示します。名前は大文字小文字を区別して照らします。"
+      - "functions.coverage は、同じDBの関数・プロシージャ（オーバーロードはそれぞれ）の参考情報の状態を数えます。noInsight は参考情報が無い関数、stale は定義が変わった後の古い参考情報の関数、unsupported は解析しなかった関数（対象外の言語・難読化等）、withDynamicSql・incomplete は解析済みでも取りこぼしがある関数です。"
+      - "functions.unverified は、参考情報はあるが取りこぼしのある関数のうち、usages に載らなかったオーバーロードを1件ずつ挙げます（function・arguments・reason）。reason は dynamicSql・incomplete・unsupported で、1つのオーバーロードに複数当てはまる場合はこの順で先のものを示します。自テーブルを使うかどうかを参考情報からは確かめきれない関数なので、get_function で定義本体を確かめてください。同じDBの該当する関数をすべて挙げます（50件を超えた分は section: unverified で読みます）。"
+      - "参考情報が無い（noInsight）・古い（stale）関数は、unverified に挙げず、coverage の件数と notes だけで伝えます。関数を1つずつ読むより、cliを --preview 付きで出力し直すほうが確実なためです（--preview を付けずに出力した場合は、全関数が該当します）。"
+      - "Oracleのトリガーは関数名を持たず本体を直接持ち、本体の中の参照は参考情報の対象外です。coverage.triggersWithoutFunction にその数を示し、トリガーが触るテーブル（ビューのINSTEAD OFトリガーが書き込むテーブル等）は、このツールでは分かりません。"
+
+  - name: get_er_diagram
+    title: ER図（Mermaid）
+    summary: "テーブルの周辺、または観点のER図を、Mermaid記法で返す。"
+    parameters:
+      - {name: table, type: string, description: "起点のテーブル名。viewpoint とどちらか一方を指定する"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+      - {name: viewpoint, type: string, description: "観点のid（list_viewpoints で確認できる）。table とどちらか一方を指定する"}
+      - {name: depth, type: integer, min: 1, max: 3, default: 1, description: "table からたどる段数。table を指定した場合だけ使える"}
+      - {name: direction, type: string, enum: [outgoing, incoming, both], default: both, description: "outgoing は参照先へ、incoming は参照元へ、both は両方。table を指定した場合だけ使える"}
+    result:
+      summary: "ER図のMermaid記法（mermaid）と、図に描いたテーブル。"
+    notes:
+      - "table を指定すると、get_related_tables と同じ範囲（たどった関連と、関連に現れたテーブル）を描きます。viewpoint を指定すると、観点の所属テーブルと、所属テーブル同士の関連を描きます（観点の外のテーブルとの関連は描かず、関連の無い所属テーブルも箱だけ描きます）。"
+      - "table と viewpoint の両方を指定した場合や、viewpoint と一緒に schema・depth・direction を指定した場合は、エラーを返します。"
+      - "表記は定義書のER図と同じです。箱は「テーブル名（論理テーブル名）」と関連をつなぐカラム、外部キーは実線・論理リレーションは破線で描きます。"
+      - "図に描くテーブルが80件を超える場合は、エラーを返します。"
+      - "Mermaidを描画できるMCPクライアント（チャットの画面等）では、AIが mermaid の値をコードブロックに入れて示すと、図として表示されます。"
+
+  - name: list_functions
+    title: 関数一覧
+    summary: "関数・プロシージャの一覧を返す（定義本体は返さない）。"
+    parameters:
+      - {ref: nameQuery}
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "返す件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "関数・プロシージャの名前・種別・引数・戻り値・言語を、DB名・スキーマ名・名前の順に返す。同名の関数（オーバーロード）はそれぞれ返す。"
+
+  - name: get_function
+    title: 関数定義取得
+    summary: "関数・プロシージャのシグネチャを返す。定義本体と、利用しているテーブルも取得できる。"
+    parameters:
+      - {name: function, type: string, required: true, description: "関数・プロシージャ名（大文字小文字を区別しない）。スキーマ名.関数名の形でもよい"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+      - {name: includeDefinition, type: boolean, default: false, description: "定義本体も返す。オーバーロードの本体がすべて同じ場合は1つにまとめ、長い場合は切り詰める"}
+    result:
+      summary: "シグネチャ（種別・引数・戻り値・言語）を、同名のもの（オーバーロード）をまとめて返す。関数を実行するトリガー（calledByTriggers）も返す。cliを --preview 付きで実行した参考情報がある場合は、オーバーロードごとに利用しているテーブル（tableUsage）も返す。"
+      fields:
+        tableUsage.tables: "利用しているテーブル。table（出力対象のテーブルと一致したものだけ）と、操作 operations（C・R・U・D）"
+        tableUsage.dynamicSql: "動的SQLの種類"
+        tableUsage.incomplete: "定義本体を最後まで読めなかった場合に true"
+        tableUsage.overloadsMerged: "Oracleで同名のサブプログラムの本体をまとめて抽出した場合に true"
+        tableUsage.status: "解析しなかった場合の状態だけを返す（unsupported_language・no_definition・wrapped・subprogram_not_found）"
+    notes:
+      - "tableUsage は、参考情報が無い関数と、参考情報の抽出元の定義本体がスナップショットの定義本体と一致しない関数（--rm-dist を付けずに対象のスキーマを減らした場合等で、参考情報だけが前回のまま残り、その後に定義が変わった場合）には、項目ごと付けません。"
+      - "tableUsage は、定義本体から機械的に抽出した参考値です。呼び出している関数の中と動的SQLの中の参照は含みません。利用しているテーブルが見つからなかった場合は tables: [] を返しますが、テーブルに触れないことを意味しません（出力対象外のテーブル・名前の違うシノニム・呼び出し先の関数・動的SQLの中の参照は含まないため）。"
+      - "スキーマが決まらない名前は、table にスキーマを付けず、何で決まるか（schemaResolution）と候補（schemaCandidates）を返します。候補が1つでも、そのスキーマに決めつけないでください。schemaResolution は、search_path（PostgreSQLで、実行時の search_path で決まる）、current_user（Oracleの実行者権限 AUTHID CURRENT_USER で、実行するユーザーで決まる）、synonym（Oracleの定義者権限で、所有者のスキーマに無いため、シノニム経由で参照している可能性がある）のいずれかです。"
+    examples:
+      - description: "tableUsage の例"
+        json: |
+          "tableUsage": {
+            "tables": [
+              {"table": "sample.employee", "operations": "U"},
+              {"table": "project", "schemaResolution": "search_path", "schemaCandidates": ["sample"], "operations": "R"}
+            ],
+            "dynamicSql": ["EXECUTE"]
+          }
+      - description: "解析しなかった場合"
+        json: |
+          {"status": "unsupported_language", "language": "plpython3u"}
+
+  - name: list_sequences
+    title: シーケンス一覧
+    summary: "シーケンスの一覧を返す。"
+    parameters:
+      - {ref: nameQuery}
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "返す件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "シーケンスの名前と所有カラム（テーブル名.カラム名）を、DB名・スキーマ名・名前の順に返す。"
+
+  - name: get_sequence
+    title: シーケンス定義取得
+    summary: "シーケンスの定義と、採番に使うカラムを返す。"
+    parameters:
+      - {name: sequence, type: string, required: true, description: "シーケンス名（大文字小文字を区別しない）。スキーマ名.シーケンス名の形でもよい"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+    result:
+      summary: "シーケンスの定義（増分・最小値・最大値・キャッシュ・開始値・循環の有無・所有カラム）と、デフォルト値（nextval）で採番に使うカラム（usedByColumns）。"
+
+  - name: list_types
+    title: ユーザー定義型一覧
+    summary: "ユーザー定義型の一覧を返す。"
+    parameters:
+      - {ref: nameQuery}
+      - {name: category, type: string, enum: [ENUM, COMPOSITE, DOMAIN, RANGE, OBJECT, VARRAY, NESTED TABLE], description: "種別で絞り込む。PostgreSQL は ENUM・COMPOSITE・DOMAIN・RANGE、Oracle は OBJECT・VARRAY・NESTED TABLE"}
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "返す件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "ユーザー定義型の名前と種別を、DB名・スキーマ名・名前の順に返す。"
+
+  - name: get_type
+    title: ユーザー定義型定義取得
+    summary: "ユーザー定義型の定義と、その型を使うカラムを返す。"
+    parameters:
+      - {name: type, type: string, required: true, description: "型名（大文字小文字を区別しない）。スキーマ名.型名の形でもよい"}
+      - {ref: schemaOfObject}
+      - {ref: database}
+    result:
+      summary: "ユーザー定義型の定義（ENUMの値の一覧・複合型の属性等）と、型を使うカラム（usedByColumns）。"
+    notes:
+      - "アプリ側で列挙型・定数を書くときに使います。"
+
+  - name: list_triggers
+    title: トリガー一覧
+    summary: "テーブルをまたいだトリガーの一覧を返す。"
+    parameters:
+      - {ref: schemaFilter}
+      - {ref: database}
+      - {name: limit, type: integer, min: 1, max: 500, default: 100, description: "返す件数の上限"}
+      - {ref: offset}
+    result:
+      summary: "トリガーを、テーブル・タイミング・イベント・実行単位・実行される関数とともに返す。"
+    notes:
+      - "1テーブルのトリガーの定義は、get_table（sections: triggers）で取得できます。"

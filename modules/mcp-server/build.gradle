@@ -12,6 +12,8 @@ dependencies {
     runtimeOnly 'org.slf4j:slf4j-simple:2.0.20'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:6.1.3'
+    // 利用者向けのツール仕様（docs/usage/mcp-server-spec.yaml）を読み、実際のツール定義との一致をToolSpecContractTestで確かめる。cliと同じ版
+    testImplementation 'org.yaml:snakeyaml:2.7'
     // パッケージの依存の向き・標準出力への書き込みの禁止等、docs/architecture/mcp-server.mdの構成のうち機械的に判定できるものをArchitectureTestで検査する
     testImplementation 'com.tngtech.archunit:archunit:1.5.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.1.3'
@@ -40,6 +42,12 @@ test {
     // E2Eテストは、配布するjarそのものを子プロセスで起動して確かめる
     dependsOn(tasks.named('shadowJar'))
     systemProperty 'mcpServerJar', tasks.named('shadowJar').get().archiveFile.get().asFile.absolutePath
+    // 利用者向けのツール仕様と、そのツールの概要を載せた文書。ToolSpecContractTestが実際のツール定義と照合する
+    // システムプロパティはGradleの入力ではないため、仕様や文書だけを直したときにもテストを再実行するよう、入力のファイルとして宣言する
+    inputs.file(rootProject.file('docs/usage/mcp-server-spec.yaml'))
+    inputs.file(rootProject.file('docs/usage/mcp-server.md'))
+    systemProperty 'mcpToolSpecFile', rootProject.file('docs/usage/mcp-server-spec.yaml').absolutePath
+    systemProperty 'mcpUsageDocFile', rootProject.file('docs/usage/mcp-server.md').absolutePath
     // ベースライン（cliが出力したサンプルのスナップショット）を、形式の互換を確かめる契約テストの入力にする
     systemProperty 'sampleSnapshotDir', rootProject.file('docs/sample/postgres/output/snapshot').absolutePath
     // --previewで変わる・増えるファイルだけを置いたベースライン。参考情報はスナップショットのディレクトリの親の兄弟から読むため、

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 読み込むのは同じ場所のスクリプトとYAMLだけ。外部への通信・インラインのスクリプトは許さない -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>MCPサーバー ツール仕様</title>
+<meta name="description" content="dbxray のMCPサーバーが提供するツールの引数・結果・注意点">
+<style>
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --fg: #17202a; --muted: #586474; --line: #d5dbe3;
+  --accent: #0a6c73; --accent-soft: #e2f1f1; --warn: #b0491a; --warn-soft: #fbeee6; --code-bg: #edf0f4;
+  --font-body: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #10151b; --surface: #171e26; --fg: #e2e7ed; --muted: #9ba7b6; --line: #2a3441; --accent: #5ec4cb; --accent-soft: #15302f; --warn: #f08d58; --warn-soft: #36231a; --code-bg: #1c242e; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+.shell { max-width: 80rem; margin: 0 auto; padding: 1.5rem 16px 4rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); margin: 0; }
+h1 { margin: 0.2rem 0 0.6rem; font-size: 1.8rem; line-height: 1.3; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.links { margin: 0.4rem 0 0; }
+
+/* 左: 絞り込みとツールの一覧。幅の狭い画面では本文の上に置き、一覧は折り返す */
+.side input { width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; }
+.side input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toc { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.8rem; }
+.toc a { display: inline-block; padding: 0.15rem 0.6rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); text-decoration: none; font-family: var(--font-mono); font-size: 0.8rem; }
+.toc a:hover { border-color: var(--accent); }
+.toc .title { display: none; }
+@media (min-width: 64rem) {
+  .shell { grid-template-columns: 17.5rem minmax(0, 1fr); gap: 2.5rem; padding-top: 2.5rem; }
+  .side { position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .toc { display: block; }
+  .toc a { display: block; margin-bottom: 0.15rem; padding: 0.3rem 0.6rem; border: 0; border-radius: 6px; background: transparent; }
+  .toc a:hover { background: var(--accent-soft); }
+  .toc .title { display: block; font-family: var(--font-body); font-size: 0.75rem; color: var(--muted); }
+}
+
+/* 本文 */
+.panel { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.panel h2 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+.panel ul { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+.tool { border-top: 1px solid var(--line); padding-top: 1.5rem; margin-top: 2rem; scroll-margin-top: 1rem; }
+.tool:target > h2 { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.tool h2 { margin: 0; font-size: 1.3rem; line-height: 1.4; }
+.tool h2 code { background: none; padding: 0; color: var(--accent); font-size: 1em; }
+.tool h2 .title { margin-left: 0.6rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: normal; color: var(--muted); }
+.tool h2 .anchor { margin-left: 0.4rem; font-size: 0.8em; text-decoration: none; opacity: 0.5; }
+.tool h3 { margin: 1.4rem 0 0.4rem; font-size: 0.95rem; color: var(--muted); }
+.summary { margin: 0.5rem 0 0; font-size: 1.02rem; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 38rem; }
+th, td { padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+tr:last-child > th, tr:last-child > td { border-bottom: 0; }
+thead th { background: var(--accent-soft); font-size: 0.8rem; white-space: nowrap; }
+tbody th { font-weight: normal; white-space: nowrap; }
+td.default { white-space: nowrap; }
+td.default code { overflow-wrap: normal; }
+.req { margin-left: 0.4rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--warn-soft); color: var(--warn); font-size: 0.72rem; }
+.range { margin-left: 0.4rem; color: var(--muted); font-size: 0.85rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
+.chips code { white-space: nowrap; overflow-wrap: normal; }
+dl.fields { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.4rem 1rem; }
+dl.fields dt { grid-column: 1; }
+dl.fields dd { grid-column: 2; margin: 0; }
+@media (max-width: 40rem) {
+  dl.fields { grid-template-columns: minmax(0, 1fr); }
+  dl.fields dt, dl.fields dd { grid-column: 1; }
+  dl.fields dd { margin-bottom: 0.4rem; }
+}
+.notes { margin: 0; padding-left: 1.2rem; }
+.notes li { margin-bottom: 0.45rem; }
+pre { margin: 0.3rem 0 0.8rem; padding: 0.8rem 1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); }
+pre code { padding: 0; background: none; }
+.error { padding: 1rem 1.25rem; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-soft); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <input type="search" id="filter" placeholder="ツールを絞り込む" aria-label="ツールを絞り込む" autocomplete="off">
+    <nav class="toc" id="toc" aria-label="ツール一覧"></nav>
+  </aside>
+  <main>
+    <header>
+      <p class="eyebrow">dbxray __TAG__</p>
+      <h1>MCPサーバー ツール仕様</h1>
+      <p>AIがMCPで呼び出すツールの、引数・結果・注意点の詳細です。</p>
+      <p class="links muted"><a href="./mcp-server-spec.yaml">仕様のYAML</a> ・ <a href="__REPO_URL__/blob/__TAG__/docs/usage/mcp-server.md">使い方と概要</a> ・ <a href="./index.html">読解ガイド</a>（__TAG__ のタグの時点）</p>
+    </header>
+    <div id="app">
+      <p class="muted">読み込み中…</p>
+      <noscript><p class="error">この表示にはJavaScriptが必要です。<a href="./mcp-server-spec.yaml">仕様のYAML</a>を直接読むこともできます。</p></noscript>
+    </div>
+  </main>
+</div>
+<script src="./vendor/js-yaml.min.js"></script>
+<script src="./mcp-server-spec.js"></script>
+</body>
+</html>

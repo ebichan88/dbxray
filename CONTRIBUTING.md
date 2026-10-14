@@ -123,7 +123,7 @@ java -jar .\dbxray.jar
 | 設定ファイル（`config.yml`）の項目・値の形式 | 項目の削除・改名・移動、既定値の変更 | 省略できる項目の追加 |
 | サイドカーYAMLの記法 | 項目の削除・改名、これまで書けた記述を誤りにする | 省略できる項目の追加 |
 | スナップショット・参考情報の形式 | 項目の削除・改名・意味の変更（`formatVersion`も上げる） | 項目の追加 |
-| MCPサーバーのツール名・引数・返す項目、リソースのURIの形式 | ツール・引数・返す項目の削除・改名・意味の変更、リソースのURIの形式の変更（会話に書いたURIが読めなくなる） | ツール・省略できる引数・返す項目の追加、リソースの`name`・`description`の表示の調整 |
+| MCPサーバーのツール名・引数・返す項目（仕様は[mcp-server-spec.yaml](./docs/usage/mcp-server-spec.yaml)）、リソースのURIの形式 | ツール・引数・返す項目の削除・改名・意味の変更、リソースのURIの形式の変更（会話に書いたURIが読めなくなる） | ツール・省略できる引数・返す項目の追加、リソースの`name`・`description`の表示の調整 |
 | Markdownの出力のファイル名・ディレクトリ構成 | ファイル名・配置の変更（ドキュメント間のリンク・外部からのリンクが切れる） | 新しい種類のファイルの追加 |
 | 配布zipの構成・jarの名前・起動スクリプト | jar・起動スクリプトの改名・移動 | ファイルの追加 |
 | 対応するDBMSの版 | 対応する最も古い版を上げる | 対応する版を増やす |
@@ -182,5 +182,8 @@ git tag -d v0.2.0
 タグに`-`を含む版（`v0.2.0-rc.1`等）はプレリリースになり、READMEが案内する最新版（`releases/latest`）には出ません。
 
 同じタグのpushで、[Pagesワークフロー](./.github/workflows/pages.yml)が、そのタグの時点の読解ガイド
-（`docs/architecture/*-guide.html`）を[GitHub Pages](https://ebichan88.github.io/dbxray/)に公開し直します（プレリリースのタグでは公開しません）。
-ガイドだけを公開し直したいときは、Actionsの画面からPagesワークフローを手動で実行し、公開するタグを指定します。
+（`docs/architecture/*-guide.html`）とMCPサーバーのツール仕様（`docs/usage/mcp-server-spec.yaml`と、それをブラウザで読める形にする
+`.github/pages/mcp-server-spec.html`）を[GitHub Pages](https://ebichan88.github.io/dbxray/)に公開し直します（プレリリースのタグでは公開しません）。
+ガイドとツール仕様だけを公開し直したいときは、Actionsの画面からPagesワークフローを手動で実行し、公開するタグを指定します。
+ツール仕様の表示ページが読み込むライブラリ（`.github/pages/vendor/`のjs-yaml）はDependabotの対象外のため、更新は
+[vendor/README.md](./.github/pages/vendor/README.md)の手順で手で行います。

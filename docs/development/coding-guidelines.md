@@ -286,6 +286,7 @@ DBのメタ情報（DB名・スキーマ名・テーブル名・コメント・�
 | 片方のDBのmapper | もう片方のmapperも確認し、挙動を揃える |
 | スナップショットの形式（`domain.model.snapshot`のrecord） | `./gradlew :mcp-server:test`を実行する（`SampleSnapshotContractTest`がベースラインを読む）。互換性の無い変更なら`DatabaseSnapshot.FORMAT_VERSION`を上げ、`SnapshotDirectoryReader.SUPPORTED_FORMAT_VERSION`を追従させる |
 | ER図のMermaidの表記（`MermaidSupport`） | `./gradlew :mcp-server:test`を実行する（MCPサーバーの`get_er_diagram`が同じ表記を自前で持ち、`SampleErDiagramContractTest`が観点ページのベースラインと比べる） |
+| MCPサーバーのツール（名前・`title`・引数・既定値・範囲） | 利用者向けの仕様ファイル`docs/usage/mcp-server-spec.yaml`の同じツールを更新し、ツールを足した・改名した場合は概要の`docs/usage/mcp-server.md`の一覧も直す。`./gradlew :mcp-server:test`を実行する（`ToolSpecContractTest`が入力スキーマと照合する）。引数・返す項目の削除・改名・意味の変更は互換性を壊す変更（CONTRIBUTING.mdの「互換性を約束する範囲」） |
 | 設定項目・CLI引数 | `docs/usage/cli.md`の仕様の表と、検証する場所（`DbxrayProperties`・`CliArguments`等）を更新する |
 | ログの仕様 | `docs/usage/cli.md`の「ログ」の節を更新する |
 | ドメインの概念（`domain.model`のクラス）・ルールを持つ場所 | `docs/architecture/domain-model.md`の図・ルール表・用語集を更新する |
