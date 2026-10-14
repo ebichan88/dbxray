@@ -61,6 +61,69 @@ claude mcp add dbxray -- /opt/dbxray-linux/runtime/bin/java -jar /opt/dbxray-lin
 
 他のMCPクライアントでも、`command`に同梱のjava、`args`に上記の引数を指定すれば利用できます。
 
+## クラウドのClaude Codeで使う
+
+Claude Code on the web（claude.ai/code・Claudeアプリ・デスクトップアプリのクラウドセッション）でも、標準入出力のまま使えます
+（HTTPで待ち受けるサーバーを別に立てる必要はありません）。
+クラウドのセッションは、リポジトリをcloneしたVMの中でClaude Codeが動くため、MCPサーバーもそのVMの中で子プロセスとして起動されます。
+VMはUbuntu 24.04のx86_64のため、使うのはLinux版のzip（`dbxray-linux.zip`）です。
+
+用意するのは次の3つです。
+
+1. **スナップショットを、`.mcp.json`を置くリポジトリに含める。**
+   リポジトリを1つだけ指定したセッションでは、そのリポジトリの`.mcp.json`が読み込まれます。複数のリポジトリを加えたセッションでは読み込まれません。
+   そのため、テーブル定義書を別のリポジトリで管理している場合は、アプリのリポジトリにも`snapshot/`を置いてください
+   （観点や`--preview`の出力を使う場合は、`snapshot/`と同じ階層の`insights/`も置きます）。
+2. **クラウド環境（セッションの実行環境の設定）に、セットアップスクリプトと環境変数を設定する。**
+3. **アプリのリポジトリに`.mcp.json`をコミットする。** 上の`.mcp.json`の例のまま使えます。
+
+### セットアップスクリプト
+
+クラウド環境の設定ダイアログの「Setup script」に、zipを取得して展開するスクリプトを書きます。セッションの開始前に、rootで実行されます。
+
+```bash
+#!/bin/bash
+base=https://github.com/ebichan88/dbxray/releases/download/v0.4.2
+tmp=$(mktemp -d) &&
+curl -fsSL -o "$tmp/dbxray-linux.zip" "$base/dbxray-linux.zip" &&
+curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" &&
+(cd "$tmp" && sha256sum -c --ignore-missing SHA256SUMS) &&
+rm -rf /opt/dbxray && mkdir -p /opt/dbxray &&
+unzip -q "$tmp/dbxray-linux.zip" -d /opt/dbxray &&
+chmod +x /opt/dbxray/runtime/bin/java ||
+echo "dbxrayのMCPサーバーの用意に失敗しました" >&2
+```
+
+* バージョン（上の例は`v0.4.2`）は、スナップショットを出力した版に合わせて固定してください。`latest`にすると、環境のキャッシュが作り直されたときに
+  版が変わり、スナップショットの形式と合わなくなることがあります。
+* スクリプトが失敗（終了コードが0以外）するとセッションが開始できなくなるため、上の例は取得に失敗してもメッセージを出して続行します。
+  このときはMCPサーバーが起動できないので、クラウド環境の設定とネットワークの許可を確認してください。
+* 実行結果はクラウド環境にキャッシュされ、スクリプトを変えたとき・許可するホストを変えたとき・約7日ごとに作り直されます。
+* ネットワークの許可は、既定の「Trusted」で足ります（`github.com`・`objects.githubusercontent.com`・`release-assets.githubusercontent.com`を使います）。
+  「None」や、既定の一覧を含めないCustomでは取得できません。
+
+### 環境変数
+
+クラウド環境の設定ダイアログの環境変数に、`.env`形式で次を設定します。`.mcp.json`の`${DBXRAY_HOME}`・`${SCHEMA_SNAPSHOT_DIR}`に使われます。
+
+```
+DBXRAY_HOME=/opt/dbxray
+SCHEMA_SNAPSHOT_DIR=/home/user/<リポジトリ名>/<snapshotディレクトリへのパス>
+```
+
+* リポジトリのcloneの場所は、確認した範囲では`/home/user/<リポジトリ名>`です。
+* 環境変数はその環境を使う全員が読めますが、ここに置くのはパスだけで、秘密情報ではありません。
+
+### 動作の確認
+
+* クラウドのセッションでは、リポジトリの`.mcp.json`のサーバーは、確認の画面なしで読み込まれます。
+* 新しいセッションを開き、AIに`list_schemas`を呼ばせて、DBとスキーマが返ることを確かめてください。
+* スナップショットは、セッションの開始時にcloneした内容が読み込まれます。更新したら、新しいセッションを開いてください。
+* Ubuntu 24.04のx86_64のVMで、上のスクリプトでzipを取得して展開し、`runtime/bin/java -jar mcp/dbxray-mcp.jar`が標準入出力で応答することを確認しています。
+  クラウドのClaude Codeの`.mcp.json`の扱いは、Claude Codeの[MCPの文書](https://code.claude.com/docs/en/mcp)・
+  [クラウド環境の文書](https://code.claude.com/docs/en/cloud-environments)に従っています。
+* 組織のセルフホストの環境（自前のrunner）は対象外です。
+
 ## ツール
 
 AIは、全体像をつかむ → 探す → 定義を見る の順に呼び出します（使い分けは、サーバーが初期化時にAIへ伝えます）。
