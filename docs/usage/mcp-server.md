@@ -10,7 +10,17 @@ AIが正しいテーブル名・カラム・JOINの条件（外部キーと、�
 
 ## MCPサーバー動作イメージ
 
-<img width="1348" height="772" alt="MCPサーバー動作イメージ" src="https://github.com/user-attachments/assets/4cb1a424-ec1b-4a2f-9965-1863b39e0a21" />
+### 「物理名にidが存在するカラムがどれだけあるか調べてほしい」（`find_columns`ツール利用時）
+
+<img width="1348" height="772" alt="use_find_columns" src="https://github.com/user-attachments/assets/4cb1a424-ec1b-4a2f-9965-1863b39e0a21" />
+
+### 「従業員テーブルの周辺のER図を描いて画像で見せて」（`get_er_diagram`ツール利用時）
+
+<img width="593" height="392" alt="use_`get_er_diagram" src="https://github.com/user-attachments/assets/37c34c7e-bb26-49be-841e-96008b282298" />
+
+### 「employeeと構造が似たテーブルはある？」（`find_similar_tables`ツール利用時）
+
+<img width="1216" height="956" alt="use_find_similar_tables" src="https://github.com/user-attachments/assets/6847833e-de27-488e-82d5-c9ed226f8eae" />
 
 ## 準備
 
