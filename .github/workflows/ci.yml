@@ -29,7 +29,7 @@ jobs:
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: '21'
+          java-version-file: .java-version
           cache: gradle
 
       # build（test含む）の中で、cliのドメイン層・mcp-serverのcatalogのカバレッジが各build.gradleに定めた基準を下回ると
@@ -85,7 +85,7 @@ jobs:
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: '21'
+          java-version-file: .java-version
           cache: gradle
 
       - name: Run Oracle integration tests
