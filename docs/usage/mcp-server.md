@@ -94,7 +94,7 @@ VMはUbuntu 24.04のx86_64のため、使うのはLinux版のzip（`dbxray-linux
 
 ```bash
 #!/bin/bash
-base=https://github.com/ebichan88/dbxray/releases/download/v0.4.2
+base=https://github.com/ebichan88/dbxray/releases/download/v0.4.3
 tmp=$(mktemp -d) &&
 curl -fsSL -o "$tmp/dbxray-linux.zip" "$base/dbxray-linux.zip" &&
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" &&
@@ -105,7 +105,7 @@ chmod +x /opt/dbxray/runtime/bin/java ||
 echo "dbxrayのMCPサーバーの用意に失敗しました" >&2
 ```
 
-* バージョン（上の例は`v0.4.2`）は、スナップショットを出力した版に合わせて固定してください。`latest`にすると、環境のキャッシュが作り直されたときに
+* バージョン（上の例は`v0.4.3`）は、スナップショットを出力した版に合わせて固定してください。`latest`にすると、環境のキャッシュが作り直されたときに
   版が変わり、スナップショットの形式と合わなくなることがあります。
 * スクリプトが失敗（終了コードが0以外）するとセッションが開始できなくなるため、上の例は取得に失敗してもメッセージを出して続行します。
   このときはMCPサーバーが起動できないので、クラウド環境の設定とネットワークの許可を確認してください。
