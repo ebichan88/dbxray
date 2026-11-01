@@ -18,14 +18,14 @@ configurations {
 }
 
 dependencies {
-    implementation 'org.mybatis:mybatis:3.5.19'
-    implementation 'org.postgresql:postgresql:42.7.13'
+    implementation 'org.mybatis:mybatis:3.6.0'
+    implementation 'org.postgresql:postgresql:42.7.14'
     // Java 11以降向けのojdbc11を使う。23系のドライバはDB 19c以上にしか対応せず、READMEの対象（Oracle 12c以上）を外れるため21系に留める
     implementation 'com.oracle.database.jdbc:ojdbc11:21.23.0.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.26.1'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.26.1'
     implementation 'org.yaml:snakeyaml:2.7'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.4'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:6.1.3'
     // レイヤーの依存方向・命名等、docs/development/coding-guidelines.mdの規約のうち機械的に判定できるものをArchitectureTestで検査する

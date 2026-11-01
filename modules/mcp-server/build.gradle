@@ -5,9 +5,9 @@ plugins {
 
 dependencies {
     // mcp（バンドル版）はJackson 3を同梱するため、cliと同じJackson 2系で揃えるcore＋jackson2の組み合わせを使う
-    implementation 'io.modelcontextprotocol.sdk:mcp-core:2.0.1'
-    implementation 'io.modelcontextprotocol.sdk:mcp-json-jackson2:2.0.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.3'
+    implementation 'io.modelcontextprotocol.sdk:mcp-core:2.1.0'
+    implementation 'io.modelcontextprotocol.sdk:mcp-json-jackson2:2.1.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.4'
     // SDKのログ（SLF4J）の出力先。標準出力はMCPのプロトコルが使うため、標準エラーへ出すsimpleを使う
     runtimeOnly 'org.slf4j:slf4j-simple:2.0.20'
 
